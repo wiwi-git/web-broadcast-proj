@@ -1,0 +1,106 @@
+package com.webbroadcast.video;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.webbroadcast.media.MediaInfo;
+import com.webbroadcast.media.MediaInspector;
+import com.webbroadcast.storage.VideoStorage;
+
+@Service
+public class VideoService {
+
+	public static final List<String> ALLOWED_EXTENSIONS = List.of("mp4", "mov", "mkv", "webm", "avi");
+	public static final int PAGE_SIZE = 20;
+
+	private final VideoRepository repository;
+	private final VideoStorage storage;
+	private final MediaInspector inspector;
+	private final VideoProcessingQueue queue;
+
+	VideoService(VideoRepository repository, VideoStorage storage, MediaInspector inspector,
+			VideoProcessingQueue queue) {
+		this.repository = repository;
+		this.storage = storage;
+		this.inspector = inspector;
+		this.queue = queue;
+	}
+
+	/**
+	 * Original을 저장하고 실제 영상인지 확인한 뒤 처리 중 상태의 Video를 만든다.
+	 * 변환은 백그라운드에서 이어진다.
+	 */
+	public Video upload(MultipartFile file, String rawTitle, String rawDescription) {
+		String title = rawTitle == null ? "" : rawTitle.strip();
+		if (title.isEmpty()) {
+			throw new InvalidUploadException("제목을 입력해 주세요.");
+		}
+		if (title.length() > Video.TITLE_MAX_LENGTH) {
+			throw new InvalidUploadException("제목은 " + Video.TITLE_MAX_LENGTH + "자 이하여야 합니다.");
+		}
+		String description = rawDescription == null || rawDescription.isBlank() ? null : rawDescription.strip();
+		if (description != null && description.length() > Video.DESCRIPTION_MAX_LENGTH) {
+			throw new InvalidUploadException("설명은 " + Video.DESCRIPTION_MAX_LENGTH + "자 이하여야 합니다.");
+		}
+		if (file == null || file.isEmpty()) {
+			throw new InvalidUploadException("영상 파일을 선택해 주세요.");
+		}
+		String extension = extensionOf(file.getOriginalFilename());
+		if (!ALLOWED_EXTENSIONS.contains(extension)) {
+			throw new InvalidUploadException("지원하지 않는 파일 형식입니다. (" + String.join(", ", ALLOWED_EXTENSIONS) + ")");
+		}
+
+		UUID id = UUID.randomUUID();
+		Path original = storage.originalPath(id, extension);
+		MediaInfo info;
+		try {
+			file.transferTo(original);
+			info = inspector.inspect(original).orElse(null);
+		}
+		catch (IOException e) {
+			storage.deleteOriginal(id, extension);
+			throw new UncheckedIOException(e);
+		}
+		catch (InterruptedException e) {
+			storage.deleteOriginal(id, extension);
+			Thread.currentThread().interrupt();
+			throw new IllegalStateException(e);
+		}
+		if (info == null) {
+			storage.deleteOriginal(id, extension);
+			throw new InvalidUploadException("영상 파일을 읽을 수 없습니다. 손상되었거나 영상이 아닌 파일입니다.");
+		}
+
+		Video video = repository.save(
+				Video.uploaded(id, title, description, extension, file.getSize(), info.durationSeconds()));
+		queue.enqueue(id);
+		return video;
+	}
+
+	public Video get(UUID id) {
+		return repository.findById(id).orElseThrow(() -> new VideoNotFoundException(id));
+	}
+
+	/** 공개된 Video만, 최신순으로. */
+	public Page<Video> listPublished(int page) {
+		return repository.findByStatusOrderByCreatedAtDesc(VideoStatus.PUBLISHED,
+				PageRequest.of(Math.max(page, 0), PAGE_SIZE));
+	}
+
+	private static String extensionOf(String filename) {
+		if (filename == null) {
+			return "";
+		}
+		int dot = filename.lastIndexOf('.');
+		return dot < 0 ? "" : filename.substring(dot + 1).toLowerCase(Locale.ROOT);
+	}
+}
