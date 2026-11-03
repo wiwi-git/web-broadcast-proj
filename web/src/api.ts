@@ -45,11 +45,13 @@ function errorFrom(status: number, body: string): ApiError {
   return new ApiError(status, `요청에 실패했습니다. (${status})`)
 }
 
-async function getJson<T>(url: string): Promise<T> {
-  const response = await fetch(url)
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init)
   if (!response.ok) throw errorFrom(response.status, await response.text())
-  return response.json()
+  return response.status === 204 ? (undefined as T) : response.json()
 }
+
+const getJson = <T>(url: string) => request<T>(url)
 
 export function fetchVideos(page: number): Promise<VideoPage> {
   return getJson(`/api/videos?page=${page}`)
@@ -90,5 +92,57 @@ export function uploadVideo(
     }
     xhr.onerror = () => reject(new ApiError(0, '네트워크 오류로 업로드에 실패했습니다.'))
     xhr.send(form)
+  })
+}
+
+// 라이브
+
+export type BroadcastStatus = 'PENDING' | 'LIVE' | 'ENDED'
+
+export interface Broadcast {
+  id: string
+  title: string
+  status: BroadcastStatus
+  createdAt: string
+  startedAt: string | null
+  endedAt: string | null
+  /** 방송 중일 때만 존재 */
+  playbackUrl: string | null
+}
+
+export interface BroadcastList {
+  live: Broadcast[]
+  recentlyEnded: Broadcast[]
+}
+
+/** 시작 직후 Broadcaster에게만 오는 응답. streamKey는 다시 받을 수 없다. */
+export interface StartedBroadcast {
+  broadcast: Broadcast
+  streamKey: string
+  whipUrl: string
+}
+
+export const BROADCAST_TITLE_MAX_LENGTH = 100
+
+export function fetchBroadcasts(): Promise<BroadcastList> {
+  return getJson('/api/broadcasts')
+}
+
+export function fetchBroadcast(id: string): Promise<Broadcast> {
+  return getJson(`/api/broadcasts/${encodeURIComponent(id)}`)
+}
+
+export function startBroadcast(title: string): Promise<StartedBroadcast> {
+  return request('/api/broadcasts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title }),
+  })
+}
+
+export function endBroadcast(id: string, streamKey: string): Promise<void> {
+  return request(`/api/broadcasts/${encodeURIComponent(id)}/end`, {
+    method: 'POST',
+    headers: { 'X-Stream-Key': streamKey },
   })
 }

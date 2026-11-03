@@ -19,3 +19,12 @@ export function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`
   return `${Math.ceil(bytes / 1024)} KB`
 }
+
+/** "방금 전", "5분 전", "3시간 전", 하루가 넘으면 날짜 */
+export function formatRelative(iso: string, now = Date.now()): string {
+  const minutes = Math.floor((now - new Date(iso).getTime()) / 60000)
+  if (minutes < 1) return '방금 전'
+  if (minutes < 60) return `${minutes}분 전`
+  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}시간 전`
+  return formatDate(iso)
+}

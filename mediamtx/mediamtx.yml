@@ -1,0 +1,38 @@
+# MediaMTX 설정. 여기 없는 항목은 MediaMTX 기본값을 쓴다 (ADR-0002).
+
+logLevel: info
+
+# 송출·시청 허가는 Spring에 묻는다 (Stream Key 확인)
+authMethod: http
+authHTTPAddress: http://host.docker.internal:8080/api/media-server/auth
+authHTTPExclude:
+  - action: api
+  - action: metrics
+  - action: pprof
+
+# Spring이 방송 상태를 맞추기 위해 조회하는 API (호스트의 127.0.0.1에만 노출)
+api: true
+apiAddress: :9997
+
+# 휴대폰 브라우저 송출(WHIP)
+webrtc: true
+webrtcAddress: :8889
+webrtcLocalUDPAddress: :8189
+webrtcLocalTCPAddress: :8189
+# 컨테이너 IP는 휴대폰에서 닿지 않으므로 PC의 LAN IP를 후보로 알린다 (MTX_WEBRTCADDITIONALHOSTS)
+webrtcAdditionalHosts: []
+
+# Viewer용 저지연 HLS. 첫 Viewer를 기다리지 않고 미리 만들어 둔다
+hls: true
+hlsAddress: :8888
+hlsVariant: lowLatency
+hlsAlwaysRemux: true
+
+# 지금은 쓰지 않는 송출 방식
+rtsp: false
+rtmp: false
+srt: false
+moq: false
+
+paths:
+  all_others:

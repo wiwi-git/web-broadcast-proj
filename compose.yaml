@@ -1,5 +1,7 @@
-# 개발:  docker compose up -d                 → PostgreSQL만 실행 (서버는 IDE/Gradle로 직접 실행)
-# 배포:  docker compose --profile app up -d   → PostgreSQL + 서버 컨테이너
+# 개발:  docker compose up -d                 → PostgreSQL + MediaMTX (서버는 IDE/Gradle로 직접 실행)
+# 배포:  docker compose --profile app up -d   → 위 + 서버 컨테이너
+#
+# 휴대폰에서 송출하려면 .env에 PC의 LAN IP를 적는다 (.env.example 참고)
 services:
   postgres:
     image: postgres:18
@@ -17,6 +19,21 @@ services:
       timeout: 3s
       retries: 10
 
+  mediamtx:
+    image: bluenviron/mediamtx:1.21.3
+    volumes:
+      - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+    environment:
+      MTX_WEBRTCADDITIONALHOSTS: ${LAN_IP:-}
+    ports:
+      - "8888:8888"            # LL-HLS (Viewer)
+      - "8889:8889"            # WHIP (Broadcaster)
+      - "8189:8189/udp"        # WebRTC 미디어
+      - "8189:8189/tcp"        # WebRTC 미디어 (UDP가 막힌 경우)
+      - "127.0.0.1:9997:9997"  # 제어 API (Spring 전용)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
   server:
     profiles: [app]
     build: ./server
@@ -24,6 +41,7 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/webbroadcast
       DB_USERNAME: webbroadcast
       DB_PASSWORD: webbroadcast
+      MEDIAMTX_API_URL: http://mediamtx:9997
     ports:
       - "8080:8080"
     volumes:

@@ -7,6 +7,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import com.webbroadcast.broadcast.BroadcastNotFoundException;
+import com.webbroadcast.broadcast.InvalidBroadcastException;
+import com.webbroadcast.broadcast.StreamKeyMismatchException;
 import com.webbroadcast.video.InvalidUploadException;
 import com.webbroadcast.video.VideoNotFoundException;
 
@@ -16,8 +19,8 @@ import com.webbroadcast.video.VideoNotFoundException;
 @RestControllerAdvice
 class ApiExceptionHandler {
 
-	@ExceptionHandler(InvalidUploadException.class)
-	ProblemDetail invalidUpload(InvalidUploadException e) {
+	@ExceptionHandler({ InvalidUploadException.class, InvalidBroadcastException.class })
+	ProblemDetail badRequest(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
 	}
 
@@ -26,8 +29,24 @@ class ApiExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "파일은 2GB 이하여야 합니다.");
 	}
 
-	@ExceptionHandler({ VideoNotFoundException.class, MethodArgumentTypeMismatchException.class })
-	ProblemDetail notFound(RuntimeException e) {
+	@ExceptionHandler(StreamKeyMismatchException.class)
+	ProblemDetail forbidden(StreamKeyMismatchException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+	}
+
+	@ExceptionHandler(VideoNotFoundException.class)
+	ProblemDetail videoNotFound(VideoNotFoundException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "동영상을 찾을 수 없습니다.");
+	}
+
+	@ExceptionHandler(BroadcastNotFoundException.class)
+	ProblemDetail broadcastNotFound(BroadcastNotFoundException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "방송을 찾을 수 없습니다.");
+	}
+
+	/** 경로의 ID가 UUID 형식이 아니면 그런 대상은 없는 것으로 본다 */
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	ProblemDetail malformedId(MethodArgumentTypeMismatchException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "찾을 수 없습니다.");
 	}
 }
