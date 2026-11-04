@@ -8,7 +8,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+
+import com.webbroadcast.user.User;
 
 @Entity
 @Table(name = "video")
@@ -19,6 +23,10 @@ public class Video {
 
 	@Id
 	private UUID id;
+
+	@ManyToOne(optional = false)
+	@JoinColumn(name = "owner_id")
+	private User owner;
 
 	@Column(nullable = false, length = TITLE_MAX_LENGTH)
 	private String title;
@@ -45,10 +53,11 @@ public class Video {
 	}
 
 	/** 업로드가 끝난 직후의 Video. 변환 전이므로 처리 중 상태로 시작한다. */
-	static Video uploaded(UUID id, String title, String description, String originalExtension, long sizeBytes,
-			Double durationSeconds) {
+	static Video uploaded(UUID id, User owner, String title, String description, String originalExtension,
+			long sizeBytes, Double durationSeconds) {
 		Video video = new Video();
 		video.id = id;
+		video.owner = owner;
 		video.title = title;
 		video.description = description;
 		video.status = VideoStatus.PROCESSING;
@@ -59,16 +68,22 @@ public class Video {
 		return video;
 	}
 
-	void publish() {
-		this.status = VideoStatus.PUBLISHED;
+	boolean isOwnedBy(UUID userId) {
+		return owner.is(userId);
 	}
 
-	void fail() {
-		this.status = VideoStatus.FAILED;
+	/** 제목과 설명만 바꿀 수 있다. 영상 파일은 바꿀 수 없다. */
+	void edit(String title, String description) {
+		this.title = title;
+		this.description = description;
 	}
 
 	public UUID getId() {
 		return id;
+	}
+
+	public User getOwner() {
+		return owner;
 	}
 
 	public String getTitle() {

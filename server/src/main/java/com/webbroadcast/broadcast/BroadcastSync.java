@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -47,8 +48,14 @@ class BroadcastSync {
 		for (Broadcast broadcast : repository.findByStatusIn(EnumSet.of(BroadcastStatus.PENDING, BroadcastStatus.LIVE))) {
 			BroadcastStatus before = broadcast.getStatus();
 			if (broadcast.syncWithMedia(active.containsKey(MediaPath.of(broadcast.getId())), now)) {
-				repository.save(broadcast);
-				log.info("Broadcast {}: {} → {}", broadcast.getId(), before, broadcast.getStatus());
+				try {
+					repository.save(broadcast);
+					log.info("Broadcast {}: {} → {}", broadcast.getId(), before, broadcast.getStatus());
+				}
+				catch (OptimisticLockingFailureException e) {
+					// 그 사이 Owner가 종료하거나 삭제했다. 다음 주기에 다시 맞춘다
+					log.info("Broadcast {}가 동기화 도중 바뀌어 건너뜀", broadcast.getId());
+				}
 			}
 		}
 

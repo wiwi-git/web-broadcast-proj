@@ -17,6 +17,8 @@ import com.webbroadcast.broadcast.BroadcastService;
 @RestController
 class MediaServerAuthController {
 
+	static final String PATH = "/api/media-server/auth";
+
 	/** MediaMTX가 보내는 요청 중 여기서 쓰는 필드 */
 	record AuthRequest(String action, String path, String query, String token) {
 	}
@@ -27,7 +29,7 @@ class MediaServerAuthController {
 		this.broadcastService = broadcastService;
 	}
 
-	@PostMapping("/api/media-server/auth")
+	@PostMapping(PATH)
 	ResponseEntity<Void> authorize(@RequestBody AuthRequest request) {
 		boolean allowed = switch (request.action() == null ? "" : request.action()) {
 			case "publish" -> broadcastService.canPublish(request.path(), streamKeyOf(request));

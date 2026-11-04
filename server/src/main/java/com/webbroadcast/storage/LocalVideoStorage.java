@@ -88,6 +88,18 @@ public class LocalVideoStorage implements VideoStorage {
 	}
 
 	@Override
+	public void deleteAll(UUID videoId, String extension) {
+		deleteOriginal(videoId, extension);
+		discardWorkDir(videoId);
+		try {
+			deleteRecursively(published.resolve(videoId.toString()));
+		}
+		catch (IOException e) {
+			log.warn("공개된 결과물 삭제 실패: {}", videoId, e);
+		}
+	}
+
+	@Override
 	public Path publicRoot() {
 		return published;
 	}

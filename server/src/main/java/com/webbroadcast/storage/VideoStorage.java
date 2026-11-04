@@ -23,6 +23,9 @@ public interface VideoStorage {
 
 	void deleteOriginal(UUID videoId, String extension);
 
+	/** Original, 작업 공간, 공개된 결과물을 모두 지운다. */
+	void deleteAll(UUID videoId, String extension);
+
 	/** 공개 영역의 루트. 이 아래 {videoId}/ 디렉터리가 HTTP로 그대로 제공된다. */
 	Path publicRoot();
 }

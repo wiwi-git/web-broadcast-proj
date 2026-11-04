@@ -1,3 +1,9 @@
+/** 다른 사람에게 보이는 회원 정보 */
+export interface UserSummary {
+  id: string
+  nickname: string
+}
+
 export type VideoStatus = 'PROCESSING' | 'PUBLISHED' | 'FAILED'
 
 export interface Video {
@@ -5,6 +11,7 @@ export interface Video {
   title: string
   description: string | null
   status: VideoStatus
+  owner: UserSummary
   durationSeconds: number | null
   createdAt: string
   /** 공개 상태일 때만 존재 */
@@ -27,31 +34,88 @@ export const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'mkv', 'webm', 'avi']
 
 export class ApiError extends Error {
   readonly status: number
+  /** ProblemDetail의 나머지 필드 (예: activeBroadcastId) */
+  readonly problem: Record<string, unknown>
 
-  constructor(status: number, message: string) {
+  constructor(status: number, message: string, problem: Record<string, unknown> = {}) {
     super(message)
     this.status = status
+    this.problem = problem
   }
 }
 
 /** 서버는 오류를 ProblemDetail로 보내며, detail이 사용자에게 보여줄 문구다. */
 function errorFrom(status: number, body: string): ApiError {
   try {
-    const detail = JSON.parse(body)?.detail
-    if (typeof detail === 'string') return new ApiError(status, detail)
+    const problem = JSON.parse(body)
+    if (typeof problem?.detail === 'string') return new ApiError(status, problem.detail, problem)
   } catch {
     // 본문이 JSON이 아니면 아래 기본 문구를 쓴다
   }
   return new ApiError(status, `요청에 실패했습니다. (${status})`)
 }
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init)
+/**
+ * 로그인은 세션 쿠키로 유지된다 (ADR-0003). 상태를 바꾸는 요청에는
+ * 서버가 XSRF-TOKEN 쿠키로 준 CSRF 토큰을 X-XSRF-TOKEN 헤더로 돌려보낸다.
+ */
+function csrfHeaders(): Record<string, string> {
+  const token = document.cookie
+    .split('; ')
+    .find((cookie) => cookie.startsWith('XSRF-TOKEN='))
+    ?.slice('XSRF-TOKEN='.length)
+  return token ? { 'X-XSRF-TOKEN': decodeURIComponent(token) } : {}
+}
+
+async function request<T>(url: string, init: RequestInit = {}): Promise<T> {
+  const method = init.method ?? 'GET'
+  const headers = method === 'GET' ? init.headers : { ...init.headers, ...csrfHeaders() }
+  const response = await fetch(url, { ...init, headers })
   if (!response.ok) throw errorFrom(response.status, await response.text())
   return response.status === 204 ? (undefined as T) : response.json()
 }
 
 const getJson = <T>(url: string) => request<T>(url)
+
+function sendJson<T>(method: string, url: string, body?: unknown): Promise<T> {
+  return request<T>(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  })
+}
+
+// 회원
+
+export interface Me {
+  id: string
+  username: string
+  nickname: string
+}
+
+// 서버(UserService)와 같은 제약
+export const USERNAME_PATTERN = /^[a-z0-9]{4,20}$/
+export const PASSWORD_MIN_LENGTH = 8
+export const PASSWORD_MAX_LENGTH = 64
+export const NICKNAME_MIN_LENGTH = 2
+export const NICKNAME_MAX_LENGTH = 20
+
+/** 로그인하지 않았으면 null. 이 요청으로 CSRF 토큰 쿠키도 받는다. */
+export async function fetchMe(): Promise<Me | null> {
+  return (await getJson<{ user: Me | null }>('/api/auth/me')).user
+}
+
+export async function signUp(input: { username: string; password: string; nickname: string }): Promise<Me> {
+  return (await sendJson<{ user: Me }>('POST', '/api/auth/signup', input)).user
+}
+
+export async function logIn(input: { username: string; password: string }): Promise<Me> {
+  return (await sendJson<{ user: Me }>('POST', '/api/auth/login', input)).user
+}
+
+export function logOut(): Promise<void> {
+  return request('/api/auth/logout', { method: 'POST' })
+}
 
 export function fetchVideos(page: number): Promise<VideoPage> {
   return getJson(`/api/videos?page=${page}`)
@@ -83,6 +147,7 @@ export function uploadVideo(
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/videos')
+    Object.entries(csrfHeaders()).forEach(([name, value]) => xhr.setRequestHeader(name, value))
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress(event.loaded / event.total)
     }
@@ -95,6 +160,14 @@ export function uploadVideo(
   })
 }
 
+export function editVideo(id: string, input: { title: string; description: string }): Promise<Video> {
+  return sendJson('PATCH', `/api/videos/${encodeURIComponent(id)}`, input)
+}
+
+export function deleteVideo(id: string): Promise<void> {
+  return request(`/api/videos/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
 // 라이브
 
 export type BroadcastStatus = 'PENDING' | 'LIVE' | 'ENDED'
@@ -103,6 +176,7 @@ export interface Broadcast {
   id: string
   title: string
   status: BroadcastStatus
+  owner: UserSummary
   createdAt: string
   startedAt: string | null
   endedAt: string | null
@@ -115,7 +189,7 @@ export interface BroadcastList {
   recentlyEnded: Broadcast[]
 }
 
-/** 시작 직후 Broadcaster에게만 오는 응답. streamKey는 다시 받을 수 없다. */
+/** 시작 직후 Owner에게만 오는 응답. streamKey는 서버에 남지 않으므로 다시 필요하면 새로 발급받는다. */
 export interface StartedBroadcast {
   broadcast: Broadcast
   streamKey: string
@@ -133,16 +207,65 @@ export function fetchBroadcast(id: string): Promise<Broadcast> {
 }
 
 export function startBroadcast(title: string): Promise<StartedBroadcast> {
-  return request('/api/broadcasts', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title }),
-  })
+  return sendJson('POST', '/api/broadcasts', { title })
 }
 
-export function endBroadcast(id: string, streamKey: string): Promise<void> {
-  return request(`/api/broadcasts/${encodeURIComponent(id)}/end`, {
-    method: 'POST',
-    headers: { 'X-Stream-Key': streamKey },
-  })
+export function renameBroadcast(id: string, title: string): Promise<Broadcast> {
+  return sendJson('PATCH', `/api/broadcasts/${encodeURIComponent(id)}`, { title })
+}
+
+export function endBroadcast(id: string): Promise<void> {
+  return request(`/api/broadcasts/${encodeURIComponent(id)}/end`, { method: 'POST' })
+}
+
+export function deleteBroadcast(id: string): Promise<void> {
+  return request(`/api/broadcasts/${encodeURIComponent(id)}`, { method: 'DELETE' })
+}
+
+// 댓글
+
+export interface Comment {
+  id: string
+  body: string
+  author: UserSummary
+  createdAt: string
+  /** 수정한 적이 있을 때만 존재 */
+  updatedAt: string | null
+}
+
+export interface VideoComments {
+  items: Comment[]
+  /** 다음 요청의 before로 넘긴다. null이면 더 없다 */
+  nextCursor: string | null
+  totalCount: number
+}
+
+export const COMMENT_MAX_LENGTH = 500
+
+export type CommentTarget = { kind: 'video' | 'broadcast'; id: string }
+
+const commentsUrl = (target: CommentTarget) =>
+  `/api/${target.kind === 'video' ? 'videos' : 'broadcasts'}/${encodeURIComponent(target.id)}/comments`
+
+/** 최신순 20개씩 */
+export function fetchVideoComments(videoId: string, before?: string): Promise<VideoComments> {
+  const query = before ? `?before=${encodeURIComponent(before)}` : ''
+  return getJson(commentsUrl({ kind: 'video', id: videoId }) + query)
+}
+
+/** 최근 100개, 오래된 순 */
+export function fetchBroadcastComments(broadcastId: string): Promise<Comment[]> {
+  return getJson(commentsUrl({ kind: 'broadcast', id: broadcastId }))
+}
+
+export function writeComment(target: CommentTarget, body: string): Promise<Comment> {
+  return sendJson('POST', commentsUrl(target), { body })
+}
+
+export function editComment(id: string, body: string): Promise<Comment> {
+  return sendJson('PATCH', `/api/comments/${encodeURIComponent(id)}`, { body })
+}
+
+export function deleteComment(id: string): Promise<void> {
+  return request(`/api/comments/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }

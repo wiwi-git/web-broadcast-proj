@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { BROADCAST_TITLE_MAX_LENGTH, endBroadcast, startBroadcast, type StartedBroadcast } from '../api.ts'
+import { ApiError, BROADCAST_TITLE_MAX_LENGTH, endBroadcast, startBroadcast, type StartedBroadcast } from '../api.ts'
 import { publish, type WhipSession } from '../live/whip.ts'
 import { useBroadcast } from '../live/useBroadcast.ts'
 import { useElapsed } from '../live/useElapsed.ts'
@@ -17,7 +17,7 @@ type Facing = 'user' | 'environment'
 type Phase =
   | { kind: 'preview' }
   | { kind: 'starting' }
-  | { kind: 'on-air'; id: string; streamKey: string }
+  | { kind: 'on-air'; id: string }
   | { kind: 'ended' }
 
 const secureContext = window.isSecureContext && !!navigator.mediaDevices?.getUserMedia
@@ -43,6 +43,8 @@ export default function BroadcastPage() {
   const [title, setTitle] = useState('')
   const [phase, setPhase] = useState<Phase>({ kind: 'preview' })
   const [error, setError] = useState<string | null>(null)
+  /** 이미 진행 중인 내 방송이 있어 시작하지 못했을 때 그 방송 */
+  const [blockingId, setBlockingId] = useState<string | null>(null)
 
   const { broadcast } = useBroadcast(phase.kind === 'on-air' ? phase.id : null)
   // 송출이 끊기면 서버가 먼저 종료로 바꾼다
@@ -105,6 +107,7 @@ export default function BroadcastPage() {
     event.preventDefault()
     if (!stream || !title.trim()) return
     setError(null)
+    setBlockingId(null)
     setPhase({ kind: 'starting' })
     let started: StartedBroadcast | null = null
     try {
@@ -114,12 +117,26 @@ export default function BroadcastPage() {
       session.connection.addEventListener('connectionstatechange', () => {
         if (session.connection.connectionState === 'failed') setError('송출 연결이 끊겼습니다.')
       })
-      setPhase({ kind: 'on-air', id: started.broadcast.id, streamKey: started.streamKey })
+      setPhase({ kind: 'on-air', id: started.broadcast.id })
     } catch (e) {
       // 만들어 둔 Broadcast는 바로 끝낸다. 실패해도 준비 시간이 지나면 서버가 종료한다
-      if (started) endBroadcast(started.broadcast.id, started.streamKey).catch(() => {})
+      if (started) endBroadcast(started.broadcast.id).catch(() => {})
+      const active = e instanceof ApiError ? e.problem.activeBroadcastId : null
+      setBlockingId(typeof active === 'string' ? active : null)
       setError((e as Error).message)
       setPhase({ kind: 'preview' })
+    }
+  }
+
+  /** 다른 탭이나 기기에서 진행 중이던 내 방송을 끝낸다 */
+  async function endBlocking() {
+    if (!blockingId || !window.confirm('진행 중인 이전 방송을 종료할까요?')) return
+    try {
+      await endBroadcast(blockingId)
+      setBlockingId(null)
+      setError(null)
+    } catch (e) {
+      setError((e as Error).message)
     }
   }
 
@@ -128,7 +145,7 @@ export default function BroadcastPage() {
     sessionRef.current?.close()
     sessionRef.current = null
     try {
-      await endBroadcast(phase.id, phase.streamKey)
+      await endBroadcast(phase.id)
     } catch {
       // 송출은 이미 끊었으므로 서버가 곧 종료로 처리한다
     }
@@ -148,7 +165,7 @@ export default function BroadcastPage() {
   if (phase.kind === 'ended' || droppedByServer) {
     return (
       <div className="notice">
-        <p>{droppedByServer ? '송출이 끊겨 방송이 종료되었습니다.' : '방송을 종료했습니다.'}</p>
+        <p>{droppedByServer ? '송출이 끊겼거나 다른 화면에서 종료해 방송이 끝났습니다.' : '방송을 종료했습니다.'}</p>
         <div className="actions">
           <button className="button primary" onClick={restart}>
             새 방송 시작
@@ -202,6 +219,11 @@ export default function BroadcastPage() {
             onChange={(e) => setTitle(e.target.value)}
           />
           {error && <p className="hint error">{error}</p>}
+          {blockingId && (
+            <button type="button" className="button" onClick={endBlocking}>
+              이전 방송 종료
+            </button>
+          )}
           <button
             type="submit"
             className="button primary"

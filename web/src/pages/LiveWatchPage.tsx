@@ -1,42 +1,148 @@
-import { useParams } from 'react-router'
+import { useState, type FormEvent } from 'react'
+import { useNavigate, useParams } from 'react-router'
+import { BROADCAST_TITLE_MAX_LENGTH, deleteBroadcast, endBroadcast, renameBroadcast, type Broadcast } from '../api.ts'
+import { useAuth } from '../auth/useAuth.ts'
 import HlsPlayer from '../components/HlsPlayer.tsx'
+import LiveComments from '../components/LiveComments.tsx'
 import { formatDate } from '../format.ts'
 import { useBroadcast } from '../live/useBroadcast.ts'
 import { useElapsed } from '../live/useElapsed.ts'
 
 export default function LiveWatchPage() {
   const { id = '' } = useParams()
-  const { broadcast, error } = useBroadcast(id)
+  const { me } = useAuth()
+  const { broadcast: polled, error } = useBroadcast(id)
+  // Owner가 방금 바꾼 제목을 다음 조회 전까지 보여 준다
+  const [renamed, setRenamed] = useState<Broadcast | null>(null)
+  const broadcast = renamed && polled && renamed.id === polled.id && renamed.status === polled.status ? renamed : polled
   const elapsed = useElapsed(broadcast?.status === 'LIVE' ? broadcast.startedAt : null)
 
   if (!broadcast) return <p className={error ? 'notice error' : 'notice'}>{error ?? '불러오는 중…'}</p>
 
   return (
-    <article className="video-detail">
-      {broadcast.status === 'LIVE' && broadcast.playbackUrl ? (
-        <HlsPlayer src={broadcast.playbackUrl} />
-      ) : (
-        <div className="player-placeholder">
-          {broadcast.status === 'PENDING' ? (
+    <div className="live-layout">
+      <article className="live-main">
+        {broadcast.status === 'LIVE' && broadcast.playbackUrl ? (
+          <HlsPlayer src={broadcast.playbackUrl} />
+        ) : (
+          <div className="player-placeholder">
+            {broadcast.status === 'PENDING' ? (
+              <>
+                <div className="spinner" />
+                <p>방송 준비 중입니다.</p>
+              </>
+            ) : (
+              <p>방송이 종료되었습니다.</p>
+            )}
+          </div>
+        )}
+
+        <h1 className="video-title">{broadcast.title}</h1>
+        <p className="meta">
+          <span className="owner-name">{broadcast.owner.nickname}</span>
+          {broadcast.status === 'LIVE' && (
             <>
-              <div className="spinner" />
-              <p>방송 준비 중입니다.</p>
+              {' · '}
+              <span className="badge live inline">LIVE</span> {elapsed} 방송 중
             </>
-          ) : (
-            <p>방송이 종료되었습니다.</p>
           )}
+          {broadcast.status === 'ENDED' && broadcast.endedAt && ` · ${formatDate(broadcast.endedAt)} 종료`}
+        </p>
+
+        {me?.id === broadcast.owner.id && <OwnerControls broadcast={broadcast} onRenamed={setRenamed} />}
+      </article>
+
+      <LiveComments key={broadcast.id} broadcastId={broadcast.id} active={broadcast.status !== 'ENDED'} />
+    </div>
+  )
+}
+
+/** Owner에게만 보인다. 서버도 Owner인지 다시 확인한다. */
+function OwnerControls({ broadcast, onRenamed }: { broadcast: Broadcast; onRenamed(b: Broadcast): void }) {
+  const navigate = useNavigate()
+  const [editing, setEditing] = useState(false)
+  const [title, setTitle] = useState(broadcast.title)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true)
+    setError(null)
+    try {
+      await action()
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleRename(event: FormEvent) {
+    event.preventDefault()
+    await run(async () => {
+      onRenamed(await renameBroadcast(broadcast.id, title.trim()))
+      setEditing(false)
+    })
+  }
+
+  return (
+    <div className="owner-panel">
+      {editing ? (
+        <form className="owner-actions" onSubmit={handleRename}>
+          <input
+            type="text"
+            className="text-input"
+            maxLength={BROADCAST_TITLE_MAX_LENGTH}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            autoFocus
+          />
+          <button type="button" className="button small" onClick={() => setEditing(false)}>
+            취소
+          </button>
+          <button type="submit" className="button primary small" disabled={busy || !title.trim()}>
+            저장
+          </button>
+        </form>
+      ) : (
+        <div className="owner-actions">
+          <button
+            type="button"
+            className="button small"
+            onClick={() => {
+              setTitle(broadcast.title)
+              setEditing(true)
+            }}
+          >
+            제목 수정
+          </button>
+          {broadcast.status !== 'ENDED' && (
+            <button
+              type="button"
+              className="button small"
+              disabled={busy}
+              onClick={() => window.confirm('방송을 종료할까요?') && run(() => endBroadcast(broadcast.id))}
+            >
+              방송 종료
+            </button>
+          )}
+          <button
+            type="button"
+            className="button small danger"
+            disabled={busy}
+            onClick={() =>
+              window.confirm('방송을 삭제할까요? 댓글도 함께 삭제되며 되돌릴 수 없습니다.') &&
+              run(async () => {
+                await deleteBroadcast(broadcast.id)
+                navigate('/', { replace: true })
+              })
+            }
+          >
+            삭제
+          </button>
         </div>
       )}
-
-      <h1 className="video-title">{broadcast.title}</h1>
-      <p className="meta">
-        {broadcast.status === 'LIVE' && (
-          <>
-            <span className="badge live inline">LIVE</span> {elapsed} 방송 중
-          </>
-        )}
-        {broadcast.status === 'ENDED' && broadcast.endedAt && `${formatDate(broadcast.endedAt)} 종료`}
-      </p>
-    </article>
+      {error && <p className="hint error">{error}</p>}
+    </div>
   )
 }

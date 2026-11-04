@@ -76,6 +76,7 @@ function BroadcastCard({ broadcast }: { broadcast: Broadcast }) {
         <span className={live ? 'badge live' : 'badge'}>{live ? 'LIVE' : '종료'}</span>
       </div>
       <h3 className="video-card-title">{broadcast.title}</h3>
+      <p className="meta">{broadcast.owner.nickname}</p>
       <p className="meta">
         {live && broadcast.startedAt
           ? `${formatRelative(broadcast.startedAt)} 시작`

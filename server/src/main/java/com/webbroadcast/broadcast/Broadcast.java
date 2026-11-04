@@ -9,7 +9,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+
+import com.webbroadcast.user.User;
 
 @Entity
 @Table(name = "broadcast")
@@ -22,6 +27,11 @@ public class Broadcast {
 
 	@Id
 	private UUID id;
+
+	/** Broadcaster */
+	@ManyToOne(optional = false)
+	@JoinColumn(name = "owner_id")
+	private User owner;
 
 	@Column(nullable = false, length = TITLE_MAX_LENGTH)
 	private String title;
@@ -40,12 +50,17 @@ public class Broadcast {
 
 	private Instant endedAt;
 
+	/** BroadcastSync와 Owner의 요청이 겹칠 때, 지워진 Broadcast를 되살리거나 종료를 덮어쓰지 않게 한다 */
+	@Version
+	private long version;
+
 	protected Broadcast() {
 	}
 
-	static Broadcast pending(UUID id, String title, String streamKeyHash, Instant now) {
+	static Broadcast pending(UUID id, User owner, String title, String streamKeyHash, Instant now) {
 		Broadcast broadcast = new Broadcast();
 		broadcast.id = id;
+		broadcast.owner = owner;
 		broadcast.title = title;
 		broadcast.status = BroadcastStatus.PENDING;
 		broadcast.streamKeyHash = streamKeyHash;
@@ -55,6 +70,20 @@ public class Broadcast {
 
 	boolean acceptsStreamKey(String key) {
 		return StreamKey.matches(key, streamKeyHash);
+	}
+
+	/** 이전 Stream Key는 더 이상 받지 않는다. 이미 연결된 송출은 끊지 않는다. */
+	void replaceStreamKey(String newStreamKeyHash) {
+		this.streamKeyHash = newStreamKeyHash;
+	}
+
+	boolean isOwnedBy(UUID userId) {
+		return owner.is(userId);
+	}
+
+	/** 제목은 방송 중이든 종료 후든 바꿀 수 있다. */
+	void rename(String title) {
+		this.title = title;
 	}
 
 	/**
@@ -98,6 +127,10 @@ public class Broadcast {
 
 	public UUID getId() {
 		return id;
+	}
+
+	public User getOwner() {
+		return owner;
 	}
 
 	public String getTitle() {

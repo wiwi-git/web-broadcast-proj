@@ -38,14 +38,21 @@ class VideoProcessor {
 			Path workDir = storage.prepareWorkDir(videoId);
 			transcoder.transcode(storage.originalPath(videoId, video.getOriginalExtension()), workDir);
 			storage.publishWorkDir(videoId);
-			video.publish();
+			if (repository.finishProcessing(videoId, VideoStatus.PUBLISHED) == 0) {
+				// 변환하는 동안 Owner가 삭제했다
+				storage.deleteAll(videoId, video.getOriginalExtension());
+				log.info("Video {} 변환 중 삭제되어 결과물을 버림", videoId);
+				return;
+			}
 			log.info("Video {} 공개 ({}초 소요)", videoId, (System.nanoTime() - startedAt) / 1_000_000_000);
 		}
 		catch (Exception e) {
 			storage.discardWorkDir(videoId);
-			video.fail();
+			if (repository.finishProcessing(videoId, VideoStatus.FAILED) == 0) {
+				storage.deleteAll(videoId, video.getOriginalExtension());
+				return;
+			}
 			log.error("Video {} 변환 실패", videoId, e);
 		}
-		repository.save(video);
 	}
 }

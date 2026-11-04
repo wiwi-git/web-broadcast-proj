@@ -7,12 +7,15 @@ import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 
+import com.webbroadcast.user.User;
+
 class BroadcastTest {
 
 	private static final Instant T0 = Instant.parse("2026-11-03T10:00:00Z");
 
+	private final User owner = User.signedUp(UUID.randomUUID(), "owner1", "hash", "방송자", T0);
 	private final String key = StreamKey.generate();
-	private final Broadcast broadcast = Broadcast.pending(UUID.randomUUID(), "첫 방송", StreamKey.hash(key), T0);
+	private final Broadcast broadcast = Broadcast.pending(UUID.randomUUID(), owner, "첫 방송", StreamKey.hash(key), T0);
 
 	@Test
 	void pendingGoesLiveWhenMediaArrives() {
@@ -68,6 +71,21 @@ class BroadcastTest {
 		assertThat(broadcast.acceptsStreamKey(StreamKey.generate())).isFalse();
 		assertThat(broadcast.acceptsStreamKey(null)).isFalse();
 		assertThat(broadcast.acceptsStreamKey("")).isFalse();
+	}
+
+	@Test
+	void replacedStreamKeyStopsTheOldOne() {
+		String newKey = StreamKey.generate();
+		broadcast.replaceStreamKey(StreamKey.hash(newKey));
+
+		assertThat(broadcast.acceptsStreamKey(key)).isFalse();
+		assertThat(broadcast.acceptsStreamKey(newKey)).isTrue();
+	}
+
+	@Test
+	void onlyTheOwnerOwnsIt() {
+		assertThat(broadcast.isOwnedBy(owner.getId())).isTrue();
+		assertThat(broadcast.isOwnedBy(UUID.randomUUID())).isFalse();
 	}
 
 	@Test

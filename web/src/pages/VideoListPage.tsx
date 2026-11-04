@@ -54,6 +54,7 @@ export default function VideoListPage() {
                 )}
               </div>
               <h2 className="video-card-title">{video.title}</h2>
+              <p className="meta">{video.owner.nickname}</p>
               <p className="meta">{formatDate(video.createdAt)}</p>
             </Link>
           </li>

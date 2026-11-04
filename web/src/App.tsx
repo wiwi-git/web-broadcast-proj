@@ -1,10 +1,14 @@
-import { Link, NavLink, Route, Routes } from 'react-router'
+import { Link, NavLink, Route, Routes, useLocation } from 'react-router'
 import VideoListPage from './pages/VideoListPage.tsx'
 import UploadPage from './pages/UploadPage.tsx'
 import VideoDetailPage from './pages/VideoDetailPage.tsx'
 import LiveListPage from './pages/LiveListPage.tsx'
 import LiveWatchPage from './pages/LiveWatchPage.tsx'
 import BroadcastPage from './pages/BroadcastPage.tsx'
+import LoginPage from './pages/LoginPage.tsx'
+import SignUpPage from './pages/SignUpPage.tsx'
+import RequireLogin from './auth/RequireLogin.tsx'
+import { loginPath, useAuth } from './auth/useAuth.ts'
 
 export default function App() {
   return (
@@ -28,19 +32,59 @@ export default function App() {
           <Link to="/upload" className="button">
             업로드
           </Link>
+          <AccountMenu />
         </div>
       </header>
       <main className="app-main">
         <Routes>
           <Route path="/" element={<LiveListPage />} />
           <Route path="/live/:id" element={<LiveWatchPage />} />
-          <Route path="/broadcast" element={<BroadcastPage />} />
+          <Route
+            path="/broadcast"
+            element={
+              <RequireLogin>
+                <BroadcastPage />
+              </RequireLogin>
+            }
+          />
           <Route path="/videos" element={<VideoListPage />} />
           <Route path="/videos/:id" element={<VideoDetailPage />} />
-          <Route path="/upload" element={<UploadPage />} />
+          <Route
+            path="/upload"
+            element={
+              <RequireLogin>
+                <UploadPage />
+              </RequireLogin>
+            }
+          />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignUpPage />} />
           <Route path="*" element={<p className="notice">페이지를 찾을 수 없습니다.</p>} />
         </Routes>
       </main>
     </>
+  )
+}
+
+function AccountMenu() {
+  const { me, ready, logOut } = useAuth()
+  const location = useLocation()
+  if (!ready) return null
+  if (!me) {
+    // 로그인·회원가입 화면에서는 돌아갈 곳을 그대로 둔다
+    const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'
+    return (
+      <Link to={onAuthPage ? '/login' + location.search : loginPath(location.pathname)} className="button">
+        로그인
+      </Link>
+    )
+  }
+  return (
+    <div className="account">
+      <span className="account-name">{me.nickname}</span>
+      <button type="button" className="button" onClick={() => logOut()}>
+        로그아웃
+      </button>
+    </div>
   )
 }

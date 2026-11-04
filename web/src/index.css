@@ -292,6 +292,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .field input[type='text'],
+.field input[type='password'],
 .field textarea {
   width: 100%;
   padding: 10px 12px;
@@ -304,6 +305,7 @@ button.danger:hover:not(:disabled) {
 }
 
 .field input[type='text']:focus,
+.field input[type='password']:focus,
 .field textarea:focus {
   outline: none;
   border-color: var(--accent);
@@ -514,7 +516,267 @@ button.danger:hover:not(:disabled) {
   height: 44px;
 }
 
+/* 회원 */
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.account-name {
+  max-width: 10em;
+  overflow: hidden;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 400px;
+  margin: 24px auto;
+}
+
+.auth-form .button {
+  height: 44px;
+}
+
+.auth-switch {
+  text-align: center;
+}
+
+.auth-switch a,
+.comment-login a {
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.button.small {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 0.875rem;
+}
+
+.link-button {
+  padding: 0;
+  font: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.link-button:hover:not(:disabled) {
+  color: var(--text);
+}
+
+/* Owner 전용 */
+
+.title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-row .owner-actions {
+  flex-shrink: 0;
+  margin-top: 16px;
+}
+
+.owner-actions .text-input {
+  flex: 1 1 240px;
+}
+
+.owner-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.owner-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* 댓글 */
+
+.comments {
+  margin-top: 32px;
+}
+
+.comments-title {
+  margin: 0 0 12px;
+  font-size: 1.0625rem;
+}
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.comment-form textarea,
+.comment-edit textarea {
+  resize: vertical;
+}
+
+.comment-form-actions,
+.comment-edit-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.comment-form.compact {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.comment-form.compact .text-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.comment-form.compact .hint {
+  flex-basis: 100%;
+}
+
+.comment-login {
+  margin: 0;
+  padding: 12px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-align: center;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.comment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.comment-head .meta {
+  font-size: 0.8125rem;
+}
+
+.comment-author {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.comment-body {
+  margin: 2px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.comment-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.comments-empty {
+  margin-top: 16px;
+}
+
+.more-button {
+  width: 100%;
+  margin-top: 20px;
+}
+
+/* 라이브 시청: 영상 옆에 댓글 */
+
+.live-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+.live-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: min(640px, calc(100vh - 108px));
+  padding: 16px;
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.live-comments .comments-title {
+  margin: 0;
+}
+
+.comment-list.live {
+  flex: 1;
+  gap: 12px;
+  margin: 0;
+  overflow-y: auto;
+}
+
+.live-comments .comment-login {
+  background: var(--bg);
+}
+
+@media (max-width: 960px) {
+  .live-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .live-comments {
+    height: 420px;
+  }
+}
+
 @media (max-width: 640px) {
+  .account-name {
+    display: none;
+  }
+
   .app-header {
     padding: 0 16px;
   }
