@@ -57,6 +57,8 @@ class SecurityConfig {
 			.csrf(csrf -> csrf.spa().ignoringRequestMatchers(MediaServerAuthController.PATH))
 			.securityContext(context -> context.securityContextRepository(securityContextRepository))
 			.authorizeHttpRequests(requests -> requests
+				// 후원 내역은 본인 것만 보므로 조회도 로그인이 필요하다
+				.requestMatchers(HttpMethod.GET, DonationController.DONATIONS_PATH).authenticated()
 				.requestMatchers(HttpMethod.GET, "/api/**", "/media/**").permitAll()
 				.requestMatchers(HttpMethod.POST, AuthController.SIGN_UP_PATH, AuthController.LOGIN_PATH,
 						MediaServerAuthController.PATH).permitAll()

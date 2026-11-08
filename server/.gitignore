@@ -38,3 +38,6 @@ out/
 
 ### Local video storage ###
 data/
+
+### 로컬 비밀 설정 (토스페이먼츠 키 등) ###
+config/local.properties

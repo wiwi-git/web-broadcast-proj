@@ -7,6 +7,9 @@ import LiveWatchPage from './pages/LiveWatchPage.tsx'
 import BroadcastPage from './pages/BroadcastPage.tsx'
 import LoginPage from './pages/LoginPage.tsx'
 import SignUpPage from './pages/SignUpPage.tsx'
+import DonatePage from './pages/DonatePage.tsx'
+import { DonationFailPage, DonationSuccessPage } from './pages/DonationResultPage.tsx'
+import DonationsPage from './pages/DonationsPage.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
 import { loginPath, useAuth } from './auth/useAuth.ts'
 
@@ -39,6 +42,39 @@ export default function App() {
         <Routes>
           <Route path="/" element={<LiveListPage />} />
           <Route path="/live/:id" element={<LiveWatchPage />} />
+          <Route
+            path="/live/:id/donate"
+            element={
+              <RequireLogin>
+                <DonatePage />
+              </RequireLogin>
+            }
+          />
+          <Route
+            path="/donations"
+            element={
+              <RequireLogin>
+                <DonationsPage />
+              </RequireLogin>
+            }
+          />
+          {/* 결제 서비스가 결제 인증을 마치고 돌려보내는 곳 */}
+          <Route
+            path="/donations/success"
+            element={
+              <RequireLogin>
+                <DonationSuccessPage />
+              </RequireLogin>
+            }
+          />
+          <Route
+            path="/donations/fail"
+            element={
+              <RequireLogin>
+                <DonationFailPage />
+              </RequireLogin>
+            }
+          />
           <Route
             path="/broadcast"
             element={
@@ -82,6 +118,9 @@ function AccountMenu() {
   return (
     <div className="account">
       <span className="account-name">{me.nickname}</span>
+      <Link to="/donations" className="button">
+        후원 내역
+      </Link>
       <button type="button" className="button" onClick={() => logOut()}>
         로그아웃
       </button>

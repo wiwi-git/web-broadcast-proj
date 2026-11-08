@@ -15,6 +15,9 @@ import com.webbroadcast.broadcast.BroadcastNotFoundException;
 import com.webbroadcast.broadcast.InvalidBroadcastException;
 import com.webbroadcast.comment.CommentNotFoundException;
 import com.webbroadcast.comment.InvalidCommentException;
+import com.webbroadcast.donation.DonationNotFoundException;
+import com.webbroadcast.donation.InvalidDonationException;
+import com.webbroadcast.donation.PaymentUnavailableException;
 import com.webbroadcast.user.DuplicateUserException;
 import com.webbroadcast.user.InvalidSignUpException;
 import com.webbroadcast.user.NotOwnerException;
@@ -29,7 +32,7 @@ import com.webbroadcast.video.VideoNotFoundException;
 class ApiExceptionHandler {
 
 	@ExceptionHandler({ InvalidUploadException.class, InvalidBroadcastException.class, InvalidCommentException.class,
-			InvalidSignUpException.class })
+			InvalidSignUpException.class, InvalidDonationException.class })
 	ProblemDetail badRequest(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
 	}
@@ -67,6 +70,19 @@ class ApiExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "방송 상태가 막 바뀌었습니다. 다시 시도해 주세요.");
 	}
 
+	/** 승인 결과를 아직 모른다. Donation은 결제 대기로 남고, 같은 승인 요청을 다시 보내면 된다 */
+	@ExceptionHandler(PaymentUnavailableException.class)
+	ProblemDetail paymentUnavailable(PaymentUnavailableException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+				"결제 결과를 아직 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+	}
+
+	@ExceptionHandler(PaymentNotConfiguredException.class)
+	ProblemDetail paymentNotConfigured(PaymentNotConfiguredException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+				"후원 결제가 아직 설정되지 않았습니다. 서버의 토스페이먼츠 키를 확인해 주세요.");
+	}
+
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
 	ProblemDetail tooLarge(MaxUploadSizeExceededException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "파일은 2GB 이하여야 합니다.");
@@ -85,6 +101,11 @@ class ApiExceptionHandler {
 	@ExceptionHandler(CommentNotFoundException.class)
 	ProblemDetail commentNotFound(CommentNotFoundException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다.");
+	}
+
+	@ExceptionHandler(DonationNotFoundException.class)
+	ProblemDetail donationNotFound(DonationNotFoundException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "후원을 찾을 수 없습니다.");
 	}
 
 	/** 경로의 ID가 UUID 형식이 아니면 그런 대상은 없는 것으로 본다 */

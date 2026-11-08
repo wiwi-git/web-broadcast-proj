@@ -60,6 +60,9 @@ class AccessControlTest {
 		registry.add("media.storage-root", storage::toString);
 		// 실제 미디어 서버에 닿지 않게 한다. 동기화는 조회 실패로 매번 건너뛴다
 		registry.add("mediamtx.api-url", () -> "http://127.0.0.1:1");
+		// 개발자의 config/local.properties에 키가 있어도 키가 없는 상태로 확인한다
+		registry.add("toss.client-key", () -> "");
+		registry.add("toss.secret-key", () -> "");
 	}
 
 	@BeforeAll
@@ -297,6 +300,15 @@ class AccessControlTest {
 		mvc.perform(delete("/api/videos/" + id).cookie(owner).with(csrf())).andExpect(status().isNoContent());
 		mvc.perform(get("/api/videos/" + id)).andExpect(status().isNotFound());
 		mvc.perform(get("/api/videos/" + id + "/comments")).andExpect(status().isNotFound());
+	}
+
+	@Test
+	void donationsNeedPaymentKeys() throws Exception {
+		mvc.perform(get("/api/payments/config")).andExpect(jsonPath("$.clientKey").isEmpty());
+		Cookie viewer = signUp("키없음");
+		mvc.perform(json(post("/api/broadcasts/{id}/donations", startBroadcast(signUp("키없는방송자"))), "{\"amount\":1000}")
+				.cookie(viewer))
+			.andExpect(status().isServiceUnavailable());
 	}
 
 	// 도우미

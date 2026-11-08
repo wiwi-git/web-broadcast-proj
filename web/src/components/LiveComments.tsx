@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { fetchBroadcastComments, type Comment } from '../api.ts'
+import { fetchBroadcastComments, type Comment, type PublicDonation } from '../api.ts'
+import { formatRelative, formatWon } from '../format.ts'
 import CommentForm from './CommentForm.tsx'
 import CommentItem from './CommentItem.tsx'
 
@@ -9,13 +10,26 @@ interface Props {
   broadcastId: string
   /** 진행 중일 때만 주기적으로 새로 불러온다 */
   active: boolean
+  /** 완료된 후원. 댓글 사이에 시간순으로 끼워 강조해 보여 준다 */
+  donations: PublicDonation[]
+}
+
+type Entry = { kind: 'comment'; at: string; comment: Comment } | { kind: 'donation'; at: string; donation: PublicDonation }
+
+/** 댓글과 후원을 시간순으로 섞는다. 둘 다 이미 오래된 순이다 */
+function merge(comments: Comment[], donations: PublicDonation[]): Entry[] {
+  const entries: Entry[] = [
+    ...comments.map((comment): Entry => ({ kind: 'comment', at: comment.createdAt, comment })),
+    ...donations.map((donation): Entry => ({ kind: 'donation', at: donation.completedAt, donation })),
+  ]
+  return entries.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
 }
 
 /**
  * 채팅처럼 최근 100개를 오래된 순으로 보여 주고 새 댓글을 아래에 쌓는다.
  * 실시간 채팅이 아니라 3초마다 다시 불러오는 Comment다.
  */
-export default function LiveComments({ broadcastId, active }: Props) {
+export default function LiveComments({ broadcastId, active, donations }: Props) {
   const [items, setItems] = useState<Comment[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const listRef = useRef<HTMLUListElement>(null)
@@ -43,7 +57,9 @@ export default function LiveComments({ broadcastId, active }: Props) {
   useLayoutEffect(() => {
     const list = listRef.current
     if (list && stickToBottom.current) list.scrollTop = list.scrollHeight
-  }, [items])
+  }, [items, donations])
+
+  const entries = items ? merge(items, donations) : null
 
   return (
     <aside className="live-comments">
@@ -56,15 +72,19 @@ export default function LiveComments({ broadcastId, active }: Props) {
           stickToBottom.current = list.scrollHeight - list.scrollTop - list.clientHeight < 40
         }}
       >
-        {items?.length === 0 && <li className="meta comments-empty">아직 댓글이 없습니다.</li>}
-        {items?.map((comment) => (
-          <CommentItem
-            key={comment.id}
-            comment={comment}
-            onEdited={(edited) => setItems((current) => current!.map((c) => (c.id === edited.id ? edited : c)))}
-            onDeleted={(id) => setItems((current) => current!.filter((c) => c.id !== id))}
-          />
-        ))}
+        {entries?.length === 0 && <li className="meta comments-empty">아직 댓글이 없습니다.</li>}
+        {entries?.map((entry) =>
+          entry.kind === 'donation' ? (
+            <DonationItem key={entry.donation.id} donation={entry.donation} />
+          ) : (
+            <CommentItem
+              key={entry.comment.id}
+              comment={entry.comment}
+              onEdited={(edited) => setItems((current) => current!.map((c) => (c.id === edited.id ? edited : c)))}
+              onDeleted={(id) => setItems((current) => current!.filter((c) => c.id !== id))}
+            />
+          ),
+        )}
       </ul>
       {error && <p className="hint error">{error}</p>}
       <CommentForm
@@ -76,5 +96,18 @@ export default function LiveComments({ broadcastId, active }: Props) {
         }}
       />
     </aside>
+  )
+}
+
+function DonationItem({ donation }: { donation: PublicDonation }) {
+  return (
+    <li className="comment donation-item">
+      <div className="comment-head">
+        <span className="comment-author">{donation.donor.nickname}</span>
+        <span className="donation-amount">{formatWon(donation.amount)} 후원</span>
+        <span className="meta">{formatRelative(donation.completedAt)}</span>
+      </div>
+      {donation.message && <p className="comment-body">{donation.message}</p>}
+    </li>
   )
 }

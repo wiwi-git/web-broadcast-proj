@@ -26,6 +26,43 @@ _Avoid_: 채팅, 메시지
 Comment를 쓴 User. Comment를 수정·삭제할 수 있는 유일한 사람이다. Content의 Owner라도 남의 Comment는 지울 수 없다.
 _Avoid_: 소유자(Content에 쓴다)
 
+### 후원
+
+**Donation (후원)**:
+Donor가 방송 중인 Broadcast를 보다가 그 Broadcaster에게 돈을 보내는 일 한 건. 금액과 짧은 메시지를 가진다. 완료된 Donation만 방송 화면에 알림으로 뜨고, 완료된 Donation은 되돌리지 않는다. 받은 Broadcast가 삭제되어도 Donation은 남는다.
+_Avoid_: 도네, 도네이션, 기부, 치즈
+
+**Donor (후원자)**:
+Donation을 보낸 User. 항상 닉네임으로 드러나며 익명 후원은 없다. 자기 Broadcast에는 후원할 수 없다.
+_Avoid_: 후원인, 결제자
+
+**Recipient (받는 사람)**:
+Donation을 받는 User. 후원한 Broadcast의 Broadcaster다.
+_Avoid_: 수혜자, 스트리머
+
+**Payment (결제)**:
+Donation 한 건의 돈을 실제로 옮기는 결제 서비스 쪽 거래. Donation은 결제 요청 전에 먼저 만들어지고, 결제가 승인되어야 완료된다.
+_Avoid_: 주문, 거래
+
+### 후원 상태
+
+**결제 대기 (Pending)**:
+Donation을 만들었지만 결제가 아직 승인되지 않은 상태. 아무에게도 알림이 뜨지 않는다. 오래 이 상태로 남으면 만료된다.
+
+**완료 (Done)**:
+결제가 승인되어 Recipient에게 후원된 상태. 이 상태의 Donation만 공개된다.
+_Avoid_: 성공, 승인됨
+
+**실패 (Failed)**:
+결제가 거절되었거나 금액이 맞지 않아 후원되지 않은 상태.
+
+**취소 (Canceled)**:
+Donor가 결제를 끝내지 않고 스스로 그만둔 상태. 완료된 Donation을 되돌리는 환불이 아니다.
+_Avoid_: 환불
+
+**만료 (Expired)**:
+결제 대기인 채로 오래 지나 더 이상 결제할 수 없게 된 상태.
+
 ### 동영상
 
 **Video (동영상)**:

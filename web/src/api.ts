@@ -269,3 +269,98 @@ export function editComment(id: string, body: string): Promise<Comment> {
 export function deleteComment(id: string): Promise<void> {
   return request(`/api/comments/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
+
+// 후원
+
+export type DonationStatus = 'PENDING' | 'DONE' | 'FAILED' | 'CANCELED' | 'EXPIRED'
+
+/** 방송 화면에 공개되는 완료된 후원 */
+export interface PublicDonation {
+  id: string
+  donor: UserSummary
+  amount: number
+  message: string | null
+  completedAt: string
+}
+
+/** 후원한 방송이 삭제되었으면 id가 null이고 제목만 남는다 */
+export interface BroadcastRef {
+  id: string | null
+  title: string
+}
+
+/** 후원자 본인에게 보이는 후원 */
+export interface SentDonation {
+  id: string
+  recipient: UserSummary
+  broadcast: BroadcastRef
+  amount: number
+  message: string | null
+  status: DonationStatus
+  /** 실패했을 때만 존재 */
+  failureMessage: string | null
+  createdAt: string
+  completedAt: string | null
+}
+
+export interface ReceivedDonation {
+  id: string
+  donor: UserSummary
+  broadcast: BroadcastRef
+  amount: number
+  message: string | null
+  completedAt: string
+}
+
+export interface ReceivedDonations {
+  items: ReceivedDonation[]
+  totalCount: number
+  totalAmount: number
+}
+
+/** 결제위젯으로 결제를 요청할 때 쓰는 값. orderId는 후원의 id다 */
+export interface DonationCheckout {
+  donation: SentDonation
+  orderId: string
+  orderName: string
+  customerKey: string
+}
+
+// 서버(Donation)와 같은 제약
+export const DONATION_MIN_AMOUNT = 1_000
+export const DONATION_MAX_AMOUNT = 500_000
+export const DONATION_AMOUNT_UNIT = 1_000
+export const DONATION_PRESETS = [1_000, 5_000, 10_000, 50_000]
+export const DONATION_MESSAGE_MAX_LENGTH = 100
+
+/** 서버에 토스페이먼츠 키가 설정되지 않았으면 null */
+export async function fetchPaymentClientKey(): Promise<string | null> {
+  return (await getJson<{ clientKey: string | null }>('/api/payments/config')).clientKey
+}
+
+/** 최근 완료된 후원 100개, 오래된 순 */
+export function fetchBroadcastDonations(broadcastId: string): Promise<PublicDonation[]> {
+  return getJson(`/api/broadcasts/${encodeURIComponent(broadcastId)}/donations`)
+}
+
+export function startDonation(broadcastId: string, amount: number, message: string): Promise<DonationCheckout> {
+  return sendJson('POST', `/api/broadcasts/${encodeURIComponent(broadcastId)}/donations`, { amount, message })
+}
+
+/** 결과를 아직 모르면 503 ApiError. 같은 요청을 다시 보내면 된다 */
+export function approveDonation(id: string, paymentKey: string, amount: number): Promise<SentDonation> {
+  return sendJson('POST', `/api/donations/${encodeURIComponent(id)}/approve`, { paymentKey, amount })
+}
+
+/** 결제창을 닫았거나 결제 인증에 실패했을 때 결제 서비스가 준 code, message를 그대로 넘긴다 */
+export function abandonDonation(id: string, code: string | null, message: string | null): Promise<SentDonation> {
+  return sendJson('POST', `/api/donations/${encodeURIComponent(id)}/abandon`, { code, message })
+}
+
+export function fetchSentDonations(): Promise<SentDonation[]> {
+  return getJson('/api/donations/sent')
+}
+
+export function fetchReceivedDonations(): Promise<ReceivedDonations> {
+  return getJson('/api/donations/received')
+}

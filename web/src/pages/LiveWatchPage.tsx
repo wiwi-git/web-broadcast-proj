@@ -1,11 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { BROADCAST_TITLE_MAX_LENGTH, deleteBroadcast, endBroadcast, renameBroadcast, type Broadcast } from '../api.ts'
-import { useAuth } from '../auth/useAuth.ts'
+import { loginPath, useAuth } from '../auth/useAuth.ts'
+import DonationAlert from '../components/DonationAlert.tsx'
 import HlsPlayer from '../components/HlsPlayer.tsx'
 import LiveComments from '../components/LiveComments.tsx'
 import { formatDate } from '../format.ts'
 import { useBroadcast } from '../live/useBroadcast.ts'
+import { useBroadcastDonations } from '../live/useBroadcastDonations.ts'
 import { useElapsed } from '../live/useElapsed.ts'
 
 export default function LiveWatchPage() {
@@ -16,12 +18,17 @@ export default function LiveWatchPage() {
   const [renamed, setRenamed] = useState<Broadcast | null>(null)
   const broadcast = renamed && polled && renamed.id === polled.id && renamed.status === polled.status ? renamed : polled
   const elapsed = useElapsed(broadcast?.status === 'LIVE' ? broadcast.startedAt : null)
+  const { donations, alert, dismissAlert } = useBroadcastDonations(
+    broadcast?.id ?? null,
+    !!broadcast && broadcast.status !== 'ENDED',
+  )
 
   if (!broadcast) return <p className={error ? 'notice error' : 'notice'}>{error ?? '불러오는 중…'}</p>
 
   return (
     <div className="live-layout">
       <article className="live-main">
+        <div className="stage">
         {broadcast.status === 'LIVE' && broadcast.playbackUrl ? (
           <HlsPlayer src={broadcast.playbackUrl} />
         ) : (
@@ -36,8 +43,20 @@ export default function LiveWatchPage() {
             )}
           </div>
         )}
+        {alert && broadcast.status === 'LIVE' && <DonationAlert key={alert.id} donation={alert} onDone={dismissAlert} />}
+        </div>
 
-        <h1 className="video-title">{broadcast.title}</h1>
+        <div className="title-row">
+          <h1 className="video-title">{broadcast.title}</h1>
+          {broadcast.status === 'LIVE' && me?.id !== broadcast.owner.id && (
+            <Link
+              to={me ? `/live/${broadcast.id}/donate` : loginPath(`/live/${broadcast.id}/donate`)}
+              className="button primary"
+            >
+              후원하기
+            </Link>
+          )}
+        </div>
         <p className="meta">
           <span className="owner-name">{broadcast.owner.nickname}</span>
           {broadcast.status === 'LIVE' && (
@@ -52,7 +71,12 @@ export default function LiveWatchPage() {
         {me?.id === broadcast.owner.id && <OwnerControls broadcast={broadcast} onRenamed={setRenamed} />}
       </article>
 
-      <LiveComments key={broadcast.id} broadcastId={broadcast.id} active={broadcast.status !== 'ENDED'} />
+      <LiveComments
+        key={broadcast.id}
+        broadcastId={broadcast.id}
+        active={broadcast.status !== 'ENDED'}
+        donations={donations}
+      />
     </div>
   )
 }
@@ -131,7 +155,7 @@ function OwnerControls({ broadcast, onRenamed }: { broadcast: Broadcast; onRenam
             className="button small danger"
             disabled={busy}
             onClick={() =>
-              window.confirm('방송을 삭제할까요? 댓글도 함께 삭제되며 되돌릴 수 없습니다.') &&
+              window.confirm('방송을 삭제할까요? 댓글도 함께 삭제되며 되돌릴 수 없습니다. 받은 후원 기록은 남습니다.') &&
               run(async () => {
                 await deleteBroadcast(broadcast.id)
                 navigate('/', { replace: true })

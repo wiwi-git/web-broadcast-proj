@@ -2,7 +2,9 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError, BROADCAST_TITLE_MAX_LENGTH, endBroadcast, startBroadcast, type StartedBroadcast } from '../api.ts'
 import { publish, type WhipSession } from '../live/whip.ts'
+import DonationAlert from '../components/DonationAlert.tsx'
 import { useBroadcast } from '../live/useBroadcast.ts'
+import { useBroadcastDonations } from '../live/useBroadcastDonations.ts'
 import { useElapsed } from '../live/useElapsed.ts'
 import { useWakeLock } from '../live/useWakeLock.ts'
 
@@ -52,6 +54,8 @@ export default function BroadcastPage() {
   const isLive = phase.kind === 'on-air' && broadcast?.status === 'LIVE'
   const elapsed = useElapsed(isLive ? broadcast!.startedAt : null)
   const transmitting = (phase.kind === 'starting' || phase.kind === 'on-air') && !droppedByServer
+  // 방송자도 휴대폰 화면에서 바로 후원을 볼 수 있게 미리보기 위에 띄운다
+  const { alert, dismissAlert } = useBroadcastDonations(phase.kind === 'on-air' ? phase.id : null, isLive)
   const cameraWanted = secureContext && phase.kind !== 'ended' && !droppedByServer
 
   useWakeLock(transmitting)
@@ -188,6 +192,7 @@ export default function BroadcastPage() {
             {isLive ? `LIVE ${elapsed}` : '연결 중…'}
           </span>
         )}
+        {isLive && alert && <DonationAlert key={alert.id} donation={alert} onDone={dismissAlert} />}
         {phase.kind === 'preview' && (
           <button
             type="button"

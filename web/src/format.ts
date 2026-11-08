@@ -28,3 +28,8 @@ export function formatRelative(iso: string, now = Date.now()): string {
   if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}시간 전`
   return formatDate(iso)
 }
+
+/** 10000 → "10,000원" */
+export function formatWon(amount: number): string {
+  return `${amount.toLocaleString('ko-KR')}원`
+}
