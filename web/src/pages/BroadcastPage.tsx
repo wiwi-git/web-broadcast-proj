@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { ApiError, BROADCAST_TITLE_MAX_LENGTH, endBroadcast, startBroadcast, type StartedBroadcast } from '../api.ts'
 import { publish, type WhipSession } from '../live/whip.ts'
+import ConfirmButton from '../components/ConfirmButton.tsx'
 import DonationAlert from '../components/DonationAlert.tsx'
 import { useBroadcast } from '../live/useBroadcast.ts'
 import { useBroadcastDonations } from '../live/useBroadcastDonations.ts'
@@ -134,7 +135,7 @@ export default function BroadcastPage() {
 
   /** 다른 탭이나 기기에서 진행 중이던 내 방송을 끝낸다 */
   async function endBlocking() {
-    if (!blockingId || !window.confirm('진행 중인 이전 방송을 종료할까요?')) return
+    if (!blockingId) return
     try {
       await endBroadcast(blockingId)
       setBlockingId(null)
@@ -145,7 +146,7 @@ export default function BroadcastPage() {
   }
 
   async function handleEnd() {
-    if (phase.kind !== 'on-air' || !window.confirm('방송을 종료할까요?')) return
+    if (phase.kind !== 'on-air') return
     sessionRef.current?.close()
     sessionRef.current = null
     try {
@@ -208,9 +209,9 @@ export default function BroadcastPage() {
         <div className="broadcaster-controls">
           <p className="broadcaster-title">{title.trim()}</p>
           {error && <p className="hint error">{error}</p>}
-          <button className="button danger" onClick={handleEnd}>
+          <ConfirmButton className="button danger" message="방송을 종료할까요?" confirmLabel="종료" onConfirm={handleEnd}>
             방송 종료
-          </button>
+          </ConfirmButton>
         </div>
       ) : (
         <form className="broadcaster-controls" onSubmit={handleStart}>
@@ -225,9 +226,13 @@ export default function BroadcastPage() {
           />
           {error && <p className="hint error">{error}</p>}
           {blockingId && (
-            <button type="button" className="button" onClick={endBlocking}>
+            <ConfirmButton
+              message="진행 중인 이전 방송을 종료할까요?"
+              confirmLabel="종료"
+              onConfirm={endBlocking}
+            >
               이전 방송 종료
-            </button>
+            </ConfirmButton>
           )}
           <button
             type="submit"

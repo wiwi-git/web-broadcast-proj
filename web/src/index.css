@@ -775,32 +775,33 @@ button.danger:hover:not(:disabled) {
 }
 
 @media (max-width: 640px) {
-  .account-name {
-    display: none;
-  }
 
-  /* 버튼이 많아 한 줄에 다 들어가지 않으므로 메뉴와 버튼을 두 줄로 나눈다 */
   .app-header {
-    flex-wrap: wrap;
     gap: 8px;
-    height: auto;
-    padding: 8px 16px;
-  }
-
-  .header-actions .button {
-    white-space: nowrap;
+    padding: 0 16px;
   }
 
   .nav {
     gap: 12px;
   }
 
-  .logo {
-    display: none;
+  .app-header {
+    gap: 6px;
+  }
+
+  .nav,
+  .header-actions,
+  .account {
+    gap: 4px;
+  }
+
+  .nav-link,
+  .header-actions .button {
+    gap: 4px;
   }
 
   .header-actions .button {
-    padding: 0 12px;
+    padding: 0 7px;
   }
 
   .app-main {
@@ -986,4 +987,70 @@ button.danger:hover:not(:disabled) {
 
 .donation-total {
   margin: 0 0 16px;
+}
+
+/* 헤더: 폭이 좁아도 한 줄을 지키고, 아이콘은 남긴 채 글자만 …으로 줄인다.
+   좁아지면 닉네임, 로고 순으로 먼저 숨겨 메뉴 글자가 남을 자리를 만든다 */
+
+@media (max-width: 960px) {
+  .account-name {
+    display: none;
+  }
+}
+
+@media (max-width: 800px) {
+  .logo {
+    display: none;
+  }
+}
+
+@media (min-width: 641px) {
+  .app-header {
+    gap: 12px;
+  }
+}
+
+.nav,
+.header-actions,
+.account {
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+.nav-link,
+.header-actions .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 0 1 auto;
+  white-space: nowrap;
+}
+
+.nav-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.logo {
+  flex-shrink: 0;
+}
+
+/* 화면 안에서 한 번 더 묻는 확인 (ConfirmButton) */
+
+.confirm-inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirm-message {
+  font-size: 0.875rem;
+  font-weight: 600;
 }

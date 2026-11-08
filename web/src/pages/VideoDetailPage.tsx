@@ -1,3 +1,4 @@
+import ConfirmButton from '../components/ConfirmButton.tsx'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import {
@@ -23,6 +24,7 @@ export default function VideoDetailPage() {
   const [loaded, setLoaded] = useState<Video | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // 처리 중이면 공개 또는 실패로 바뀔 때까지 주기적으로 다시 확인한다
   useEffect(() => {
@@ -59,12 +61,12 @@ export default function VideoDetailPage() {
   const owned = me?.id === video.owner.id
 
   async function handleDelete() {
-    if (!window.confirm('동영상을 삭제할까요? 댓글도 함께 삭제되며 되돌릴 수 없습니다.')) return
+    setDeleteError(null)
     try {
       await deleteVideo(id)
       navigate('/videos', { replace: true })
     } catch (e) {
-      window.alert((e as Error).message)
+      setDeleteError((e as Error).message)
     }
   }
 
@@ -104,12 +106,18 @@ export default function VideoDetailPage() {
                 <button type="button" className="button small" onClick={() => setEditing(true)}>
                   수정
                 </button>
-                <button type="button" className="button small danger" onClick={handleDelete}>
+                <ConfirmButton
+                  className="button small danger"
+                  message="동영상을 삭제할까요? 댓글도 함께 삭제되며 되돌릴 수 없습니다."
+                  confirmLabel="삭제"
+                  onConfirm={handleDelete}
+                >
                   삭제
-                </button>
+                </ConfirmButton>
               </div>
             )}
           </div>
+          {deleteError && <p className="hint error">{deleteError}</p>}
           <p className="meta">
             <span className="owner-name">{video.owner.nickname}</span> · {formatDate(video.createdAt)}
             {video.durationSeconds != null && ` · ${formatDuration(video.durationSeconds)}`}

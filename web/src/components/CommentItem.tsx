@@ -1,3 +1,4 @@
+import ConfirmButton from './ConfirmButton.tsx'
 import { useState, type FormEvent } from 'react'
 import { COMMENT_MAX_LENGTH, deleteComment, editComment, type Comment } from '../api.ts'
 import { useAuth } from '../auth/useAuth.ts'
@@ -33,7 +34,6 @@ export default function CommentItem({ comment, onEdited, onDeleted }: Props) {
   }
 
   async function handleDelete() {
-    if (!window.confirm('댓글을 삭제할까요?')) return
     setBusy(true)
     setError(null)
     try {
@@ -66,9 +66,15 @@ export default function CommentItem({ comment, onEdited, onDeleted }: Props) {
             >
               수정
             </button>
-            <button type="button" className="link-button" disabled={busy} onClick={handleDelete}>
+            <ConfirmButton
+              className="link-button"
+              disabled={busy}
+              message="댓글을 삭제할까요?"
+              confirmLabel="삭제"
+              onConfirm={handleDelete}
+            >
               삭제
-            </button>
+            </ConfirmButton>
           </span>
         )}
       </div>

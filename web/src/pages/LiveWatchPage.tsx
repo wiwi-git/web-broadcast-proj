@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { BROADCAST_TITLE_MAX_LENGTH, deleteBroadcast, endBroadcast, renameBroadcast, type Broadcast } from '../api.ts'
 import { loginPath, useAuth } from '../auth/useAuth.ts'
+import ConfirmButton from '../components/ConfirmButton.tsx'
 import DonationAlert from '../components/DonationAlert.tsx'
 import HlsPlayer from '../components/HlsPlayer.tsx'
 import LiveComments from '../components/LiveComments.tsx'
@@ -141,21 +142,22 @@ function OwnerControls({ broadcast, onRenamed }: { broadcast: Broadcast; onRenam
             제목 수정
           </button>
           {broadcast.status !== 'ENDED' && (
-            <button
-              type="button"
+            <ConfirmButton
               className="button small"
               disabled={busy}
-              onClick={() => window.confirm('방송을 종료할까요?') && run(() => endBroadcast(broadcast.id))}
+              message="방송을 종료할까요?"
+              confirmLabel="종료"
+              onConfirm={() => run(() => endBroadcast(broadcast.id))}
             >
               방송 종료
-            </button>
+            </ConfirmButton>
           )}
-          <button
-            type="button"
+          <ConfirmButton
             className="button small danger"
             disabled={busy}
-            onClick={() =>
-              window.confirm('방송을 삭제할까요? 댓글도 함께 삭제되며 되돌릴 수 없습니다. 받은 후원 기록은 남습니다.') &&
+            message="방송을 삭제할까요? 댓글도 함께 삭제되며 되돌릴 수 없습니다. 받은 후원 기록은 남습니다."
+            confirmLabel="삭제"
+            onConfirm={() =>
               run(async () => {
                 await deleteBroadcast(broadcast.id)
                 navigate('/', { replace: true })
@@ -163,7 +165,7 @@ function OwnerControls({ broadcast, onRenamed }: { broadcast: Broadcast; onRenam
             }
           >
             삭제
-          </button>
+          </ConfirmButton>
         </div>
       )}
       {error && <p className="hint error">{error}</p>}

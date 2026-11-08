@@ -12,6 +12,7 @@ import { DonationFailPage, DonationSuccessPage } from './pages/DonationResultPag
 import DonationsPage from './pages/DonationsPage.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
 import { loginPath, useAuth } from './auth/useAuth.ts'
+import { CameraIcon, HeartIcon, LiveIcon, LoginIcon, LogoutIcon, UploadIcon, VideoIcon } from './components/Icons.tsx'
 
 export default function App() {
   return (
@@ -21,19 +22,23 @@ export default function App() {
           <Link to="/" className="logo">
             Web Broadcast
           </Link>
-          <NavLink to="/" end className="nav-link">
-            라이브
+          <NavLink to="/" end className="nav-link" title="라이브">
+            <LiveIcon />
+            <span className="nav-label">라이브</span>
           </NavLink>
-          <NavLink to="/videos" className="nav-link">
-            동영상
+          <NavLink to="/videos" className="nav-link" title="동영상">
+            <VideoIcon />
+            <span className="nav-label">동영상</span>
           </NavLink>
         </nav>
         <div className="header-actions">
-          <Link to="/broadcast" className="button primary">
-            방송하기
+          <Link to="/broadcast" className="button primary" title="방송하기">
+            <CameraIcon />
+            <span className="nav-label">방송하기</span>
           </Link>
-          <Link to="/upload" className="button">
-            업로드
+          <Link to="/upload" className="button" title="업로드">
+            <UploadIcon />
+            <span className="nav-label">업로드</span>
           </Link>
           <AccountMenu />
         </div>
@@ -110,19 +115,26 @@ function AccountMenu() {
     // 로그인·회원가입 화면에서는 돌아갈 곳을 그대로 둔다
     const onAuthPage = location.pathname === '/login' || location.pathname === '/signup'
     return (
-      <Link to={onAuthPage ? '/login' + location.search : loginPath(location.pathname)} className="button">
-        로그인
+      <Link
+        to={onAuthPage ? '/login' + location.search : loginPath(location.pathname)}
+        className="button"
+        title="로그인"
+      >
+        <LoginIcon />
+        <span className="nav-label">로그인</span>
       </Link>
     )
   }
   return (
     <div className="account">
       <span className="account-name">{me.nickname}</span>
-      <Link to="/donations" className="button">
-        후원 내역
+      <Link to="/donations" className="button" title="후원 내역">
+        <HeartIcon />
+        <span className="nav-label">후원 내역</span>
       </Link>
-      <button type="button" className="button" onClick={() => logOut()}>
-        로그아웃
+      <button type="button" className="button" title="로그아웃" onClick={() => logOut()}>
+        <LogoutIcon />
+        <span className="nav-label">로그아웃</span>
       </button>
     </div>
   )
