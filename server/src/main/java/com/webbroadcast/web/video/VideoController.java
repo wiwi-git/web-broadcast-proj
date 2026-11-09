@@ -1,4 +1,4 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.video;
 
 import java.net.URI;
 import java.util.UUID;

@@ -1,4 +1,4 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.broadcast;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -15,9 +15,9 @@ import com.webbroadcast.broadcast.BroadcastService;
  * MediaMTX의 HTTP 인증 훅. 송출·시청 요청마다 MediaMTX가 호출하며, 2xx면 허가한다 (ADR-0002).
  */
 @RestController
-class MediaServerAuthController {
+public class MediaServerAuthController {
 
-	static final String PATH = "/api/media-server/auth";
+	public static final String PATH = "/api/media-server/auth";
 
 	/** MediaMTX가 보내는 요청 중 여기서 쓰는 필드 */
 	record AuthRequest(String action, String path, String query, String token) {

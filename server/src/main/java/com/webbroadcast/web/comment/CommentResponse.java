@@ -1,9 +1,10 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.comment;
 
 import java.time.Instant;
 import java.util.UUID;
 
 import com.webbroadcast.comment.Comment;
+import com.webbroadcast.web.UserSummary;
 
 /** updatedAt이 있으면 수정된 Comment다. */
 public record CommentResponse(UUID id, String body, UserSummary author, Instant createdAt, Instant updatedAt) {

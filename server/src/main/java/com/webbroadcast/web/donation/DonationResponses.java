@@ -1,10 +1,11 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.donation;
 
 import java.time.Instant;
 import java.util.UUID;
 
 import com.webbroadcast.donation.Donation;
 import com.webbroadcast.donation.DonationStatus;
+import com.webbroadcast.web.UserSummary;
 
 /** Donation을 보는 사람에 따라 내보내는 정보가 다르다. */
 final class DonationResponses {

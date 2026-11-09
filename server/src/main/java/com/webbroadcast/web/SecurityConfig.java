@@ -21,6 +21,10 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 
+import com.webbroadcast.web.auth.AuthController;
+import com.webbroadcast.web.broadcast.MediaServerAuthController;
+import com.webbroadcast.web.donation.DonationController;
+
 import jakarta.servlet.http.HttpServletResponse;
 
 /**

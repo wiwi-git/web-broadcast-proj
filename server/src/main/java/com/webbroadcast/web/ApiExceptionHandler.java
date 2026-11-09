@@ -23,6 +23,7 @@ import com.webbroadcast.user.InvalidSignUpException;
 import com.webbroadcast.user.NotOwnerException;
 import com.webbroadcast.video.InvalidUploadException;
 import com.webbroadcast.video.VideoNotFoundException;
+import com.webbroadcast.web.donation.PaymentNotConfiguredException;
 
 /**
  * 오류는 RFC 9457 ProblemDetail 형식으로, 사용자에게 보여줄 문구를 detail에 담는다.

@@ -1,4 +1,4 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.broadcast;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -6,6 +6,7 @@ import java.util.UUID;
 import com.webbroadcast.broadcast.Broadcast;
 import com.webbroadcast.broadcast.BroadcastStatus;
 import com.webbroadcast.broadcast.MediaPath;
+import com.webbroadcast.web.UserSummary;
 
 /**
  * playbackUrl은 방송 중일 때만 채워진다.

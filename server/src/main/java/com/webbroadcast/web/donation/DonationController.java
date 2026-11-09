@@ -1,4 +1,4 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.donation;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,18 +16,18 @@ import com.webbroadcast.donation.Donation;
 import com.webbroadcast.donation.DonationService;
 import com.webbroadcast.donation.TossPaymentsProperties;
 import com.webbroadcast.user.CurrentUser;
-import com.webbroadcast.web.DonationResponses.PublicDonation;
-import com.webbroadcast.web.DonationResponses.ReceivedDonation;
-import com.webbroadcast.web.DonationResponses.SentDonation;
+import com.webbroadcast.web.donation.DonationResponses.PublicDonation;
+import com.webbroadcast.web.donation.DonationResponses.ReceivedDonation;
+import com.webbroadcast.web.donation.DonationResponses.SentDonation;
 
 /**
  * 완료된 Donation 목록은 누구나 본다. 후원과 후원 내역은 로그인한 User만, 승인·취소는 Donor 본인만 한다
  * (SecurityConfig, DonationService).
  */
 @RestController
-class DonationController {
+public class DonationController {
 
-	static final String DONATIONS_PATH = "/api/donations/**";
+	public static final String DONATIONS_PATH = "/api/donations/**";
 
 	/** 결제 키가 설정되지 않았으면 clientKey가 null이다 */
 	record PaymentConfig(String clientKey) {

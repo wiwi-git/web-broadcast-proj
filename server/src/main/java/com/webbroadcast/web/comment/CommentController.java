@@ -1,4 +1,4 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.comment;
 
 import java.util.List;
 import java.util.UUID;

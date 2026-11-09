@@ -1,4 +1,4 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.broadcast;
 
 import java.net.URI;
 import java.util.List;

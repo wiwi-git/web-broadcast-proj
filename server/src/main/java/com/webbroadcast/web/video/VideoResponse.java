@@ -1,4 +1,4 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.video;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -6,6 +6,7 @@ import java.util.UUID;
 import com.webbroadcast.media.VideoTranscoder;
 import com.webbroadcast.video.Video;
 import com.webbroadcast.video.VideoStatus;
+import com.webbroadcast.web.UserSummary;
 
 /**
  * playbackUrl과 thumbnailUrl은 공개 상태일 때만 채워진다.

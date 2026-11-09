@@ -1,4 +1,4 @@
-package com.webbroadcast.web;
+package com.webbroadcast.web.auth;
 
 import java.util.UUID;
 
@@ -28,10 +28,10 @@ import jakarta.servlet.http.HttpServletResponse;
 /** 회원가입·로그인. 로그아웃은 Spring Security가 SecurityConfig.LOGOUT_PATH에서 처리한다. */
 @RestController
 @RequestMapping("/api/auth")
-class AuthController {
+public class AuthController {
 
-	static final String SIGN_UP_PATH = "/api/auth/signup";
-	static final String LOGIN_PATH = "/api/auth/login";
+	public static final String SIGN_UP_PATH = "/api/auth/signup";
+	public static final String LOGIN_PATH = "/api/auth/login";
 
 	record SignUpRequest(String username, String password, String nickname) {
 	}
