@@ -96,6 +96,11 @@ public class DonationService {
 			throw new InvalidDonationException("다른 결제 정보로 승인할 수 없습니다.");
 		}
 		if (amount == null || amount != donation.getAmount()) {
+			if (donation.getPaymentKey() != null) {
+				// 이미 승인을 요청했다면 결제 서비스가 승인했을 수 있다. 실패로 끝내면 정리 작업도 다시 맞추지 않으므로
+				// 거절만 하고 결제 대기로 둔다. 결과는 같은 금액의 재요청이나 settleStale이 정한다
+				throw new InvalidDonationException("결제 금액이 후원 금액과 다릅니다.");
+			}
 			// 웹에서 금액을 바꾼 결제는 승인하지 않는다. 승인하지 않은 결제 인증은 결제 서비스에서 곧 만료된다
 			donation.fail("AMOUNT_MISMATCH", "결제 금액이 후원 금액과 다릅니다.", clock.instant());
 			return saveOrCurrent(donation);

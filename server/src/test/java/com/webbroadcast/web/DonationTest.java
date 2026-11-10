@@ -243,6 +243,22 @@ class DonationTest {
 	}
 
 	@Test
+	void differentAmountAfterApprovalWasRequestedKeepsItPending() throws Exception {
+		Cookie donor = signUp();
+		String orderId = startDonation(liveBroadcast(signUp()), donor, 5000);
+		given(gateway.approve(anyString(), anyString(), anyLong()))
+			.willThrow(new PaymentUnavailableException("timeout", null));
+		approve(donor, orderId, "pay-sent", 5000).andExpect(status().isServiceUnavailable());
+
+		// 결제 서비스는 이미 승인했을 수 있으므로, 다른 금액이 와도 실패로 끝내지 않는다
+		approve(donor, orderId, "pay-sent", 1000).andExpect(status().isBadRequest());
+		assertThat(statusOf(orderId)).isEqualTo("PENDING");
+
+		approvePayments();
+		approve(donor, orderId, "pay-sent", 5000).andExpect(jsonPath("$.status").value("DONE"));
+	}
+
+	@Test
 	void stalePendingDonationsExpireOrSettle() throws Exception {
 		Cookie donor = signUp();
 		String broadcastId = liveBroadcast(signUp());
