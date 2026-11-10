@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko" data-resolution="landscape">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, height=1080">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<style>
+@font-face { font-family: 'Apple SD Gothic Neo'; src: local('Apple SD Gothic Neo'), local('AppleSDGothicNeo-Regular'); font-weight: 400; }
+@font-face { font-family: 'Apple SD Gothic Neo'; src: local('AppleSDGothicNeo-SemiBold'); font-weight: 600; }
+@font-face { font-family: 'Apple SD Gothic Neo'; src: local('AppleSDGothicNeo-Bold'); font-weight: 700; }
+@font-face { font-family: 'Apple SD Gothic Neo'; src: local('AppleSDGothicNeo-ExtraBold'); font-weight: 800; }
+@font-face { font-family: 'JetBrainsMonoNL Nerd Font'; src: url('assets/fonts/JetBrainsMonoNLNerdFont-Regular.ttf'); font-weight: 400; }
+@font-face { font-family: 'JetBrainsMonoNL Nerd Font'; src: url('assets/fonts/JetBrainsMonoNLNerdFont-Bold.ttf'); font-weight: 700; }
+:root {
+  --bg: #141517;
+  --surface: #1f2023;
+  --surface-2: #26282c;
+  --border: #33353a;
+  --text: #f1f2f4;
+  --muted: #9a9ca3;
+  --accent: #00d68f;
+  --live: #e5243b;
+  --donation: #ffc83d;
+  --danger: #ff6b6b;
+  --blue: #4da3ff;
+  --font: 'Apple SD Gothic Neo', sans-serif;
+  --mono: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+#root {
+  position: relative; width: 1920px; height: 1080px; overflow: hidden;
+  font-family: var(--font); color: var(--text);
+  background:
+    radial-gradient(1200px 700px at 85% -10%, rgba(0, 214, 143, 0.08), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(229, 36, 59, 0.06), transparent 60%),
+    var(--bg);
+}
+.scene { position: absolute; inset: 0; }
+code, pre { font-family: var(--mono); }
+
+/* 머리 */
+.head { position: absolute; left: 100px; top: 52px; }
+.part { display: inline-flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.part b { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.title { font-size: 50px; font-weight: 800; letter-spacing: -0.02em; margin-top: 6px; }
+.title span { color: var(--accent); font-family: var(--mono); font-weight: 700; font-size: 34px; margin-right: 18px; vertical-align: 6px; }
+
+/* 기기 프레임 */
+.browser { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+.browser .bar { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #1a1b1e; border-bottom: 1px solid var(--border); }
+.browser .bar i { width: 12px; height: 12px; border-radius: 50%; background: #3a3c41; }
+.browser .bar i:nth-child(1) { background: #ff5f57; } .browser .bar i:nth-child(2) { background: #febc2e; } .browser .bar i:nth-child(3) { background: #28c840; }
+.browser .bar span { margin-left: 14px; flex: 1; max-width: 520px; height: 28px; border-radius: 8px; background: #26282c; color: var(--muted); font-size: 16px; line-height: 28px; padding: 0 14px; font-family: var(--mono); }
+.shot { position: relative; overflow: hidden; background: #000; }
+.shot img { width: 100%; display: block; transform-origin: 50% 0; }
+.shot .over { position: absolute; background: #000; }
+.phone { padding: 12px; background: #0b0c0d; border: 2px solid #3a3c41; border-radius: 52px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.phone .shot { border-radius: 40px; }
+
+.left-frame { position: absolute; left: 100px; top: 196px; }
+.left-frame.swap > .swap-in { position: absolute; left: 0; top: 0; }
+.phone-frame { position: absolute; left: 190px; top: 160px; }
+.phone-frame.small { left: 210px; top: 180px; }
+
+/* 오른쪽 설명 */
+.side { position: absolute; left: 1160px; top: 196px; width: 660px; display: flex; flex-direction: column; gap: 22px; }
+.side.wide { left: 660px; width: 1160px; }
+.row { display: flex; gap: 22px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; font-size: 24px; line-height: 1.5; }
+.card-h { font-size: 18px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; margin-bottom: 10px; }
+.card code { font-size: 20px; color: var(--accent); background: rgba(0,214,143,.08); padding: 2px 8px; border-radius: 6px; }
+.card .muted, .muted { color: var(--muted); font-size: 20px; }
+.card.warn { border-color: rgba(255,107,107,.45); }
+.card.warn .card-h { color: var(--danger); }
+.accent-card { border-color: rgba(0,214,143,.45); }
+.accent-card .card-h { color: var(--accent); }
+.donation-card { border-color: rgba(255,200,61,.5); }
+.donation-card .card-h { color: var(--donation); }
+.json { font-size: 20px; line-height: 1.5; color: var(--text); }
+.json .s { color: #ffd479; }
+
+.api-row { padding: 10px 0; border-top: 1px solid var(--border); }
+.api-row:first-of-type { border-top: 0; padding-top: 0; }
+.api { display: flex; align-items: center; gap: 14px; }
+.api code { font-size: 23px; color: var(--text); background: none; padding: 0; }
+.api-desc { color: var(--muted); font-size: 19px; margin: 4px 0 0 96px; }
+.m { width: 82px; text-align: center; font-family: var(--mono); font-weight: 700; font-size: 17px; padding: 4px 0; border-radius: 6px; }
+.m.get { background: rgba(0,214,143,.15); color: var(--accent); }
+.m.post { background: rgba(77,163,255,.15); color: var(--blue); }
+.m.patch { background: rgba(255,200,61,.15); color: var(--donation); }
+.m.del { background: rgba(255,107,107,.15); color: var(--danger); }
+.api-inline { display: flex; gap: 28px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 22px; align-self: flex-start; }
+.api-inline.center { position: absolute; left: 50%; top: 880px; transform: translateX(-50%); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 12px; }
+.chip { display: inline-block; font-size: 21px; font-weight: 600; padding: 8px 18px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+.chip-line { position: absolute; left: 50%; top: 940px; transform: translateX(-50%); color: var(--muted); font-size: 21px; display: none; }
+
+/* 코드 */
+.code { background: #0f1012; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.code-h { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; background: #18191c; border-bottom: 1px solid var(--border); }
+.code-h i { width: 11px; height: 11px; border-radius: 50%; background: #3a3c41; }
+.code-h span { margin-left: 10px; font-family: var(--mono); font-size: 16px; color: var(--muted); }
+.code pre { padding: 16px 0; line-height: 1.55; color: #d7d9de; white-space: pre; }
+.code .ln { padding: 0 22px; }
+.code .ln.hl { background: rgba(0,214,143,.10); box-shadow: inset 4px 0 0 var(--accent); }
+.code .k { color: #ff7ab2; } .code .s { color: #ffd479; } .code .a { color: #ffa14f; }
+.code .c { color: #7d8590; font-style: italic; } .code .n { color: #d0a8ff; } .code .t { color: #5dd8ff; }
+
+/* 흐름 · 상태 */
+.flow, .states, .pipe, .seq { display: flex; align-items: center; gap: 14px; }
+.step, .lane, .pnode { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+.step b, .lane b, .pnode b { font-size: 23px; }
+.step small, .lane small, .pnode small { font-size: 17px; color: var(--muted); font-family: var(--mono); }
+.step-arrow, .st-arrow { color: var(--muted); font-size: 22px; font-weight: 700; white-space: nowrap; }
+.lane.accent, .pnode.accent { border-color: rgba(0,214,143,.5); }
+.lane.donation { border-color: rgba(255,200,61,.55); }
+.state { border-radius: 14px; padding: 16px 22px; border: 2px solid var(--border); background: var(--surface); text-align: center; min-width: 170px; }
+.state b { display: block; font-size: 26px; }
+.state small { font-family: var(--mono); font-size: 16px; color: var(--muted); }
+.state.pending { border-color: #6b6e75; }
+.state.live { border-color: var(--live); } .state.live b { color: var(--live); }
+.state.ended { border-color: #55575d; }
+.state.done { border-color: var(--accent); } .state.done b { color: var(--accent); }
+.state.failed { border-color: var(--danger); } .state.failed b { color: var(--danger); }
+.state.canceled, .state.expired { border-color: #55575d; }
+.states.vertical { align-items: center; gap: 22px; }
+.branches { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.branches .state { padding: 10px 14px; min-width: 0; }
+.branches .state b { font-size: 21px; }
+.renditions { display: flex; flex-direction: column; gap: 8px; }
+.rend { font-family: var(--mono); font-size: 19px; font-weight: 700; padding: 6px 14px; border-radius: 8px; background: rgba(0,214,143,.12); color: var(--accent); }
+.pipe .pnode { padding: 12px 14px; }
+
+.cursor { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.cursor .pg { padding: 8px 14px; background: var(--surface-2); border-radius: 8px; font-size: 19px; }
+.cursor .cur { font-family: var(--mono); font-size: 15px; color: var(--accent); }
+
+.versus { display: flex; align-items: center; gap: 18px; font-size: 26px; font-weight: 700; }
+.versus .no { color: var(--muted); text-decoration: line-through; padding: 10px 18px; border: 1px dashed var(--border); border-radius: 12px; }
+.versus .arrow { color: var(--muted); }
+.versus .yes { color: var(--accent); padding: 10px 18px; border: 2px solid rgba(0,214,143,.5); border-radius: 12px; }
+.versus .yes small { display: block; font-size: 17px; color: var(--muted); font-weight: 500; }
+
+/* 아키텍처 */
+.diagram { position: absolute; transform: scale(0.82); transform-origin: 50% 0; }
+.diagram svg { position: absolute; inset: 0; overflow: visible; }
+.diagram svg text { fill: var(--muted); font-size: 20px; font-family: var(--font); font-weight: 600; }
+.node { position: absolute; background: var(--surface); border: 2px solid var(--border); border-radius: 18px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; }
+.node b { font-size: 30px; } .node small { font-size: 19px; color: var(--muted); }
+.node.accent { border-color: var(--accent); } .node.accent b { color: var(--accent); }
+.node.live { border-color: rgba(229,36,59,.7); }
+.node.donation { border-color: rgba(255,200,61,.6); }
+.callout { position: absolute; font-size: 26px; font-weight: 700; color: var(--text); background: rgba(229,36,59,.12); border: 1px solid rgba(229,36,59,.5); padding: 14px 22px; border-radius: 14px; width: 420px; }
+
+/* 타이틀 */
+.title-hero { position: absolute; left: 130px; top: 330px; width: 820px; }
+.eyebrow { font-family: var(--mono); color: var(--accent); font-size: 22px; letter-spacing: 0.2em; }
+.logo { font-size: 110px; font-weight: 800; letter-spacing: -0.04em; color: var(--accent); line-height: 1.1; margin: 10px 0 18px; }
+.tagline { font-size: 34px; color: var(--text); font-weight: 600; }
+.hero-row { display: flex; gap: 12px; margin-top: 40px; flex-wrap: wrap; }
+.hero-shot.left { position: absolute; left: 980px; top: 210px; }
+.hero-shot.right { position: absolute; left: 1590px; top: 410px; }
+
+/* 결제 승인 */
+.pay-grid { position: absolute; left: 100px; top: 190px; right: 100px; display: flex; gap: 40px; }
+.pay-left { width: 780px; display: flex; flex-direction: column; gap: 22px; }
+
+/* 분할 */
+.split { position: absolute; left: 100px; right: 100px; top: 180px; display: flex; align-items: center; justify-content: space-between; }
+
+/* 마무리 */
+.decisions { position: absolute; left: 100px; top: 200px; width: 1720px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.decision { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px 32px; display: grid; grid-template-columns: 70px 1fr; row-gap: 6px; }
+.decision span { grid-row: span 2; font-family: var(--mono); font-size: 44px; font-weight: 800; color: var(--accent); }
+.decision b { font-size: 32px; } .decision small { font-size: 23px; color: var(--muted); }
+.tests { position: absolute; left: 100px; top: 690px; width: 1720px; display: flex; flex-wrap: wrap; gap: 12px; }
+.outro { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.outro p { font-size: 40px; font-weight: 700; }
+
+/* 화질 메뉴 */
+.qmenu { position: absolute; }
+.qmenu ul { list-style: none; background: #2b2d31; border: 1px solid #44464c; border-radius: 10px; padding: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+.qmenu li { font-size: 17px; padding: 6px 18px; border-radius: 6px; color: var(--text); font-family: var(--mono); }
+.qmenu li.on { background: var(--accent); color: #0b1a14; font-weight: 700; }
+
+/* 자막 */
+.subs { position: absolute; left: 0; right: 0; bottom: 34px; height: 80px; pointer-events: none; }
+.sub { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; }
+.sub span { font-size: 38px; font-weight: 700; line-height: 1.3; padding: 12px 30px; border-radius: 12px; background: rgba(8, 9, 10, 0.82); color: #fff; letter-spacing: -0.01em; white-space: nowrap; }
+
+/* v2: 라벨, 레이어, 분기 */
+.shot img.layer { position: absolute; left: 0; top: 0; }
+.tag { position: absolute; z-index: 5; font-size: 22px; font-weight: 700; padding: 8px 16px; border-radius: 10px; background: rgba(20,21,23,.92); border: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.tag.accent { border-color: var(--accent); color: var(--accent); }
+.tag.live { border-color: var(--live); color: #ff8a97; }
+.tag.donation { border-color: var(--donation); color: var(--donation); }
+.chip-row { display: flex; gap: 12px; }
+.small-note { font-size: 18px; }
+.fork { display: flex; flex-direction: column; gap: 8px; }
+.fork div { display: flex; gap: 14px; font-size: 22px; }
+.fork b { min-width: 150px; }
+.fork span { color: var(--muted); }
+.scenario-card { position: absolute; left: 100px; top: 780px; width: 1720px; }
+.scenario { display: flex; align-items: center; gap: 14px; font-size: 24px; font-weight: 700; }
+.scenario span { padding: 8px 16px; border-radius: 10px; background: var(--surface-2); }
+.scenario span.ok { background: rgba(0,214,143,.15); color: var(--accent); }
+.scenario i { color: var(--muted); font-style: normal; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="396.141" data-width="1920" data-height="1080">
+  <audio id="narration" class="clip" src="assets/audio/narration.wav" data-start="0" data-duration="396.141"></audio>
+  <div id="scene0" class="clip" data-composition-id="scene0" data-composition-src="compositions/scene0.html" data-start="0.000" data-duration="18.640"></div><div id="scene1" class="clip" data-composition-id="scene1" data-composition-src="compositions/scene1.html" data-start="18.640" data-duration="31.149"></div><div id="scene2" class="clip" data-composition-id="scene2" data-composition-src="compositions/scene2.html" data-start="49.789" data-duration="26.863"></div><div id="scene3" class="clip" data-composition-id="scene3" data-composition-src="compositions/scene3.html" data-start="76.652" data-duration="25.228"></div><div id="scene4" class="clip" data-composition-id="scene4" data-composition-src="compositions/scene4.html" data-start="101.881" data-duration="26.928"></div><div id="scene5" class="clip" data-composition-id="scene5" data-composition-src="compositions/scene5.html" data-start="128.809" data-duration="30.155"></div><div id="scene6" class="clip" data-composition-id="scene6" data-composition-src="compositions/scene6.html" data-start="158.964" data-duration="45.472"></div><div id="scene7" class="clip" data-composition-id="scene7" data-composition-src="compositions/scene7.html" data-start="204.435" data-duration="27.920"></div><div id="scene8" class="clip" data-composition-id="scene8" data-composition-src="compositions/scene8.html" data-start="232.355" data-duration="14.371"></div><div id="scene9" class="clip" data-composition-id="scene9" data-composition-src="compositions/scene9.html" data-start="246.726" data-duration="26.902"></div><div id="scene10" class="clip" data-composition-id="scene10" data-composition-src="compositions/scene10.html" data-start="273.628" data-duration="18.497"></div><div id="scene11" class="clip" data-composition-id="scene11" data-composition-src="compositions/scene11.html" data-start="292.126" data-duration="44.558"></div><div id="scene12" class="clip" data-composition-id="scene12" data-composition-src="compositions/scene12.html" data-start="336.683" data-duration="19.289"></div><div id="scene13" class="clip" data-composition-id="scene13" data-composition-src="compositions/scene13.html" data-start="355.972" data-duration="40.169"></div>
+  <div class="subs"><div id="sub0" class="clip sub" data-start="0.448" data-duration="1.107"><span>Web Broadcast는</span></div><div id="sub1" class="clip sub" data-start="1.555" data-duration="2.595"><span>휴대폰 카메라로 라이브 방송을 하고,</span></div><div id="sub2" class="clip sub" data-start="4.150" data-duration="1.786"><span>녹화한 동영상을 올리고,</span></div><div id="sub3" class="clip sub" data-start="5.936" data-duration="2.904"><span>누구나 시청할 수 있는 웹 방송 플랫폼입니다.</span></div><div id="sub4" class="clip sub" data-start="9.268" data-duration="4.500"><span>오늘은 방송자와 시청자, 두 사용자의 시점으로 화면과 기능,</span></div><div id="sub5" class="clip sub" data-start="13.768" data-duration="2.405"><span>그리고 그 뒤에서 동작하는 API와</span></div><div id="sub6" class="clip sub" data-start="16.173" data-duration="1.988"><span>기술을 차례로 보여드리겠습니다.</span></div><div id="sub7" class="clip sub" data-start="19.087" data-duration="1.238"><span>전체 구조입니다.</span></div><div id="sub8" class="clip sub" data-start="20.756" data-duration="1.869"><span>웹은 React와 Vite로,</span></div><div id="sub9" class="clip sub" data-start="22.625" data-duration="2.238"><span>서버는 Spring Boot 4와 Java 25로</span></div><div id="sub10" class="clip sub" data-start="24.863" data-duration="3.667"><span>만들었고, 데이터는 PostgreSQL에 저장합니다.</span></div><div id="sub11" class="clip sub" data-start="28.948" data-duration="2.976"><span>라이브 영상은 스프링이 직접 받지 않습니다.</span></div><div id="sub12" class="clip sub" data-start="32.360" data-duration="3.821"><span>미디어 서버인 MediaMTX가 영상을 받아 시청용 스트림으로</span></div><div id="sub13" class="clip sub" data-start="36.181" data-duration="3.941"><span>바꾸고, 스프링은 송출 허가와 방송 상태만 관리합니다.</span></div><div id="sub14" class="clip sub" data-start="40.546" data-duration="4.298"><span>업로드한 동영상은 서버 안에서 ffmpeg로 화질별 HLS로</span></div><div id="sub15" class="clip sub" data-start="44.844" data-duration="1.786"><span>변환하고, 후원 결제는</span></div><div id="sub16" class="clip sub" data-start="46.630" data-duration="2.678"><span>토스페이먼츠 테스트 모드로 연동했습니다.</span></div><div id="sub17" class="clip sub" data-start="50.837" data-duration="1.845"><span>먼저 방송자 시점입니다.</span></div><div id="sub18" class="clip sub" data-start="53.118" data-duration="2.333"><span>방송을 시작하려면 로그인해야 합니다.</span></div><div id="sub19" class="clip sub" data-start="55.901" data-duration="4.226"><span>로그인 상태는 JWT 대신, 서버 세션으로 유지합니다.</span></div><div id="sub20" class="clip sub" data-start="60.562" data-duration="2.202"><span>세션은 Spring Session JDBC로</span></div><div id="sub21" class="clip sub" data-start="62.764" data-duration="1.524"><span>데이터베이스에 저장해서</span></div><div id="sub22" class="clip sub" data-start="64.288" data-duration="2.833"><span>서버를 재시작해도 로그인이 풀리지 않고,</span></div><div id="sub23" class="clip sub" data-start="67.121" data-duration="1.976"><span>로그아웃도 즉시 반영됩니다.</span></div><div id="sub24" class="clip sub" data-start="69.515" data-duration="3.548"><span>쿠키를 쓰는 만큼, 웹에서 상태를 바꾸는 요청에는</span></div><div id="sub25" class="clip sub" data-start="73.063" data-duration="3.107"><span>CSRF 토큰을 헤더로 함께 보내도록 했습니다.</span></div><div id="sub26" class="clip sub" data-start="77.100" data-duration="2.285"><span>제목을 적고 방송 시작을 누르면,</span></div><div id="sub27" class="clip sub" data-start="79.385" data-duration="4.012"><span>서버는 준비 상태의 방송을 만들고 방송 키를 발급합니다.</span></div><div id="sub28" class="clip sub" data-start="83.813" data-duration="3.559"><span>한 사람이 동시에 진행할 수 있는 방송은 하나뿐이라,</span></div><div id="sub29" class="clip sub" data-start="87.372" data-duration="2.465"><span>이미 진행 중인 방송이 있으면 409와</span></div><div id="sub30" class="clip sub" data-start="89.837" data-duration="2.619"><span>함께 그 방송의 아이디를 돌려줍니다.</span></div><div id="sub31" class="clip sub" data-start="92.881" data-duration="1.607"><span>방송 키는 SecureRandom으로</span></div><div id="sub32" class="clip sub" data-start="94.488" data-duration="1.977"><span>만든 32바이트 값입니다.</span></div><div id="sub33" class="clip sub" data-start="96.904" data-duration="2.179"><span>발급할 때만 원문을 돌려주고,</span></div><div id="sub34" class="clip sub" data-start="99.083" data-duration="2.310"><span>데이터베이스에는 해시만 저장합니다.</span></div><div id="sub35" class="clip sub" data-start="102.328" data-duration="3.524"><span>방송 화면에서는 브라우저가 카메라와 마이크를 열고,</span></div><div id="sub36" class="clip sub" data-start="105.852" data-duration="2.119"><span>WebRTC 표준 송출 방식인 WHIP으로</span></div><div id="sub37" class="clip sub" data-start="107.971" data-duration="2.191"><span>미디어 서버에 영상을 보냅니다.</span></div><div id="sub38" class="clip sub" data-start="110.589" data-duration="2.821"><span>이 프로젝트는 WHIP 영상 송출</span></div><div id="sub39" class="clip sub" data-start="113.410" data-duration="2.405"><span>코덱을 H.264로 고정했습니다.</span></div><div id="sub40" class="clip sub" data-start="116.245" data-duration="2.619"><span>방송 생성에는 로그인 세션을 쓰고,</span></div><div id="sub41" class="clip sub" data-start="118.864" data-duration="3.012"><span>미디어 서버의 송출 허가에는 방송 키를 씁니다.</span></div><div id="sub42" class="clip sub" data-start="122.311" data-duration="2.715"><span>미디어 서버가 인증 훅으로 스프링에 묻고,</span></div><div id="sub43" class="clip sub" data-start="125.026" data-duration="3.309"><span>스프링이 키의 해시를 비교해서 허가 여부를 답합니다.</span></div><div id="sub44" class="clip sub" data-start="129.257" data-duration="4.095"><span>방송 상태는 스프링이 2초 간격으로 미디어 서버에 실제 송출</span></div><div id="sub45" class="clip sub" data-start="133.352" data-duration="4.405"><span>현황을 묻고, 조회에 성공하면 그 결과를 DB에 반영합니다.</span></div><div id="sub46" class="clip sub" data-start="138.183" data-duration="2.810"><span>이벤트 훅 대신 주기적 조회를 고른 이유는,</span></div><div id="sub47" class="clip sub" data-start="140.993" data-duration="2.012"><span>어느 한쪽이 재시작되어 이벤트를</span></div><div id="sub48" class="clip sub" data-start="143.005" data-duration="2.297"><span>놓쳐도 다음 조회에서 DB의 방송</span></div><div id="sub49" class="clip sub" data-start="145.302" data-duration="2.274"><span>상태가 저절로 맞춰지기 때문입니다.</span></div><div id="sub50" class="clip sub" data-start="147.997" data-duration="2.417"><span>동기화 도중 소유자가 방송을 종료하면</span></div><div id="sub51" class="clip sub" data-start="150.414" data-duration="2.714"><span>낙관적 락으로 충돌을 감지해 다음 주기로</span></div><div id="sub52" class="clip sub" data-start="153.128" data-duration="2.714"><span>넘기고, 이미 종료된 방송으로 송출이</span></div><div id="sub53" class="clip sub" data-start="155.842" data-duration="2.643"><span>계속 들어오면 서버가 연결을 끊습니다.</span></div><div id="sub54" class="clip sub" data-start="159.411" data-duration="3.834"><span>방송자는 라이브뿐 아니라 녹화한 동영상도 올릴 수 있습니다.</span></div><div id="sub55" class="clip sub" data-start="163.674" data-duration="2.214"><span>이때는 콘텐츠의 소유자가 됩니다.</span></div><div id="sub56" class="clip sub" data-start="166.323" data-duration="2.774"><span>업로드가 끝나면 동영상은 처리 중 상태가</span></div><div id="sub57" class="clip sub" data-start="169.097" data-duration="1.833"><span>되고, 서버 안의 단일 스레드</span></div><div id="sub58" class="clip sub" data-start="170.930" data-duration="2.333"><span>대기열이 ffmpeg로 원본 해상도에</span></div><div id="sub59" class="clip sub" data-start="173.263" data-duration="2.798"><span>맞는 화질의 HLS를 한 번에 만듭니다.</span></div><div id="sub60" class="clip sub" data-start="176.486" data-duration="3.679"><span>1080p 원본이라면 1080p, 720p,</span></div><div id="sub61" class="clip sub" data-start="180.165" data-duration="3.607"><span>480p 세 가지이고, 썸네일은 따로 추출합니다.</span></div><div id="sub62" class="clip sub" data-start="184.203" data-duration="3.881"><span>변환이 끝나면 공개 상태가 되어 바로 재생할 수 있습니다.</span></div><div id="sub63" class="clip sub" data-start="188.517" data-duration="2.012"><span>지금 규모에서는 메시지 큐가</span></div><div id="sub64" class="clip sub" data-start="190.529" data-duration="2.309"><span>과하다고 판단해 서버 안에 두었고,</span></div><div id="sub65" class="clip sub" data-start="192.838" data-duration="2.667"><span>변환 로직은 인터페이스 뒤에 두어 나중에</span></div><div id="sub66" class="clip sub" data-start="195.505" data-duration="2.369"><span>별도 워커로 분리할 수 있게 했습니다.</span></div><div id="sub67" class="clip sub" data-start="198.298" data-duration="2.846"><span>서버가 변환 도중 꺼지면, 다시 켜질 때</span></div><div id="sub68" class="clip sub" data-start="201.144" data-duration="2.797"><span>처리 중이던 동영상을 대기열에 다시 넣습니다.</span></div><div id="sub69" class="clip sub" data-start="205.483" data-duration="1.750"><span>이제 시청자 시점입니다.</span></div><div id="sub70" class="clip sub" data-start="207.682" data-duration="2.738"><span>시청은 로그인 없이 누구나 할 수 있습니다.</span></div><div id="sub71" class="clip sub" data-start="210.851" data-duration="3.559"><span>라이브 목록은 방송 중인 방송과 최근 종료된 방송을</span></div><div id="sub72" class="clip sub" data-start="214.410" data-duration="3.726"><span>나눠서 보여주고, 준비 상태의 방송은 보이지 않습니다.</span></div><div id="sub73" class="clip sub" data-start="218.555" data-duration="2.584"><span>방송을 누르면 미디어 서버가 만든 저지연</span></div><div id="sub74" class="clip sub" data-start="221.139" data-duration="3.333"><span>HLS를 hls.js로 재생합니다.</span></div><div id="sub75" class="clip sub" data-start="224.900" data-duration="3.429"><span>미디어 서버는 종료된 방송의 시청 요청을 인증 훅에서</span></div><div id="sub76" class="clip sub" data-start="228.329" data-duration="3.548"><span>거부하고, 웹은 방송 중일 때만 플레이어를 엽니다.</span></div><div id="sub77" class="clip sub" data-start="232.803" data-duration="2.393"><span>동영상 목록에는 변환이 끝난 공개</span></div><div id="sub78" class="clip sub" data-start="235.196" data-duration="2.476"><span>상태의 동영상만 최신순으로 나옵니다.</span></div><div id="sub79" class="clip sub" data-start="238.108" data-duration="2.214"><span>재생은 네트워크 상황에 따라 화질이</span></div><div id="sub80" class="clip sub" data-start="240.322" data-duration="2.881"><span>자동으로 바뀌는 적응형 HLS이고,</span></div><div id="sub81" class="clip sub" data-start="243.203" data-duration="3.048"><span>시청자가 원하는 화질을 직접 고를 수도 있습니다.</span></div><div id="sub82" class="clip sub" data-start="247.174" data-duration="2.714"><span>로그인한 회원은 댓글을 남길 수 있고,</span></div><div id="sub83" class="clip sub" data-start="249.888" data-duration="3.131"><span>댓글은 작성자만 수정하거나 삭제할 수 있습니다.</span></div><div id="sub84" class="clip sub" data-start="253.451" data-duration="2.286"><span>콘텐츠의 소유자라도 남의 댓글을</span></div><div id="sub85" class="clip sub" data-start="255.737" data-duration="2.393"><span>직접 수정하거나 지울 수는 없습니다.</span></div><div id="sub86" class="clip sub" data-start="258.562" data-duration="2.774"><span>버튼을 숨기는 건 화면의 편의일 뿐이고,</span></div><div id="sub87" class="clip sub" data-start="261.336" data-duration="2.131"><span>모든 권한은 서버가 검사합니다.</span></div><div id="sub88" class="clip sub" data-start="263.897" data-duration="2.345"><span>동영상 댓글의 더 보기는 마지막으로</span></div><div id="sub89" class="clip sub" data-start="266.242" data-duration="2.179"><span>본 댓글보다 오래된 댓글을 불러오는</span></div><div id="sub90" class="clip sub" data-start="268.421" data-duration="2.357"><span>커서 방식이라, 새 댓글이 달려도</span></div><div id="sub91" class="clip sub" data-start="270.778" data-duration="2.369"><span>기존 페이지 경계가 밀리지 않습니다.</span></div><div id="sub92" class="clip sub" data-start="274.076" data-duration="3.417"><span>시청자는 방송 중인 방송자에게 후원할 수 있습니다.</span></div><div id="sub93" class="clip sub" data-start="277.937" data-duration="3.297"><span>금액은 1,000원부터 50만 원까지 1,000원 단위이고,</span></div><div id="sub94" class="clip sub" data-start="281.234" data-duration="2.167"><span>자기 방송에는 후원할 수 없습니다.</span></div><div id="sub95" class="clip sub" data-start="283.826" data-duration="1.524"><span>후원하기를 누르면 서버가</span></div><div id="sub96" class="clip sub" data-start="285.350" data-duration="2.821"><span>먼저 결제 대기 상태의 후원을 만들고,</span></div><div id="sub97" class="clip sub" data-start="288.171" data-duration="3.477"><span>그 아이디를 주문번호로 토스페이먼츠 결제창을 엽니다.</span></div><div id="sub98" class="clip sub" data-start="292.573" data-duration="3.429"><span>결제 인증을 마치고 돌아오면, 서버는 결제 금액이</span></div><div id="sub99" class="clip sub" data-start="296.002" data-duration="3.262"><span>처음 저장한 후원 금액과 같은지 먼저 확인합니다.</span></div><div id="sub100" class="clip sub" data-start="299.696" data-duration="3.488"><span>승인을 요청하기 전에 금액이 다르면 실패로 끝내고,</span></div><div id="sub101" class="clip sub" data-start="303.184" data-duration="3.928"><span>이미 승인을 요청한 뒤라면 거절만 하고 결제 대기로 둡니다.</span></div><div id="sub102" class="clip sub" data-start="307.536" data-duration="3.631"><span>금액이 맞으면 토스페이먼츠 승인 API를 부르는데,</span></div><div id="sub103" class="clip sub" data-start="311.167" data-duration="3.000"><span>이때 주문번호로 만든 멱등키를 함께 보냅니다.</span></div><div id="sub104" class="clip sub" data-start="314.591" data-duration="4.012"><span>타임아웃으로 결과를 받지 못하면 결제 대기로 남겨 두고,</span></div><div id="sub105" class="clip sub" data-start="318.603" data-duration="2.310"><span>같은 승인 요청을 다시 보내면 같은</span></div><div id="sub106" class="clip sub" data-start="320.913" data-duration="2.750"><span>멱등키를 써서 승인이 중복되지 않습니다.</span></div><div id="sub107" class="clip sub" data-start="324.085" data-duration="2.381"><span>30분이 지난 결제 대기는 1분마다</span></div><div id="sub108" class="clip sub" data-start="326.466" data-duration="2.214"><span>도는 정리 작업이 처리합니다.</span></div><div id="sub109" class="clip sub" data-start="329.103" data-duration="3.619"><span>승인을 요청하기 전이면 만료시키고, 승인을 요청했다면</span></div><div id="sub110" class="clip sub" data-start="332.722" data-duration="3.488"><span>주문번호로 토스페이먼츠에 조회해서 결과를 맞춥니다.</span></div><div id="sub111" class="clip sub" data-start="337.131" data-duration="2.536"><span>여기서는 완료 처리한 샘플 후원으로,</span></div><div id="sub112" class="clip sub" data-start="339.667" data-duration="4.202"><span>시청자 화면의 후원 기록과 방송자 화면의 알림을 보여드립니다.</span></div><div id="sub113" class="clip sub" data-start="344.282" data-duration="1.726"><span>방송 중에는 완료된 후원을</span></div><div id="sub114" class="clip sub" data-start="346.008" data-duration="2.512"><span>3초 주기로 조회해서 알림을 띄웁니다.</span></div><div id="sub115" class="clip sub" data-start="348.953" data-duration="3.869"><span>공개되는 건 완료된 후원뿐이고, 실패하거나 취소된 후원은</span></div><div id="sub116" class="clip sub" data-start="352.822" data-duration="2.666"><span>후원자 본인만 후원 내역에서 볼 수 있습니다.</span></div><div id="sub117" class="clip sub" data-start="356.820" data-duration="2.667"><span>정리하면, 이 프로젝트에서 가장 신경</span></div><div id="sub118" class="clip sub" data-start="359.487" data-duration="2.392"><span>쓴 부분은 책임을 나누는 일이었습니다.</span></div><div id="sub119" class="clip sub" data-start="362.326" data-duration="2.941"><span>미디어는 미디어 서버에 맡기고, 스프링은</span></div><div id="sub120" class="clip sub" data-start="365.267" data-duration="3.250"><span>권한과 상태라는 비즈니스 규칙에 집중했습니다.</span></div><div id="sub121" class="clip sub" data-start="368.944" data-duration="2.452"><span>그리고 실패를 전제로 설계했습니다.</span></div><div id="sub122" class="clip sub" data-start="371.836" data-duration="2.833"><span>이벤트를 놓쳐도 맞춰지는 상태 동기화,</span></div><div id="sub123" class="clip sub" data-start="374.669" data-duration="2.071"><span>결과를 받지 못해도 다시 맞출 수</span></div><div id="sub124" class="clip sub" data-start="376.740" data-duration="1.976"><span>있는 결제 승인이 그 예입니다.</span></div><div id="sub125" class="clip sub" data-start="379.148" data-duration="2.595"><span>권한과 결제 흐름은 Testcontainers로</span></div><div id="sub126" class="clip sub" data-start="381.743" data-duration="2.881"><span>실제 PostgreSQL을 띄워 HTTP 요청</span></div><div id="sub127" class="clip sub" data-start="384.624" data-duration="4.131"><span>단위로 검증했고, 결제는 가짜 결제 서비스로 승인,</span></div><div id="sub128" class="clip sub" data-start="388.755" data-duration="2.833"><span>거절, 결과 모름을 모두 확인했습니다.</span></div><div id="sub129" class="clip sub" data-start="392.021" data-duration="2.285"><span>지금까지 Web Broadcast였습니다.</span></div><div id="sub130" class="clip sub" data-start="394.728" data-duration="1.119"><span>감사합니다.</span></div></div>
+</div>
+<script>
+  const tl = gsap.timeline({ paused: true });
+  document.querySelectorAll('.sub').forEach((el) => {
+    tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.12 }, +el.dataset.start);
+  });
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main"] = tl;
+  tl.seek(0);
+</script>
+</body>
+</html>
