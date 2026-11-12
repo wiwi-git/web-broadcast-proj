@@ -1,5 +1,6 @@
 # 개발:  docker compose up -d                 → PostgreSQL + MediaMTX (서버는 IDE/Gradle로 직접 실행)
-# 배포:  docker compose --profile app up -d   → 위 + 서버 컨테이너
+# 배포:  docker compose --profile app up -d   → 위 + API 서버 + 변환 워커
+#        워커 늘리기: docker compose --profile app up -d --scale worker=3   (ADR-0004)
 #
 # 휴대폰에서 송출하려면 .env에 PC의 LAN IP를 적는다 (.env.example 참고)
 services:
@@ -42,8 +43,25 @@ services:
       DB_USERNAME: webbroadcast
       DB_PASSWORD: webbroadcast
       MEDIAMTX_API_URL: http://mediamtx:9997
+      # 변환은 worker 컨테이너가 맡는다
+      VIDEO_WORKER_ENABLED: "false"
     ports:
       - "8080:8080"
+    volumes:
+      - media-data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # 변환 워커: 같은 이미지를 웹 서버 없이 띄운다. 업로드 파일은 media-data 볼륨으로 API 서버와 나눠 쓴다
+  worker:
+    profiles: [app]
+    build: ./server
+    environment:
+      SPRING_PROFILES_ACTIVE: worker
+      DB_URL: jdbc:postgresql://postgres:5432/webbroadcast
+      DB_USERNAME: webbroadcast
+      DB_PASSWORD: webbroadcast
     volumes:
       - media-data:/data
     depends_on:

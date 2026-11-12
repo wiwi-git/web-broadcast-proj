@@ -3,6 +3,7 @@ package com.webbroadcast.web;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -53,7 +54,9 @@ class SecurityConfig {
 		return new ProviderManager(provider);
 	}
 
+	/** 웹 요청을 받지 않는 변환 워커(ADR-0004)에서는 만들지 않는다. 비밀번호 인코더 등은 공통으로 쓴다. */
 	@Bean
+	@ConditionalOnWebApplication
 	SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository securityContextRepository)
 			throws Exception {
 		http

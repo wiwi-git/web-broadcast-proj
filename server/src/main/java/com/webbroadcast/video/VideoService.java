@@ -28,21 +28,19 @@ public class VideoService {
 	private final VideoRepository repository;
 	private final VideoStorage storage;
 	private final MediaInspector inspector;
-	private final VideoProcessingQueue queue;
 	private final UserService userService;
 
 	VideoService(VideoRepository repository, VideoStorage storage, MediaInspector inspector,
-			VideoProcessingQueue queue, UserService userService) {
+			UserService userService) {
 		this.repository = repository;
 		this.storage = storage;
 		this.inspector = inspector;
-		this.queue = queue;
 		this.userService = userService;
 	}
 
 	/**
 	 * Original을 저장하고 실제 영상인지 확인한 뒤 처리 중 상태의 Video를 만든다.
-	 * 변환은 백그라운드에서 이어진다.
+	 * 처리 중인 Video가 곧 변환 대기열이므로, 변환 워커가 가져가 이어서 변환한다 (ADR-0004).
 	 */
 	public Video upload(UUID ownerId, MultipartFile file, String rawTitle, String rawDescription) {
 		String title = validTitle(rawTitle);
@@ -79,7 +77,6 @@ public class VideoService {
 		User owner = userService.get(ownerId);
 		Video video = repository.save(
 				Video.uploaded(id, owner, title, description, extension, file.getSize(), info.durationSeconds()));
-		queue.enqueue(id);
 		return video;
 	}
 
@@ -96,7 +93,7 @@ public class VideoService {
 
 	/**
 	 * Owner만 지울 수 있다. 파일과 Comment도 함께 지워진다.
-	 * 변환 중이었다면 변환이 끝날 때 결과물이 버려진다 (VideoProcessor).
+	 * 변환 중이었다면 워커가 점유를 잃고 변환을 멈추거나, 끝날 때 결과물을 버린다 (VideoProcessor).
 	 */
 	public void delete(UUID id, UUID userId) {
 		Video video = ownedBy(id, userId);

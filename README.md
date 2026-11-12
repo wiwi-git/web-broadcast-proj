@@ -4,7 +4,7 @@
 용어는 [GLOSSARY.md](GLOSSARY.md), 주요 결정은 [docs/adr/](docs/adr/)에 있다.
 
 ```
-server/     Spring Boot 4 (Java 25) API 서버 + ffmpeg HLS 변환
+server/     Spring Boot 4 (Java 25) API 서버, 그리고 같은 코드로 띄우는 ffmpeg HLS 변환 워커
 web/        React + Vite + TypeScript
 mediamtx/   라이브 미디어 서버(MediaMTX) 설정
 ```
@@ -77,8 +77,11 @@ cd web && npm install && npm run dev   # http://localhost:5173
 ## 서버 컨테이너로 실행
 
 ```bash
-docker compose --profile app up -d --build   # PostgreSQL + 서버(ffmpeg 포함)
+docker compose --profile app up -d --build                   # PostgreSQL + API 서버 + 변환 워커 1대
+docker compose --profile app up -d --scale worker=3          # 변환 워커를 3대로 늘린다
 ```
+
+API 서버는 업로드를 받아 처리 중 상태로 남기기만 한다. 변환은 `worker` 컨테이너들이 DB 대기열에서 하나씩 나눠 가져가 처리한다([ADR-0004](docs/adr/0004-transcoding-worker-with-db-queue.md)). 워커가 죽으면 점유 기한(60초)이 지난 뒤 다른 워커가 이어받는다. 개발할 때 `./gradlew bootRun`으로 서버 하나만 띄우면 그 서버가 변환까지 맡는다.
 
 ## API
 
