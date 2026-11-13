@@ -7,6 +7,8 @@
 server/     Spring Boot 4 (Java 25) API 서버, 그리고 같은 코드로 띄우는 ffmpeg HLS 변환 워커
 web/        React + Vite + TypeScript
 mediamtx/   라이브 미디어 서버(MediaMTX) 설정
+k8s/        로컬 쿠버네티스 배포와 오토스케일(HPA) 설정
+load-test/  k6 부하 테스트
 ```
 
 ## 공개 범위와 권한
@@ -82,6 +84,114 @@ docker compose --profile app up -d --scale worker=3          # 변환 워커를 
 ```
 
 API 서버는 업로드를 받아 처리 중 상태로 남기기만 한다. 변환은 `worker` 컨테이너들이 DB 대기열에서 하나씩 나눠 가져가 처리한다([ADR-0004](docs/adr/0004-transcoding-worker-with-db-queue.md)). 워커가 죽으면 점유 기한(60초)이 지난 뒤 다른 워커가 이어받는다. 개발할 때 `./gradlew bootRun`으로 서버 하나만 띄우면 그 서버가 변환까지 맡는다.
+
+## 로컬 오토스케일 (쿠버네티스)
+
+서버를 로컬 쿠버네티스에서 여러 Pod로 띄우고, CPU 사용률에 따라 Pod 수가 자동으로 늘고 줄게 한다.
+
+### 구현 범위
+
+| 요구 | 구현 |
+| --- | --- |
+| 컨테이너 이미지 | [server/Dockerfile](server/Dockerfile). API 서버와 변환 워커가 같은 이미지를 쓴다 |
+| 여러 인스턴스 실행 | Docker Desktop Kubernetes의 Deployment: [server](k8s/app/server.yaml), [worker](k8s/app/worker.yaml) |
+| 지표 기반 자동 조절 | [HPA](k8s/app/autoscaling.yaml). API 서버는 CPU 60% 기준 **2~4개**, 변환 워커는 CPU 70% 기준 **1~2개**. 최대값은 Docker Desktop 자원(CPU 10개, 메모리 8GB) 안에 들어오게 정했다. CPU 지표는 [metrics-server](k8s/metrics-server/kustomization.yaml)가 모은다 |
+| 요청 분산 | `server` Service(LoadBalancer)가 준비된 서버 Pod들에 요청을 나눈다. Docker Desktop은 이것을 `localhost:8080`에 연다. Pod는 `/actuator/health/readiness`가 통과해야 요청을 받는다 |
+| 상태를 인스턴스 밖에 | 로그인 세션(Spring Session JDBC), Broadcast(라이브 상태)·Video·Comment·Donation, 변환 대기열은 모두 [PostgreSQL](k8s/app/postgres.yaml)에 있다. 업로드한 영상과 HLS 파일은 모든 Pod가 함께 마운트하는 [media-data 볼륨](k8s/app/media-storage.yaml)에 있다. 서버 Pod는 메모리에 상태를 두지 않는다 |
+| 부하 발생 | [load-test/load.js](load-test/load.js) (k6, Docker로 실행) |
+
+함께 고려한 것:
+
+- **주기 작업**: Broadcast 동기화와 오래된 Donation 정리는 서버 Pod마다 돈다. 둘 다 낙관적 잠금(`@Version`)으로 저장하므로, 여러 Pod가 같은 행을 동시에 바꿔도 하나만 반영되고 나머지는 다음 주기에 다시 맞춘다.
+- **영상 변환**: 무거운 변환은 API 서버 밖의 워커 Pod가 맡는다([ADR-0004](docs/adr/0004-transcoding-worker-with-db-queue.md)). 그래서 업로드가 몰려도 API 서버가 느려지지 않고, 워커만 따로 늘어난다.
+- **MediaMTX**: WebRTC 연결을 직접 들고 있어서 한 대로 둔다. 송출 허가는 `server` Service로 물어보므로 서버 Pod 수와 상관없이 동작한다.
+- **줄어들 때**: Pod는 종료 신호를 받으면 처리 중인 요청을 마치고 내려간다(Spring Boot graceful shutdown). 워커는 변환 중이던 Video의 점유를 풀어서 다른 워커가 바로 이어받게 한다.
+- **한계**: Docker Desktop은 노드가 하나라서 `ReadWriteOnce` 볼륨도 모든 Pod가 함께 쓸 수 있다. 노드가 여러 대면 `ReadWriteMany` 볼륨이나 S3 같은 오브젝트 스토리지가 필요하다.
+
+### 실행 방법
+
+필요한 것: Docker Desktop(설정 → Kubernetes → Enable Kubernetes), kubectl. k6는 Docker 이미지로 실행하므로 설치하지 않아도 된다.
+
+```bash
+docker compose down                 # compose로 띄운 것이 있으면 내린다 (8080 포트를 같이 쓴다)
+kubectl config use-context docker-desktop
+k8s/up.sh                           # 이미지 빌드 + metrics-server 설치 + 배포 (처음엔 몇 분 걸린다)
+cd web && npm run dev               # 웹은 그대로 http://localhost:5173 (API는 localhost:8080 Service로 간다)
+```
+
+지울 때는 `k8s/down.sh`를 실행한다. DB와 영상 파일도 함께 지워진다.
+
+### 환경변수
+
+서버와 워커는 [k8s/app/config.yaml](k8s/app/config.yaml)의 ConfigMap과 Secret에서 값을 받는다. 아래 DB 계정은 로컬 개발용 예시 값이다.
+
+| 이름 | 예시 | 설명 |
+| --- | --- | --- |
+| `DB_URL` | `jdbc:postgresql://postgres:5432/webbroadcast` | 공용 DB |
+| `DB_USERNAME` / `DB_PASSWORD` | `webbroadcast` / `webbroadcast` | Secret `db-credentials` |
+| `MEDIAMTX_API_URL` | `http://mediamtx-api:9997` | 방송 상태 동기화 |
+| `MEDIA_STORAGE_ROOT` | `/data` | 공유 볼륨 마운트 위치 |
+| `VIDEO_WORKER_ENABLED` | `false` (서버), 워커는 `SPRING_PROFILES_ACTIVE=worker` | 변환을 누가 맡는지 |
+| `TOSS_CLIENT_KEY` / `TOSS_SECRET_KEY` | `test_ck_…` / `test_sk_…` | 선택. Secret `toss-keys`로 넣는다 |
+| `LAN_IP` (`.env`) | `192.168.0.10` | 선택. 휴대폰 송출용. `k8s/up.sh`가 MediaMTX에 넘긴다 |
+
+토스페이먼츠 테스트 키는 저장소에 넣지 않고 클러스터에 직접 만든다.
+
+```bash
+kubectl -n webbroadcast create secret generic toss-keys \
+  --from-literal=TOSS_CLIENT_KEY=test_ck_... --from-literal=TOSS_SECRET_KEY=test_sk_...
+kubectl -n webbroadcast rollout restart deployment/server
+```
+
+### 스케일 아웃·인 확인 절차
+
+1. 터미널 A에서 Pod 수를 기록한다: `k8s/watch-scale.sh | tee scale-log.txt`
+2. 터미널 B에서 부하를 건다: `load-test/run.sh`
+   - 가상 사용자 30명이 로그인(bcrypt라 CPU를 많이 씀)과 목록 조회를 3분 동안 반복한다.
+   - 동시에, 시작할 때 만든 회원의 세션 쿠키 하나로 매 반복마다 로그인 상태, 방송, 댓글을 조회한다. 요청이 어느 Pod로 가든, Pod 수가 바뀌는 중이든 같은 결과여야 한다(`checks{kind:state}` 99% 이상이 기준).
+3. 부하가 도는 동안 `server` Pod가 2개에서 늘어나는지 본다.
+4. 부하가 끝나고 1~2분 기다리면 다시 2개로 줄어드는지 본다.
+5. 도중에 `kubectl -n webbroadcast get hpa`로 HPA가 본 CPU 사용률을 확인할 수 있다.
+
+### 확인한 결과 (2026-11-13, MacBook · Docker Desktop Kubernetes v1.36 · CPU 10개 / 메모리 8GB)
+
+**API 서버**: `load-test/run.sh` (가상 사용자 30명, 3분 50초). 원본 기록은 [load-test/results/server-scale.txt](load-test/results/server-scale.txt)와 [k6-server.txt](load-test/results/k6-server.txt)에 있다. 아래는 값이 바뀐 줄만 뽑은 것이다.
+
+```
+시각      server (CPU/목표, Pod)   worker (CPU/목표, Pod)
+09:26:15  7%/60%, 2개              1%/70%, 1개      ← 부하 전, 최소 2개
+09:27:08  369%/60%, 2개            0%/70%, 1개      ← 부하 시작, 목표 초과
+09:27:18  369%/60%, 3개            0%/70%, 1개      ← 스케일 아웃
+09:27:23  369%/60%, 4개            0%/70%, 1개      ← 최대 4개
+09:30:07  195%/60%, 4개            0%/70%, 1개
+09:31:11  3%/60%, 3개              0%/70%, 1개      ← 부하 끝, 스케일 인
+09:32:09  2%/60%, 2개              0%/70%, 1개      ← 최소 2개로 복귀
+```
+
+스케일이 바뀌는 동안 상태 확인 결과 (k6):
+
+```
+✓ 로그인 유지   ✓ 방송 유지   ✓ 댓글 유지
+✓ { kind:state }...: 100.00% 16719 out of 16719
+✓ http_req_failed..: 0.00%   0 out of 39015
+```
+
+**변환 워커**: 1080p 60초 영상 6개를 업로드했다. 원본 기록은 [load-test/results/worker-scale.txt](load-test/results/worker-scale.txt)에 있다.
+
+```
+시각      server (CPU/목표, Pod)   worker (CPU/목표, Pod)
+09:32:37  2%/60%, 2개              0%/70%, 1개      ← 업로드 전
+09:33:09  2%/60%, 2개              399%/70%, 2개    ← 변환 시작, 워커 스케일 아웃 (최대 2개)
+09:35:11  4%/60%, 2개              1%/70%, 1개      ← 6개 모두 공개된 뒤 스케일 인
+```
+
+API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 때문이다.
+
+확인하면서 겪은 문제:
+
+- Service 이름이 `server`라서 쿠버네티스가 `SERVER_PORT=tcp://…` 환경변수를 넣었고, Spring이 이것을 포트 설정으로 읽어 시작하지 못했다. 그래서 `enableServiceLinks: false`로 막았다.
+- 처음에는 HPA 최대값을 서버 5개, 워커 4개로 잡았다. 서버 부하와 영상 업로드를 함께 걸었더니 최대로 늘어난 Pod들의 메모리 한도 합이 Docker Desktop 메모리(8GB)를 넘었고, Docker Desktop 전체가 멈췄다. 그래서 최대값을 자원 안에 들어오게 줄였다(서버 4개, 워커 2개).
+- 워커 메모리 한도가 1GiB일 때 JVM이 75%를 잡아서, 1080p 변환 중 ffmpeg가 메모리 부족으로 죽었다(종료 코드 137). 그래서 워커는 JVM 힙을 20%로 줄이고 한도를 2GiB로 올렸다.
 
 ## API
 

@@ -1,0 +1,15 @@
+# 로컬 쿠버네티스(Docker Desktop Kubernetes)에 Web Broadcast 서비스를 띄운다.
+# 직접 적용하기보다 k8s/up.sh를 쓴다. 이미지 빌드와 MediaMTX 설정(ConfigMap) 생성까지 해 준다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: webbroadcast
+
+resources:
+  - namespace.yaml
+  - config.yaml
+  - postgres.yaml
+  - media-storage.yaml
+  - mediamtx.yaml
+  - server.yaml
+  - worker.yaml
+  - autoscaling.yaml

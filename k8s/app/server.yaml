@@ -1,0 +1,75 @@
+# API 서버. Pod 수는 HPA(autoscaling.yaml)가 2~5개 사이에서 정한다. 그래서 replicas를 적지 않는다.
+# Pod는 상태를 갖지 않는다: 세션·데이터는 PostgreSQL, 파일은 media-data 볼륨에 있다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+spec:
+  selector:
+    matchLabels:
+      app: server
+  template:
+    metadata:
+      labels:
+        app: server
+    spec:
+      # Service 이름(server)으로 SERVER_PORT=tcp://... 같은 환경변수가 자동으로 들어오면
+      # Spring이 server.port로 읽어 시작하지 못한다. 서비스 주소는 DNS 이름으로 찾는다
+      enableServiceLinks: false
+      # 줄어들 때 처리 중인 요청을 마칠 시간을 준다 (Spring Boot 기본 graceful shutdown)
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: server
+          image: web-broadcast-server:local
+          # k8s/up.sh가 로컬에서 빌드한 이미지를 그대로 쓴다
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef: { name: app-config }
+            - secretRef: { name: db-credentials }
+            # 토스페이먼츠 테스트 키 (선택). 없으면 후원만 "결제가 설정되지 않았습니다"가 된다
+            - secretRef: { name: toss-keys, optional: true }
+          env:
+            # 변환은 워커 Pod가 맡는다 (ADR-0004)
+            - name: VIDEO_WORKER_ENABLED
+              value: "false"
+          ports:
+            - containerPort: 8080
+          # HPA는 이 요청량 대비 사용률로 판단한다
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 768Mi
+          startupProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 3
+            failureThreshold: 40
+          livenessProbe:
+            httpGet: { path: /actuator/health/liveness, port: 8080 }
+            periodSeconds: 10
+          # 준비된 Pod에만 요청을 보낸다
+          readinessProbe:
+            httpGet: { path: /actuator/health/readiness, port: 8080 }
+            periodSeconds: 5
+          volumeMounts:
+            - name: media
+              mountPath: /data
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media-data
+---
+# 여러 서버 Pod 앞에서 요청을 나눠 받는다. Docker Desktop은 LoadBalancer를 localhost:8080에 연다
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+spec:
+  type: LoadBalancer
+  selector:
+    app: server
+  ports:
+    - port: 8080
+      targetPort: 8080

@@ -1,0 +1,63 @@
+# CPU 사용률을 보고 Pod 수를 자동으로 조절한다. CPU 지표는 metrics-server(k8s/metrics-server)가 모은다.
+# 사용률은 Deployment의 resources.requests.cpu 대비 비율이다.
+#
+# 최대 Pod 수는 Docker Desktop에 준 자원(CPU 10개, 메모리 8GB) 안에서 정했다.
+# 서버 4개 × 768Mi + 워커 2개 × 2Gi + DB·MediaMTX·쿠버네티스 ≈ 8GB.
+# 이보다 크게 잡으면 최대로 늘었을 때 Docker Desktop 자체가 멈출 수 있다 (실제로 겪었다).
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: server
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: server
+  # 한 대가 죽어도 서비스가 이어지도록 최소 2대
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 15
+    # 기본값(5분)보다 짧게 잡아 부하가 끝나면 1분 뒤부터 줄어드는 것을 볼 수 있게 한다
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: worker
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: worker
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+    scaleDown:
+      stabilizationWindowSeconds: 60

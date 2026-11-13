@@ -1,0 +1,21 @@
+# 서버와 워커가 함께 쓰는 설정.
+# DB 계정은 로컬 개발용 예시 값이다(compose.yaml과 같음). 실제 비밀 값은 저장소에 넣지 않는다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  DB_URL: jdbc:postgresql://postgres:5432/webbroadcast
+  MEDIAMTX_API_URL: http://mediamtx-api:9997
+  MEDIA_STORAGE_ROOT: /data
+  # 컨테이너 메모리 한도 안에서 JVM 힙을 잡는다
+  JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-credentials
+type: Opaque
+stringData:
+  DB_USERNAME: webbroadcast
+  DB_PASSWORD: webbroadcast

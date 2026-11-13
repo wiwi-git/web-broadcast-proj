@@ -1,0 +1,71 @@
+# 라이브 미디어 서버 (ADR-0002). WebRTC 연결을 직접 들고 있어서 늘리지 않고 한 대로 둔다.
+# 설정은 mediamtx/mediamtx.yml을 그대로 쓴다. k8s/up.sh가 이 파일로 ConfigMap mediamtx-config를 만든다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mediamtx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mediamtx
+  template:
+    metadata:
+      labels:
+        app: mediamtx
+    spec:
+      containers:
+        - name: mediamtx
+          image: bluenviron/mediamtx:1.21.3
+          env:
+            # 송출 허가는 서버 Service(여러 Pod 중 아무나)에 묻는다
+            - name: MTX_AUTHHTTPADDRESS
+              value: http://server:8080/api/media-server/auth
+          ports:
+            - containerPort: 8888
+            - containerPort: 8889
+            - containerPort: 8189
+              protocol: UDP
+            - containerPort: 8189
+              protocol: TCP
+            - containerPort: 9997
+          volumeMounts:
+            - name: config
+              mountPath: /mediamtx.yml
+              subPath: mediamtx.yml
+      volumes:
+        - name: config
+          configMap:
+            name: mediamtx-config
+---
+# 브라우저가 닿는 포트. Docker Desktop은 LoadBalancer를 localhost에 연다
+apiVersion: v1
+kind: Service
+metadata:
+  name: mediamtx
+spec:
+  type: LoadBalancer
+  selector:
+    app: mediamtx
+  ports:
+    - name: hls
+      port: 8888
+    - name: whip
+      port: 8889
+    - name: webrtc-udp
+      port: 8189
+      protocol: UDP
+    - name: webrtc-tcp
+      port: 8189
+      protocol: TCP
+---
+# 제어 API는 클러스터 안의 서버만 쓴다
+apiVersion: v1
+kind: Service
+metadata:
+  name: mediamtx-api
+spec:
+  selector:
+    app: mediamtx
+  ports:
+    - port: 9997

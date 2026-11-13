@@ -1,0 +1,46 @@
+# 영상 변환 워커 (ADR-0004). 서버와 같은 이미지를 웹 서버 없이 띄운다.
+# 워커끼리는 DB 대기열에서 서로 다른 Video를 가져가므로, HPA가 Pod 수만 늘리면 처리량이 는다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      enableServiceLinks: false  # server.yaml 참고
+      # 종료될 때 변환 중이던 Video의 점유를 풀고 나간다
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: worker
+          image: web-broadcast-server:local
+          imagePullPolicy: Never
+          envFrom:
+            - configMapRef: { name: app-config }
+            - secretRef: { name: db-credentials }
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: worker
+            # 메모리는 대부분 JVM 밖의 ffmpeg가 쓴다. 1080p 변환은 1GiB를 넘을 수 있어서
+            # JVM 힙을 작게 잡고 나머지를 ffmpeg에 남긴다 (모자라면 ffmpeg가 종료 코드 137로 죽는다)
+            - name: JAVA_TOOL_OPTIONS
+              value: -XX:MaxRAMPercentage=20
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+          volumeMounts:
+            - name: media
+              mountPath: /data
+      volumes:
+        - name: media
+          persistentVolumeClaim:
+            claimName: media-data

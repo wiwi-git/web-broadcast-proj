@@ -69,7 +69,7 @@ class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/api/**", "/media/**").permitAll()
 				.requestMatchers(HttpMethod.POST, AuthController.SIGN_UP_PATH, AuthController.LOGIN_PATH,
 						MediaServerAuthController.PATH).permitAll()
-				.requestMatchers("/error").permitAll()
+				.requestMatchers("/error", "/actuator/health/**").permitAll()
 				.anyRequest().authenticated())
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint((request, response, e) ->
