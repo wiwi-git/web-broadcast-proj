@@ -14,7 +14,9 @@
   --radius: 8px;
 
   color-scheme: dark;
-  font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  /* iOS WebView는 system-ui·-apple-system이 앞에 있으면 한글을 다음 폰트로 넘기지 못하고 ? 상자로 그린다
+     (iOS 26.3 시뮬레이터에서 확인). 그래서 한글 폰트를 맨 앞에 둔다. */
+  font-family: 'Apple SD Gothic Neo', system-ui, -apple-system, 'Noto Sans KR', sans-serif;
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
@@ -1053,4 +1055,22 @@ button.danger:hover:not(:disabled) {
 .confirm-message {
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+/* 앱 전용: 모바일 앱은 화면 전체를 WebView로 쓰므로(viewport-fit=cover)
+   상태 표시줄·노치와 홈 인디케이터 영역만큼 비워 둔다. 웹 브라우저에서는 0이라 영향이 없다. */
+.app-header {
+  height: calc(60px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+}
+
+.app-main {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom));
+}
+
+/* iOS는 글자 크기가 16px보다 작은 입력칸을 누르면 화면을 확대한다 */
+input,
+textarea,
+select {
+  font-size: max(16px, 1em);
 }
