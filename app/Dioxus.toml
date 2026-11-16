@@ -1,0 +1,16 @@
+[application]
+name = "web-broadcast-app"
+
+[bundle]
+identifier = "com.webbroadcast.app"
+publisher = "Web Broadcast"
+
+[web.app]
+title = "Web Broadcast"
+
+# `dx serve --platform web`일 때 API와 미디어 요청을 각 서버로 넘긴다 (web/vite.config.ts와 같은 역할)
+[[web.proxy]]
+backend = "http://localhost:8080/api/"
+
+[[web.proxy]]
+backend = "http://localhost:8080/media/"
