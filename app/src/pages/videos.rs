@@ -6,33 +6,85 @@ use super::Todo;
 use crate::api::{self, ApiError, DESCRIPTION_MAX_LENGTH, TITLE_MAX_LENGTH, Video, VideoEdit, VideoStatus};
 use crate::auth::{RequireLogin, use_auth};
 use crate::components::{ConfirmButton, HlsPlayer, VideoComments};
+use crate::config;
 use crate::route::Route;
 use crate::time::{format_date, format_duration, sleep};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(3);
 
+/// web/src/pages/VideoListPage.tsx와 같은 화면. 페이지 번호는 주소의 ?page=로 둔다.
 #[component]
-pub fn VideoList() -> Element {
-    let videos = use_resource(|| api::fetch_videos(0));
+pub fn VideoList(page: u32) -> Element {
+    let navigator = use_navigator();
+    let videos = use_resource(use_reactive!(|page| api::fetch_videos(page)));
 
-    match &*videos.read() {
-        None => rsx! { p { class: "notice", "불러오는 중…" } },
-        Some(Err(error)) => rsx! { p { class: "notice", "{error}" } },
-        Some(Ok(page)) => rsx! {
-            h1 { "동영상" }
-            if page.items.is_empty() {
-                p { class: "notice", "아직 올라온 동영상이 없습니다." }
+    let result = match &*videos.read() {
+        None => return rsx! { p { class: "notice", "불러오는 중…" } },
+        Some(Err(error)) => return rsx! { p { class: "notice error", "{error}" } },
+        Some(Ok(result)) => result.clone(),
+    };
+    if result.total_items == 0 {
+        return rsx! {
+            div { class: "notice",
+                p { "아직 공개된 동영상이 없습니다." }
+                Link { to: Route::Upload {}, class: "button primary", "첫 동영상 업로드" }
             }
-            ul {
-                for video in page.items.iter() {
-                    li { key: "{video.id}",
-                        Link { to: Route::VideoDetail { id: video.id.clone() },
-                            "{video.title} · {video.owner.nickname}"
-                        }
-                    }
+        };
+    }
+
+    rsx! {
+        h1 { class: "page-title", "동영상" }
+        ul { class: "video-grid",
+            for video in result.items {
+                li { key: "{video.id}",
+                    VideoCard { video }
                 }
             }
-        },
+        }
+        if result.total_pages > 1 {
+            nav { class: "pagination",
+                button {
+                    class: "button",
+                    disabled: page == 0,
+                    onclick: move |_| {
+                        navigator.push(Route::VideoList { page: page - 1 });
+                    },
+                    "이전"
+                }
+                span { "{page + 1} / {result.total_pages}" }
+                button {
+                    class: "button",
+                    disabled: page + 1 >= result.total_pages,
+                    onclick: move |_| {
+                        navigator.push(Route::VideoList { page: page + 1 });
+                    },
+                    "다음"
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn VideoCard(video: Video) -> Element {
+    let thumbnail = video.thumbnail_url.as_deref().map(config::resolve);
+    let duration = video.duration_seconds.map(format_duration);
+    let date = format_date(&video.created_at);
+
+    rsx! {
+        Link { to: Route::VideoDetail { id: video.id.clone() }, class: "video-card",
+            div { class: "thumbnail",
+                if let Some(src) = thumbnail {
+                    img { src, alt: "", loading: "lazy" }
+                }
+                if let Some(duration) = duration {
+                    span { class: "duration", "{duration}" }
+                }
+            }
+            h2 { class: "video-card-title", "{video.title}" }
+            p { class: "meta", "{video.owner.nickname}" }
+            p { class: "meta", "{date}" }
+        }
     }
 }
 
@@ -85,7 +137,7 @@ pub fn VideoDetail(id: String) -> Element {
             delete_error.set(None);
             match api::delete_video(&id).await {
                 Ok(()) => {
-                    navigator.replace(Route::VideoList {});
+                    navigator.replace(Route::VideoList { page: 0 });
                 }
                 Err(e) => delete_error.set(Some(e.to_string())),
             }

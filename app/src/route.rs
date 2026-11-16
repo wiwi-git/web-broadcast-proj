@@ -19,8 +19,8 @@ pub enum Route {
         Donations {},
         #[route("/broadcast")]
         Broadcast {},
-        #[route("/videos")]
-        VideoList {},
+        #[route("/videos?:page")]
+        VideoList { page: u32 },
         #[route("/videos/:id")]
         VideoDetail { id: String },
         #[route("/upload")]

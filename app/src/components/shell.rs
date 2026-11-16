@@ -14,7 +14,7 @@ pub fn Shell() -> Element {
                 Link { to: Route::LiveList {}, class: "nav-link", active_class: "active",
                     span { class: "nav-label", "라이브" }
                 }
-                Link { to: Route::VideoList {}, class: "nav-link", active_class: "active",
+                Link { to: Route::VideoList { page: 0 }, class: "nav-link", active_class: "active",
                     span { class: "nav-label", "동영상" }
                 }
             }
