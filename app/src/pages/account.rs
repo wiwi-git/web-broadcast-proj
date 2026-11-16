@@ -14,6 +14,7 @@ pub fn Login(next: String) -> Element {
     let mut error = use_signal(|| None::<String>);
     let mut busy = use_signal(|| false);
 
+    let signup_next = next.clone();
     let submit = move |event: FormEvent| {
         let next = next.clone();
         async move {
@@ -31,23 +32,46 @@ pub fn Login(next: String) -> Element {
         }
     };
 
+    // 마크업과 클래스는 web/src/pages/LoginPage.tsx와 같다
     rsx! {
-        h1 { "로그인" }
-        form { onsubmit: submit,
-            label { "아이디"
-                input { value: "{username}", autocomplete: "username",
-                    oninput: move |e| username.set(e.value()) }
+        form { class: "auth-form", onsubmit: submit,
+            h1 { class: "page-title", "로그인" }
+            label { class: "field",
+                span { class: "label", "아이디" }
+                input {
+                    r#type: "text",
+                    class: "text-input",
+                    autocomplete: "username",
+                    // 아이디는 소문자만 받으므로 모바일 키보드가 첫 글자를 대문자로 바꾸지 않게 한다
+                    autocapitalize: "none",
+                    value: "{username}",
+                    oninput: move |e| username.set(e.value()),
+                }
             }
-            label { "비밀번호"
-                input { r#type: "password", value: "{password}", autocomplete: "current-password",
-                    oninput: move |e| password.set(e.value()) }
+            label { class: "field",
+                span { class: "label", "비밀번호" }
+                input {
+                    r#type: "password",
+                    class: "text-input",
+                    autocomplete: "current-password",
+                    value: "{password}",
+                    oninput: move |e| password.set(e.value()),
+                }
             }
             if let Some(message) = error() {
-                p { class: "error", "{message}" }
+                p { class: "hint error", "{message}" }
             }
-            button { r#type: "submit", class: "button primary", disabled: busy(), "로그인" }
+            button {
+                r#type: "submit",
+                class: "button primary",
+                disabled: username().trim().is_empty() || password().is_empty() || busy(),
+                if busy() { "로그인 중…" } else { "로그인" }
+            }
+            p { class: "meta auth-switch",
+                "아직 회원이 아니신가요? "
+                Link { to: Route::SignUp { next: signup_next }, "회원가입" }
+            }
         }
-        Link { to: Route::SignUp { next: String::new() }, "회원가입" }
     }
 }
 

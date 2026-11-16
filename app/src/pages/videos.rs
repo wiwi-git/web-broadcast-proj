@@ -1,9 +1,15 @@
+use std::time::Duration;
+
 use dioxus::prelude::*;
 
 use super::Todo;
-use crate::api;
-use crate::auth::RequireLogin;
+use crate::api::{self, ApiError, DESCRIPTION_MAX_LENGTH, TITLE_MAX_LENGTH, Video, VideoEdit, VideoStatus};
+use crate::auth::{RequireLogin, use_auth};
+use crate::components::{ConfirmButton, HlsPlayer, VideoComments};
 use crate::route::Route;
+use crate::time::{format_date, format_duration, sleep};
+
+const POLL_INTERVAL: Duration = Duration::from_secs(3);
 
 #[component]
 pub fn VideoList() -> Element {
@@ -30,10 +36,187 @@ pub fn VideoList() -> Element {
     }
 }
 
+/// web/src/pages/VideoDetailPage.tsx와 같은 화면
 #[component]
 pub fn VideoDetail(id: String) -> Element {
+    let auth = use_auth();
+    let navigator = use_navigator();
+    let mut loaded = use_signal(|| None::<Video>);
+    let mut error = use_signal(|| None::<String>);
+    let mut editing = use_signal(|| false);
+    let mut delete_error = use_signal(|| None::<String>);
+
+    // 처리 중이면 공개 또는 실패로 바뀔 때까지 주기적으로 다시 확인한다.
+    // id가 바뀌면 이전 확인은 멈추고 새로 시작한다.
+    use_resource(use_reactive!(|id| async move {
+        loop {
+            match api::fetch_video(&id).await {
+                Ok(video) => {
+                    let processing = video.status == VideoStatus::Processing;
+                    loaded.set(Some(video));
+                    error.set(None);
+                    if !processing {
+                        return;
+                    }
+                }
+                Err(ApiError::Server { status: 404, .. }) => {
+                    error.set(Some("동영상을 찾을 수 없습니다.".to_owned()));
+                    return;
+                }
+                Err(e) => error.set(Some(e.to_string())),
+            }
+            sleep(POLL_INTERVAL).await;
+        }
+    }));
+
+    // 다른 동영상으로 이동한 직후에는 이전 동영상을 보여주지 않는다
+    let Some(video) = loaded().filter(|video| video.id == id) else {
+        return match error() {
+            Some(message) => rsx! { p { class: "notice error", "{message}" } },
+            None => rsx! { p { class: "notice", "불러오는 중…" } },
+        };
+    };
+    let owned = auth.me().is_some_and(|me| me.id == video.owner.id);
+
+    let delete_id = id.clone();
+    let delete = move |_| {
+        let id = delete_id.clone();
+        spawn(async move {
+            delete_error.set(None);
+            match api::delete_video(&id).await {
+                Ok(()) => {
+                    navigator.replace(Route::VideoList {});
+                }
+                Err(e) => delete_error.set(Some(e.to_string())),
+            }
+        });
+    };
+
+    let meta_date = format_date(&video.created_at);
+    let meta_duration = video.duration_seconds.map(|s| format!(" · {}", format_duration(s))).unwrap_or_default();
+
     rsx! {
-        Todo { title: "동영상", note: "HLS 재생과 댓글 자리. 동영상 id: {id}" }
+        article { class: "video-detail",
+            match (&video.status, &video.playback_url) {
+                (VideoStatus::Published, Some(src)) => rsx! {
+                    HlsPlayer { key: "{video.id}", src: src.clone(), poster: video.thumbnail_url.clone() }
+                },
+                (VideoStatus::Processing, _) => rsx! {
+                    div { class: "player-placeholder",
+                        div { class: "spinner" }
+                        p { "동영상을 처리하고 있습니다." }
+                        p { class: "meta", "처리가 끝나면 자동으로 재생할 수 있게 됩니다." }
+                    }
+                },
+                _ => rsx! {
+                    div { class: "player-placeholder",
+                        p { class: "error", "동영상 처리에 실패했습니다." }
+                    }
+                },
+            }
+
+            if editing() {
+                EditVideoForm {
+                    video: video.clone(),
+                    on_saved: move |saved: Video| {
+                        loaded.set(Some(saved));
+                        editing.set(false);
+                    },
+                    on_cancel: move |_| editing.set(false),
+                }
+            } else {
+                div { class: "title-row",
+                    h1 { class: "video-title", "{video.title}" }
+                    if owned {
+                        div { class: "owner-actions",
+                            button { r#type: "button", class: "button small", onclick: move |_| editing.set(true), "수정" }
+                            ConfirmButton {
+                                class: "button small danger",
+                                message: "동영상을 삭제할까요? 댓글도 함께 삭제되며 되돌릴 수 없습니다.",
+                                confirm_label: "삭제",
+                                on_confirm: delete,
+                                "삭제"
+                            }
+                        }
+                    }
+                }
+                if let Some(message) = delete_error() {
+                    p { class: "hint error", "{message}" }
+                }
+                p { class: "meta",
+                    span { class: "owner-name", "{video.owner.nickname}" }
+                    " · {meta_date}{meta_duration}"
+                }
+                if let Some(description) = video.description.as_ref().filter(|d| !d.is_empty()) {
+                    p { class: "description", "{description}" }
+                }
+            }
+
+            VideoComments { key: "{video.id}", video_id: video.id.clone() }
+        }
+    }
+}
+
+/// Owner만 제목과 설명을 바꿀 수 있다. 영상 파일은 바꿀 수 없다.
+#[component]
+fn EditVideoForm(video: Video, on_saved: EventHandler<Video>, on_cancel: EventHandler<()>) -> Element {
+    let mut title = use_signal(|| video.title.clone());
+    let mut description = use_signal(|| video.description.clone().unwrap_or_default());
+    let mut busy = use_signal(|| false);
+    let mut error = use_signal(|| None::<String>);
+
+    let submit = move |event: FormEvent| {
+        let id = video.id.clone();
+        async move {
+            event.prevent_default();
+            busy.set(true);
+            error.set(None);
+            let input = VideoEdit { title: title().trim().to_owned(), description: description() };
+            match api::edit_video(&id, &input).await {
+                Ok(saved) => on_saved.call(saved),
+                Err(e) => {
+                    error.set(Some(e.to_string()));
+                    busy.set(false);
+                }
+            }
+        }
+    };
+
+    rsx! {
+        form { class: "edit-form", onsubmit: submit,
+            label { class: "field",
+                span { class: "label", "제목" }
+                input {
+                    r#type: "text",
+                    class: "text-input",
+                    maxlength: TITLE_MAX_LENGTH as i64,
+                    value: "{title}",
+                    oninput: move |e| title.set(e.value()),
+                }
+            }
+            label { class: "field",
+                span { class: "label", "설명" }
+                textarea {
+                    class: "text-input",
+                    rows: 5,
+                    maxlength: DESCRIPTION_MAX_LENGTH as i64,
+                    value: "{description}",
+                    oninput: move |e| description.set(e.value()),
+                }
+            }
+            if let Some(message) = error() {
+                p { class: "hint error", "{message}" }
+            }
+            div { class: "owner-actions",
+                button { r#type: "button", class: "button", onclick: move |_| on_cancel.call(()), "취소" }
+                button {
+                    r#type: "submit",
+                    class: "button primary",
+                    disabled: busy() || title().trim().is_empty(),
+                    "저장"
+                }
+            }
+        }
     }
 }
 

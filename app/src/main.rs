@@ -7,6 +7,7 @@ mod components;
 mod config;
 mod pages;
 mod route;
+mod time;
 
 use dioxus::prelude::*;
 

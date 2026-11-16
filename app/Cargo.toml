@@ -5,6 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
+chrono = "0.4"
 dioxus = { version = "0.7.10", features = ["router"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -13,12 +14,14 @@ thiserror = "2"
 # 데스크톱·모바일: 앱이 쿠키 저장소를 직접 들고 세션 쿠키와 XSRF-TOKEN을 유지한다
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "rustls-tls"] }
+tokio = { version = "1", features = ["time"] }
 
 # 웹: 브라우저가 쿠키를 관리하므로 XSRF-TOKEN만 document.cookie에서 읽는다
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 reqwest = { version = "0.12", features = ["json"] }
 web-sys = { version = "0.3", features = ["HtmlDocument"] }
 wasm-bindgen = "0.2"
+gloo-timers = { version = "0.3", features = ["futures"] }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt"] }

@@ -7,7 +7,7 @@
 
 mod client;
 
-pub use client::ApiResult;
+pub use client::{ApiError, ApiResult};
 
 use client::{get_json, send_empty, send_json};
 use reqwest::Method;
@@ -120,6 +120,70 @@ pub async fn fetch_videos(page: u32) -> ApiResult<VideoPage> {
 
 pub async fn fetch_video(id: &str) -> ApiResult<Video> {
     get_json(&format!("/api/videos/{}", encode(id))).await
+}
+
+// 서버(Video, VideoService)와 같은 제약
+pub const TITLE_MAX_LENGTH: usize = 100;
+pub const DESCRIPTION_MAX_LENGTH: usize = 5000;
+
+#[derive(Serialize)]
+pub struct VideoEdit {
+    pub title: String,
+    pub description: String,
+}
+
+pub async fn edit_video(id: &str, input: &VideoEdit) -> ApiResult<Video> {
+    send_json(Method::PATCH, &format!("/api/videos/{}", encode(id)), input).await
+}
+
+pub async fn delete_video(id: &str) -> ApiResult<()> {
+    send_empty(Method::DELETE, &format!("/api/videos/{}", encode(id))).await
+}
+
+// 댓글
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Comment {
+    pub id: String,
+    pub body: String,
+    pub author: UserSummary,
+    pub created_at: String,
+    /// 수정한 적이 있을 때만 존재
+    pub updated_at: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VideoComments {
+    pub items: Vec<Comment>,
+    /// 다음 요청의 before로 넘긴다. None이면 더 없다
+    pub next_cursor: Option<String>,
+    pub total_count: u64,
+}
+
+pub const COMMENT_MAX_LENGTH: usize = 500;
+
+#[derive(Serialize)]
+struct CommentBody<'a> {
+    body: &'a str,
+}
+
+pub async fn fetch_video_comments(video_id: &str, before: Option<&str>) -> ApiResult<VideoComments> {
+    let query = before.map(|cursor| format!("?before={}", encode(cursor))).unwrap_or_default();
+    get_json(&format!("/api/videos/{}/comments{query}", encode(video_id))).await
+}
+
+pub async fn write_video_comment(video_id: &str, body: &str) -> ApiResult<Comment> {
+    send_json(Method::POST, &format!("/api/videos/{}/comments", encode(video_id)), &CommentBody { body }).await
+}
+
+pub async fn edit_comment(id: &str, body: &str) -> ApiResult<Comment> {
+    send_json(Method::PATCH, &format!("/api/comments/{}", encode(id)), &CommentBody { body }).await
+}
+
+pub async fn delete_comment(id: &str) -> ApiResult<()> {
+    send_empty(Method::DELETE, &format!("/api/comments/{}", encode(id))).await
 }
 
 // 라이브

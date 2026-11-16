@@ -60,14 +60,15 @@ cargo test --no-default-features --features desktop -- --ignored
 | 화면 | 상태 |
 |---|---|
 | 머리글, 라우팅, 로그인 확인, 로그인/로그아웃 | 완료 |
-| 라이브 목록, 동영상 목록 | 목록만 표시 |
-| 라이브 시청, 동영상 상세, 업로드, 방송하기, 회원가입, 후원, 후원 내역 | 자리만 있음 |
+| 동영상 상세 (재생, 처리 중 자동 갱신, 수정·삭제, 댓글) | 완료. 화질 선택은 아직 없음 |
+| 라이브 목록, 동영상 목록 | 목록만 표시 (카드 모양 아님) |
+| 라이브 시청, 업로드, 방송하기, 회원가입, 후원, 후원 내역 | 자리만 있음 |
 
 ## 플랫폼별로 따로 확인해야 할 것
 
-- **HLS 재생**: macOS·iOS WebView(WKWebView)는 `<video>`로 HLS를 바로 재생합니다.
-  Windows(WebView2)와 Android WebView는 버전에 따라 바로 재생되지 않을 수 있습니다.
-  그런 경우를 대비해 웹처럼 hls.js로 재생하는 방법을 준비해 둬야 합니다.
+- **HLS 재생**: `components/hls_player.rs`는 WebView가 HLS를 바로 재생할 수 있으면 그대로 쓰고,
+  아니면 앱에 넣은 hls.js(`assets/hls.light.min.js`, 1.7.4)를 불러 재생합니다.
+  iOS 시뮬레이터와 웹(Chromium)에서 재생을 확인했습니다. Windows(WebView2)와 Android는 아직 확인하지 않았습니다.
 - **방송하기(카메라·마이크, WebRTC/WHIP)**: 앱마다 권한 선언이 필요합니다.
   iOS는 Info.plist의 카메라·마이크 사용 설명, Android는 매니페스트의 CAMERA·RECORD_AUDIO 권한입니다.
   WebView에서 `getUserMedia`를 허용하는지도 플랫폼마다 확인해야 합니다.
