@@ -46,7 +46,7 @@ services:
       # 변환은 worker 컨테이너가 맡는다
       VIDEO_WORKER_ENABLED: "false"
     ports:
-      - "8080:8080"
+      - "8180:8180"
     volumes:
       - media-data:/data
     depends_on:

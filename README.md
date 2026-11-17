@@ -60,11 +60,11 @@ load-test/  k6 부하 테스트
 
 ```bash
 docker compose up -d          # PostgreSQL + MediaMTX
-cd server && ./gradlew bootRun   # http://localhost:8080
+cd server && ./gradlew bootRun   # http://localhost:8180
 cd web && npm install && npm run dev   # http://localhost:5173
 ```
 
-웹 개발 서버는 `/api`, `/media` 요청을 Spring(8080)으로, `/hls`, `/whip` 요청을 MediaMTX(8888, 8889)로 넘긴다. 업로드된 파일은 `server/data/`에 쌓인다.
+웹 개발 서버는 `/api`, `/media` 요청을 Spring(8180)으로, `/hls`, `/whip` 요청을 MediaMTX(8888, 8889)로 넘긴다. 업로드된 파일은 `server/data/`에 쌓인다.
 
 ### 휴대폰으로 방송하기
 
@@ -96,7 +96,7 @@ API 서버는 업로드를 받아 처리 중 상태로 남기기만 한다. 변�
 | 컨테이너 이미지 | [server/Dockerfile](server/Dockerfile). API 서버와 변환 워커가 같은 이미지를 쓴다 |
 | 여러 인스턴스 실행 | Docker Desktop Kubernetes의 Deployment: [server](k8s/app/server.yaml), [worker](k8s/app/worker.yaml) |
 | 지표 기반 자동 조절 | [HPA](k8s/app/autoscaling.yaml). API 서버는 CPU 60% 기준 **2~4개**, 변환 워커는 CPU 70% 기준 **1~2개**. 최대값은 Docker Desktop 자원(CPU 10개, 메모리 8GB) 안에 들어오게 정했다. CPU 지표는 [metrics-server](k8s/metrics-server/kustomization.yaml)가 모은다 |
-| 요청 분산 | `server` Service(LoadBalancer)가 준비된 서버 Pod들에 요청을 나눈다. Docker Desktop은 이것을 `localhost:8080`에 연다. Pod는 `/actuator/health/readiness`가 통과해야 요청을 받는다 |
+| 요청 분산 | `server` Service(LoadBalancer)가 준비된 서버 Pod들에 요청을 나눈다. Docker Desktop은 이것을 `localhost:8180`에 연다. Pod는 `/actuator/health/readiness`가 통과해야 요청을 받는다 |
 | 상태를 인스턴스 밖에 | 로그인 세션(Spring Session JDBC), Broadcast(라이브 상태)·Video·Comment·Donation, 변환 대기열은 모두 [PostgreSQL](k8s/app/postgres.yaml)에 있다. 업로드한 영상과 HLS 파일은 모든 Pod가 함께 마운트하는 [media-data 볼륨](k8s/app/media-storage.yaml)에 있다. 서버 Pod는 메모리에 상태를 두지 않는다 |
 | 부하 발생 | [load-test/load.js](load-test/load.js) (k6, Docker로 실행) |
 
@@ -113,10 +113,10 @@ API 서버는 업로드를 받아 처리 중 상태로 남기기만 한다. 변�
 필요한 것: Docker Desktop(설정 → Kubernetes → Enable Kubernetes), kubectl. k6는 Docker 이미지로 실행하므로 설치하지 않아도 된다.
 
 ```bash
-docker compose down                 # compose로 띄운 것이 있으면 내린다 (8080 포트를 같이 쓴다)
+docker compose down                 # compose로 띄운 것이 있으면 내린다 (8180 포트를 같이 쓴다)
 kubectl config use-context docker-desktop
 k8s/up.sh                           # 이미지 빌드 + metrics-server 설치 + 배포 (처음엔 몇 분 걸린다)
-cd web && npm run dev               # 웹은 그대로 http://localhost:5173 (API는 localhost:8080 Service로 간다)
+cd web && npm run dev               # 웹은 그대로 http://localhost:5173 (API는 localhost:8180 Service로 간다)
 ```
 
 지울 때는 `k8s/down.sh`를 실행한다. DB와 영상 파일도 함께 지워진다.

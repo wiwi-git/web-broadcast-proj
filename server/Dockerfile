@@ -16,5 +16,5 @@ WORKDIR /app
 COPY --from=build /app/build/libs/server-*-SNAPSHOT.jar app.jar
 ENV MEDIA_STORAGE_ROOT=/data
 VOLUME /data
-EXPOSE 8080
+EXPOSE 8180
 ENTRYPOINT ["java", "-jar", "app.jar"]

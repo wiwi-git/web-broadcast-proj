@@ -16,7 +16,7 @@ const DEV_HOST: &str = "http://10.0.2.2";
 const DEV_HOST: &str = "http://localhost";
 
 fn api_origin() -> String {
-    option_env!("API_ORIGIN").map_or_else(|| format!("{DEV_HOST}:8080"), str::to_owned)
+    option_env!("API_ORIGIN").map_or_else(|| format!("{DEV_HOST}:8180"), str::to_owned)
 }
 
 fn hls_origin() -> String {

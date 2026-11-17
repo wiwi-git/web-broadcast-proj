@@ -20,7 +20,7 @@ spec:
           env:
             # 송출 허가는 서버 Service(여러 Pod 중 아무나)에 묻는다
             - name: MTX_AUTHHTTPADDRESS
-              value: http://server:8080/api/media-server/auth
+              value: http://server:8180/api/media-server/auth
           ports:
             - containerPort: 8888
             - containerPort: 8889

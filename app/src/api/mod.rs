@@ -232,7 +232,7 @@ mod live_server_tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore = "localhost:8080에 서버가 떠 있어야 한다"]
+    #[ignore = "localhost:8180에 서버가 떠 있어야 한다"]
     async fn signs_up_logs_out_and_logs_in_with_cookie_session() {
         let suffix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() % 1_000_000_000;
         let username = format!("app{suffix}");

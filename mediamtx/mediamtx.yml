@@ -4,7 +4,7 @@ logLevel: info
 
 # 송출·시청 허가는 Spring에 묻는다 (Stream Key 확인)
 authMethod: http
-authHTTPAddress: http://host.docker.internal:8080/api/media-server/auth
+authHTTPAddress: http://host.docker.internal:8180/api/media-server/auth
 authHTTPExclude:
   - action: api
   - action: metrics

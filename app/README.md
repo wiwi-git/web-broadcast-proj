@@ -10,7 +10,7 @@ Web Broadcast의 화면을 Rust([Dioxus](https://dioxuslabs.com) 0.7)로 다시 
 
 ```bash
 dx serve --platform desktop          # macOS 창으로 실행 (Windows 앱은 Windows에서 빌드)
-dx serve --platform web --port 8090  # 브라우저 (8080은 Spring 서버가 쓴다)
+dx serve --platform web --port 8090  # 브라우저 (8180은 Spring 서버가 쓴다)
 dx serve --platform android          # 안드로이드 에뮬레이터 (Android SDK/NDK 필요)
 dx serve --platform ios              # iOS 시뮬레이터 (Mac + Xcode 필요)
 dx bundle --platform <...> --release # 배포용 패키지
@@ -41,7 +41,7 @@ app/
   데스크톱·모바일은 `reqwest`의 쿠키 저장소가 세션 쿠키와 `XSRF-TOKEN`을 들고 있다가,
   상태를 바꾸는 요청에 `X-XSRF-TOKEN` 헤더를 붙입니다. 서버는 바꾸지 않아도 됩니다.
   쿠키 저장소는 메모리에만 있어서 앱을 다시 켜면 로그인이 풀립니다.
-- **주소**: 앱에는 웹 같은 origin이 없습니다. 그래서 `config::resolve`가 `/api`·`/media`는 Spring(8080)으로,
+- **주소**: 앱에는 웹 같은 origin이 없습니다. 그래서 `config::resolve`가 `/api`·`/media`는 Spring(8180)으로,
   `/hls`는 MediaMTX HLS(8888)로, `/whip`은 MediaMTX WHIP(8889)으로 보냅니다.
   안드로이드 에뮬레이터에서는 개발 PC가 `10.0.2.2`로 보입니다. 실제 서버 주소는 빌드할 때
   `API_ORIGIN`, `HLS_ORIGIN`, `WHIP_ORIGIN` 환경 변수로 넣습니다.

@@ -9,7 +9,7 @@
    uv run --with edge-tts python tools/build_narration.py
    ```
    `video/assets/audio/narration.wav`와 `video/timeline.json`이 생긴다.
-2. 앱 화면 캡처 — 앱(Vite 5173, Spring 8080, MediaMTX)이 떠 있어야 한다. 헤드리스 Chrome에 쇼츠 영상을 가짜 카메라로 넣어 실제 WHIP 송출로 방송한다.
+2. 앱 화면 캡처 — 앱(Vite 5173, Spring 8180, MediaMTX)이 떠 있어야 한다. 헤드리스 Chrome에 쇼츠 영상을 가짜 카메라로 넣어 실제 WHIP 송출로 방송한다.
    ```bash
    export PUPPETEER_CORE=<puppeteer-core 경로>   # 예: ~/.npm/_npx/<hash>/node_modules/puppeteer-core
    export FAKE_MEDIA=<cam.mjpeg, mic.wav가 있는 폴더>

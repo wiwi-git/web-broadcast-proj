@@ -3,7 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 import { defineConfig } from 'vite'
 
 // 개발 중에는 API와 미디어 요청을 각 서버로 넘긴다
-const springServer = 'http://localhost:8080'
+const springServer = 'http://localhost:8180'
 const mediaMtxHls = 'http://localhost:8888'
 const mediaMtxWhip = 'http://localhost:8889'
 
