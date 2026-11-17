@@ -15,7 +15,9 @@ import com.webbroadcast.broadcast.BroadcastNotFoundException;
 import com.webbroadcast.broadcast.InvalidBroadcastException;
 import com.webbroadcast.comment.CommentNotFoundException;
 import com.webbroadcast.comment.InvalidCommentException;
+import com.webbroadcast.donation.CheckoutNotFoundException;
 import com.webbroadcast.donation.DonationNotFoundException;
+import com.webbroadcast.donation.DonationNotPendingException;
 import com.webbroadcast.donation.InvalidDonationException;
 import com.webbroadcast.donation.PaymentUnavailableException;
 import com.webbroadcast.user.DuplicateUserException;
@@ -107,6 +109,20 @@ class ApiExceptionHandler {
 	@ExceptionHandler(DonationNotFoundException.class)
 	ProblemDetail donationNotFound(DonationNotFoundException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, "후원을 찾을 수 없습니다.");
+	}
+
+	@ExceptionHandler(CheckoutNotFoundException.class)
+	ProblemDetail checkoutNotFound(CheckoutNotFoundException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND,
+				"결제 정보를 찾을 수 없습니다. 앱에서 후원을 다시 시작해 주세요.");
+	}
+
+	/** 결과가 이미 정해진 후원. 웹이 결과를 보여 줄 수 있게 현재 상태를 함께 보낸다 */
+	@ExceptionHandler(DonationNotPendingException.class)
+	ProblemDetail donationNotPending(DonationNotPendingException e) {
+		ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
+		problem.setProperty("status", e.getStatus());
+		return problem;
 	}
 
 	/** 경로의 ID가 UUID 형식이 아니면 그런 대상은 없는 것으로 본다 */

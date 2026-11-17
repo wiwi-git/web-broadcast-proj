@@ -71,8 +71,13 @@ public class DonationController {
 			throw new PaymentNotConfiguredException();
 		}
 		Donation donation = donationService.start(user.id(), broadcastId, request.amount(), request.message());
-		return new Checkout(SentDonation.from(donation), donation.getOrderId(),
-				donation.getRecipient().getNickname() + "님에게 후원", user.id().toString());
+		return new Checkout(SentDonation.from(donation), donation.getOrderId(), orderName(donation),
+				user.id().toString());
+	}
+
+	/** 결제창에 보이는 주문 이름 */
+	static String orderName(Donation donation) {
+		return donation.getRecipient().getNickname() + "님에게 후원";
 	}
 
 	/** 최근 완료된 Donation을 오래된 순으로 */

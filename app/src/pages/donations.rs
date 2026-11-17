@@ -13,8 +13,12 @@ use crate::time::{format_date, format_number, format_won};
 #[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 const TOSS_SDK: &str = "https://js.tosspayments.com/v2/standard";
 
-// 웹 빌드에서만 쓴다 (앱은 브라우저로 결제한다)
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+/// 결제 방법 안내. 앱은 결제창을 앱 안에 띄울 수 없어서 브라우저에서 결제한다
+#[cfg(target_arch = "wasm32")]
+const PAY_HINT: &str = "결제수단은 다음에 열리는 토스페이먼츠 결제창에서 고릅니다. 테스트 결제라 실제로 돈이 빠져나가지 않습니다.";
+#[cfg(not(target_arch = "wasm32"))]
+const PAY_HINT: &str = "후원하기를 누르면 브라우저에서 결제 화면이 열립니다. 브라우저에서 로그인할 필요는 없습니다. 테스트 결제라 실제로 돈이 빠져나가지 않습니다.";
+
 fn amount_error(amount: Option<u64>) -> Option<&'static str> {
     match amount {
         None => Some("금액을 입력해 주세요."),
@@ -29,8 +33,9 @@ fn amount_error(amount: Option<u64>) -> Option<&'static str> {
 
 /// 방송 중인 Broadcast의 Broadcaster에게 후원한다. web/src/pages/DonatePage.tsx와 같다.
 /// 1. 금액과 메시지를 고른다
-/// 2. 후원하기를 누르면 서버에 후원을 결제 대기로 만들고, 그 id를 orderId로 토스페이먼츠 통합결제창을 연다
-/// 3. 결제 서비스가 /donations/success 또는 /donations/fail로 돌려보낸다
+/// 2. 후원하기를 누르면 서버에 후원을 결제 대기로 만든다
+/// 3. 웹은 그 id를 orderId로 토스페이먼츠 통합결제창을 열고, 결제 서비스가 /donations/success·fail로 돌려보낸다.
+///    앱은 결제 토큰을 받아 기본 브라우저로 웹의 결제 화면을 연다 (`pay_in_browser`, ADR-0005)
 #[component]
 pub fn Donate(id: String) -> Element {
     rsx! {
@@ -66,55 +71,101 @@ fn DonateLoader(id: String) -> Element {
             }
         };
     }
-    // 앱(데스크톱·모바일)은 결제를 기본 브라우저의 웹 후원 화면에서 한다. app/src/app_link.rs 참고
-    #[cfg(not(target_arch = "wasm32"))]
-    return rsx! {
-        DonateInBrowser { broadcast }
-    };
-    #[cfg(target_arch = "wasm32")]
     rsx! {
         DonateForm { broadcast, customer_key: me.id, customer_name: me.nickname }
     }
 }
 
-/// 앱의 후원하기. 토스페이먼츠 결제창은 http(s) 화면이라 Dioxus 앱 안에 띄울 수 없어서(앱이 http(s) 이동을
-/// 모두 기본 브라우저로 넘긴다) 웹의 후원 화면을 브라우저로 연다. 결제가 끝나면 웹이 딥링크로 앱을 다시 연다.
-#[cfg(not(target_arch = "wasm32"))]
-#[component]
-fn DonateInBrowser(broadcast: BroadcastInfo) -> Element {
-    let mut opened = use_signal(|| false);
-    let mut error = use_signal(|| None::<String>);
-    let url = format!("{}/live/{}/donate?app=1", crate::config::web_origin(), api::encode(&broadcast.id));
+/// "후원하기"를 누른 뒤 결제가 어떻게 됐는지
+// 플랫폼마다 쓰는 경우가 다르다
+#[allow(dead_code)]
+enum PayOutcome {
+    /// 웹: 화면 전체가 결제 서비스로 넘어갔다
+    Redirected,
+    /// 앱: 기본 브라우저로 결제 화면을 열었다
+    OpenedBrowser,
+    /// 결제창을 닫았다
+    Canceled,
+    Failed(String),
+}
 
-    rsx! {
-        div { class: "donate-form",
-            h1 { "후원하기" }
-            p { class: "meta",
-                strong { class: "owner-name", "{broadcast.owner.nickname}" }
-                "님의 방송 · {broadcast.title}"
-            }
-            p { "후원 결제는 브라우저에서 진행합니다. 결제를 마치면 앱으로 돌아와 후원 내역을 보여 줍니다." }
-            p { class: "hint", "브라우저에서 로그인이 필요할 수 있습니다. 테스트 결제라 실제로 돈이 빠져나가지 않습니다." }
-            if let Some(message) = error() {
-                p { class: "hint error", "{message}" }
-            }
-            if opened() {
-                p { class: "hint", "브라우저에서 후원을 이어서 진행해 주세요." }
-            }
-            div { class: "actions",
-                Link { to: Route::LiveWatch { id: broadcast.id.clone() }, class: "button", "방송으로 돌아가기" }
-                button {
-                    r#type: "button",
-                    class: "button primary",
-                    onclick: move |_| match webbrowser::open(&url) {
-                        Ok(()) => opened.set(true),
-                        Err(e) => error.set(Some(format!("브라우저를 열지 못했습니다. {e}"))),
-                    },
-                    if opened() { "브라우저 다시 열기" } else { "브라우저에서 후원하기" }
-                }
-            }
-        }
+/// 앱(데스크톱·모바일)의 결제 (ADR-0005). 토스페이먼츠 결제창은 http(s) 화면이라 Dioxus 앱 안에 띄울 수 없다
+/// (앱이 http(s) 이동을 모두 기본 브라우저로 넘긴다). 그래서 결제 토큰을 받아 기본 브라우저로 웹의 결제 화면을 연다.
+/// 결제 화면은 로그인 없이 토큰으로 이 후원 하나만 결제하고, 끝나면 webbroadcast://donations 로 앱을 다시 연다.
+#[cfg(not(target_arch = "wasm32"))]
+async fn pay_in_browser(donation_id: &str) -> PayOutcome {
+    let issued = match api::issue_checkout_token(donation_id).await {
+        Ok(issued) => issued,
+        Err(e) => return PayOutcome::Failed(e.to_string()),
+    };
+    let url = format!("{}/checkout?token={}", crate::config::web_origin(), api::encode(&issued.token));
+    match webbrowser::open(&url) {
+        Ok(()) => PayOutcome::OpenedBrowser,
+        Err(e) => PayOutcome::Failed(format!("브라우저를 열지 못했습니다. {e}")),
     }
+}
+
+/// 웹: 토스페이먼츠 결제창을 열면 화면 전체가 결제 서비스로 넘어가고, 결과는 /donations/success·fail로 돌아온다.
+/// 이 함수가 결과를 돌려주는 건 결제창으로 넘어가지 못했거나 결제창을 닫았을 때뿐이다.
+/// 결제창을 닫으면 결제 서비스는 failUrl에 orderId를 붙이지 않으므로 직접 붙여 둔다.
+#[cfg(target_arch = "wasm32")]
+async fn pay_in_app(
+    client_key: &str,
+    customer_key: &str,
+    customer_name: &str,
+    amount: u64,
+    order_id: &str,
+    order_name: &str,
+) -> PayOutcome {
+    let args = serde_json::json!({
+        "sdk": TOSS_SDK,
+        "clientKey": client_key,
+        "customerKey": customer_key,
+        "amount": amount,
+        "orderId": order_id,
+        "orderName": order_name,
+        "customerName": customer_name,
+    });
+    let script = format!(
+        r#"
+        const args = {args};
+        try {{
+          if (!window.TossPayments) {{
+            await new Promise((resolve, reject) => {{
+              const script = document.createElement('script');
+              script.src = args.sdk;
+              script.onload = resolve;
+              script.onerror = () => reject(new Error('결제 모듈을 불러오지 못했습니다.'));
+              document.head.appendChild(script);
+            }});
+          }}
+          const payment = window.TossPayments(args.clientKey).payment({{ customerKey: args.customerKey }});
+          const origin = window.location.origin;
+          await payment.requestPayment({{
+            method: 'CARD',
+            amount: {{ currency: 'KRW', value: args.amount }},
+            orderId: args.orderId,
+            orderName: args.orderName,
+            customerName: args.customerName,
+            successUrl: origin + '/donations/success',
+            failUrl: origin + '/donations/fail?donationId=' + encodeURIComponent(args.orderId),
+          }});
+          dioxus.send({{ ok: true }});
+        }} catch (e) {{
+          dioxus.send({{ code: e.code ?? null, message: e.message ?? null }});
+        }}
+        "#
+    );
+    let result = document::eval(&script).recv::<serde_json::Value>().await.unwrap_or_default();
+    if result.get("ok").is_some() {
+        return PayOutcome::Redirected;
+    }
+    // PC에서는 결제창을 닫아도 failUrl로 이동하지 않고 USER_CANCEL 오류가 온다
+    if result.get("code").and_then(|v| v.as_str()) == Some("USER_CANCEL") {
+        return PayOutcome::Canceled;
+    }
+    let message = result.get("message").and_then(|v| v.as_str());
+    PayOutcome::Failed(message.unwrap_or("결제를 요청하지 못했습니다.").to_owned())
 }
 
 #[component]
@@ -125,6 +176,8 @@ fn DonateForm(broadcast: BroadcastInfo, customer_key: String, customer_name: Str
     let mut busy = use_signal(|| false);
     let mut error = use_signal(|| None::<String>);
     let mut canceled = use_signal(|| false);
+    // 앱: 기본 브라우저로 결제 화면을 열었다
+    let mut opened = use_signal(|| false);
 
     let amount = amount_text().parse::<u64>().ok();
     let invalid_amount = amount_error(amount);
@@ -161,60 +214,29 @@ fn DonateForm(broadcast: BroadcastInfo, customer_key: String, customer_name: Str
                 }
             };
             let order_id = checkout.order_id.clone();
-            let args = serde_json::json!({
-                "sdk": TOSS_SDK,
-                "clientKey": key,
-                "customerKey": customer_key,
-                "amount": amount,
-                "orderId": order_id,
-                "orderName": checkout.order_name,
-                "customerName": customer_name,
-            });
-            // 결제창이 열리면 화면 전체가 결제 서비스로 넘어가므로 아래 결과는 실패·취소일 때만 돌아온다.
-            // 결제창을 닫으면 결제 서비스는 failUrl에 orderId를 붙이지 않으므로 직접 붙여 둔다
-            let script = format!(
-                r#"
-                const args = {args};
-                try {{
-                  if (!window.TossPayments) {{
-                    await new Promise((resolve, reject) => {{
-                      const script = document.createElement('script');
-                      script.src = args.sdk;
-                      script.onload = resolve;
-                      script.onerror = () => reject(new Error('결제 모듈을 불러오지 못했습니다.'));
-                      document.head.appendChild(script);
-                    }});
-                  }}
-                  const payment = window.TossPayments(args.clientKey).payment({{ customerKey: args.customerKey }});
-                  const origin = window.location.origin;
-                  await payment.requestPayment({{
-                    method: 'CARD',
-                    amount: {{ currency: 'KRW', value: args.amount }},
-                    orderId: args.orderId,
-                    orderName: args.orderName,
-                    customerName: args.customerName,
-                    successUrl: origin + '/donations/success',
-                    failUrl: origin + '/donations/fail?donationId=' + encodeURIComponent(args.orderId),
-                  }});
-                  dioxus.send({{ ok: true }});
-                }} catch (e) {{
-                  dioxus.send({{ code: e.code ?? null, message: e.message ?? null }});
-                }}
-                "#
-            );
-            let result = document::eval(&script).recv::<serde_json::Value>().await.unwrap_or_default();
-            if result.get("ok").is_some() {
-                return;
-            }
-            // 결제창으로 넘어가지 못했거나 결제창을 닫은 경우. 결제를 마치지 않았으므로 취소로 끝낸다
-            // PC에서는 결제창을 닫아도 failUrl로 이동하지 않고 USER_CANCEL 오류가 온다
-            let code = result.get("code").and_then(|v| v.as_str());
-            let failure = result.get("message").and_then(|v| v.as_str()).map(str::to_owned);
-            let _ = api::abandon_donation(&order_id, Some("PAY_PROCESS_CANCELED"), failure.as_deref()).await;
-            if code == Some("USER_CANCEL") {
-                canceled.set(true);
-            } else {
-                error.set(Some(failure.unwrap_or_else(|| "결제를 요청하지 못했습니다.".to_owned())));
+
+            #[cfg(not(target_arch = "wasm32"))]
+            let outcome = {
+                let _ = (key, &customer_key, &customer_name);
+                pay_in_browser(&order_id).await
+            };
+            #[cfg(target_arch = "wasm32")]
+            let outcome =
+                pay_in_app(&key, &customer_key, &customer_name, amount, &order_id, &checkout.order_name).await;
+
+            match outcome {
+                // 웹은 화면이 결제 서비스로 넘어간다
+                PayOutcome::Redirected => return,
+                PayOutcome::OpenedBrowser => opened.set(true),
+                // 결제를 마치지 않았으므로 후원은 취소로 끝낸다
+                PayOutcome::Canceled => {
+                    let _ = api::abandon_donation(&order_id, Some("PAY_PROCESS_CANCELED"), None).await;
+                    canceled.set(true);
+                }
+                PayOutcome::Failed(message) => {
+                    let _ = api::abandon_donation(&order_id, Some("PAY_PROCESS_CANCELED"), Some(&message)).await;
+                    error.set(Some(message));
+                }
             }
             busy.set(false);
         }
@@ -287,7 +309,10 @@ fn DonateForm(broadcast: BroadcastInfo, customer_key: String, customer_name: Str
             if canceled() {
                 p { class: "hint", "후원을 취소했습니다. 결제되지 않았습니다." }
             }
-            p { class: "hint", "결제수단은 다음에 열리는 토스페이먼츠 결제창에서 고릅니다. 테스트 결제라 실제로 돈이 빠져나가지 않습니다." }
+            if opened() {
+                p { class: "hint", "브라우저에서 결제를 이어서 진행해 주세요. 결제를 마치면 앱으로 돌아와 후원 내역을 보여 줍니다." }
+            }
+            p { class: "hint", {PAY_HINT} }
             div { class: "actions",
                 Link { to: Route::LiveWatch { id: broadcast.id.clone() }, class: "button", "취소" }
                 button {

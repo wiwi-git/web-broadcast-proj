@@ -2,6 +2,7 @@ package com.webbroadcast.donation;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Limit;
@@ -37,6 +38,9 @@ interface DonationRepository extends JpaRepository<Donation, UUID> {
 			from Donation d
 			where d.recipient.id = :recipientId and d.status = com.webbroadcast.donation.DonationStatus.DONE""")
 	Total totalReceived(UUID recipientId);
+
+	@EntityGraph(attributePaths = { "donor", "recipient" })
+	Optional<Donation> findByCheckoutTokenHash(String checkoutTokenHash);
 
 	List<Donation> findByStatusAndCreatedAtBefore(DonationStatus status, Instant createdAt);
 }

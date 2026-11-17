@@ -47,7 +47,14 @@ public class DonationService {
 	static final String CANCELED_BY_DONOR = "PAY_PROCESS_CANCELED";
 	private static final int FAILURE_MESSAGE_MAX_LENGTH = 500;
 
+	/** 결제 토큰으로 결제 화면을 열 수 있는 시간 (ADR-0005). 승인은 결제 대기인 동안 받는다 */
+	static final Duration CHECKOUT_TOKEN_TTL = Duration.ofMinutes(10);
+
 	public record Received(List<Donation> items, long totalCount, long totalAmount) {
+	}
+
+	/** Donor에게 한 번만 돌려주는 결제 토큰. 서버에는 해시만 남는다 */
+	public record IssuedCheckout(String token, Instant expiresAt) {
 	}
 
 	private final DonationRepository repository;
@@ -127,6 +134,51 @@ public class DonationService {
 		return saveOrCurrent(donation);
 	}
 
+	/**
+	 * 앱이 브라우저에서 결제하도록 결제 토큰을 발급한다 (ADR-0005). Donor 본인이, 결제 대기일 때만 받는다.
+	 * 다시 발급하면 이전 토큰은 쓸 수 없다.
+	 */
+	public IssuedCheckout issueCheckoutToken(UUID id, UUID userId) {
+		Donation donation = sentBy(id, userId);
+		if (!donation.isPending()) {
+			throw new DonationNotPendingException(donation.getStatus());
+		}
+		String token = CheckoutToken.generate();
+		Instant expiresAt = clock.instant().plus(CHECKOUT_TOKEN_TTL);
+		donation.issueCheckoutToken(CheckoutToken.hash(token), expiresAt);
+		repository.save(donation);
+		return new IssuedCheckout(token, expiresAt);
+	}
+
+	/**
+	 * 결제 토큰으로 결제 화면을 연다. 로그인하지 않아도 된다. 토큰을 쓰지 않으므로 새로고침해도 다시 열 수 있다.
+	 *
+	 * @throws CheckoutNotFoundException 토큰이 없거나 틀렸거나 결제 화면을 열 수 있는 시간이 지났을 때
+	 * @throws DonationNotPendingException 결과가 이미 정해졌을 때
+	 */
+	public Donation openCheckout(String token) {
+		Donation donation = byCheckoutToken(token);
+		if (!donation.isPending()) {
+			throw new DonationNotPendingException(donation.getStatus());
+		}
+		if (!donation.isCheckoutOpen(clock.instant())) {
+			throw new CheckoutNotFoundException();
+		}
+		return donation;
+	}
+
+	/** 결제 토큰으로 승인한다. 규칙은 {@link #approve}와 같고, Donor는 토큰을 발급받은 User다. */
+	public Donation approveCheckout(String token, String paymentKey, Long amount) {
+		Donation donation = byCheckoutToken(token);
+		return approve(donation.getId(), donation.getDonor().getId(), paymentKey, amount);
+	}
+
+	/** 결제 토큰으로 결제 인증 단계의 실패·취소를 남긴다. 규칙은 {@link #abandon}과 같다. */
+	public Donation abandonCheckout(String token, String code, String message) {
+		Donation donation = byCheckoutToken(token);
+		return abandon(donation.getId(), donation.getDonor().getId(), code, message);
+	}
+
 	/** 한 Broadcast의 최근 완료된 Donation을 오래된 순으로. 누구나 볼 수 있다. */
 	public List<Donation> listDoneOnBroadcast(UUID broadcastId) {
 		broadcastService.get(broadcastId);
@@ -203,6 +255,13 @@ public class DonationService {
 		catch (OptimisticLockingFailureException e) {
 			return repository.findById(donation.getId()).orElseThrow(DonationNotFoundException::new);
 		}
+	}
+
+	private Donation byCheckoutToken(String token) {
+		if (token == null || token.isBlank()) {
+			throw new CheckoutNotFoundException();
+		}
+		return repository.findByCheckoutTokenHash(CheckoutToken.hash(token)).orElseThrow(CheckoutNotFoundException::new);
 	}
 
 	private Donation sentBy(UUID id, UUID userId) {

@@ -10,6 +10,7 @@ import SignUpPage from './pages/SignUpPage.tsx'
 import DonatePage from './pages/DonatePage.tsx'
 import { DonationFailPage, DonationSuccessPage } from './pages/DonationResultPage.tsx'
 import DonationsPage from './pages/DonationsPage.tsx'
+import CheckoutPage, { CheckoutFailPage, CheckoutSuccessPage } from './pages/CheckoutPage.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
 import { loginPath, useAuth } from './auth/useAuth.ts'
 import { CameraIcon, HeartIcon, LiveIcon, LoginIcon, LogoutIcon, UploadIcon, VideoIcon } from './components/Icons.tsx'
@@ -63,6 +64,10 @@ export default function App() {
               </RequireLogin>
             }
           />
+          {/* 앱의 브라우저 결제 (ADR-0005). 로그인 없이 결제 토큰으로 결제한다 */}
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
+          <Route path="/checkout/fail" element={<CheckoutFailPage />} />
           {/* 결제 서비스가 결제 인증을 마치고 돌려보내는 곳 */}
           <Route
             path="/donations/success"

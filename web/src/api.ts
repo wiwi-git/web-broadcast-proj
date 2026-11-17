@@ -364,3 +364,29 @@ export function fetchSentDonations(): Promise<SentDonation[]> {
 export function fetchReceivedDonations(): Promise<ReceivedDonations> {
   return getJson('/api/donations/received')
 }
+
+// 앱의 브라우저 결제 (ADR-0005). 로그인 없이 앱이 넘긴 결제 토큰으로 Donation 하나를 결제한다
+
+export interface CheckoutView {
+  donation: SentDonation
+  orderId: string
+  orderName: string
+  customerKey: string
+  clientKey: string
+}
+
+const checkoutUrl = (token: string) => `/api/checkout/${encodeURIComponent(token)}`
+
+/** 토큰이 없거나 결제 화면을 열 시간이 지났으면 404, 이미 결과가 정해졌으면 409(problem.status에 현재 상태) */
+export function fetchCheckout(token: string): Promise<CheckoutView> {
+  return getJson(checkoutUrl(token))
+}
+
+/** 결과를 아직 모르면 503 ApiError. 같은 요청을 다시 보내면 된다 */
+export function approveCheckout(token: string, paymentKey: string, amount: number): Promise<SentDonation> {
+  return sendJson('POST', `${checkoutUrl(token)}/approve`, { paymentKey, amount })
+}
+
+export function abandonCheckout(token: string, code: string | null, message: string | null): Promise<SentDonation> {
+  return sendJson('POST', `${checkoutUrl(token)}/abandon`, { code, message })
+}

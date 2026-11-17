@@ -420,6 +420,19 @@ pub async fn abandon_donation(id: &str, code: Option<&str>, message: Option<&str
     send_json(Method::POST, &format!("/api/donations/{}/abandon", encode(id)), &AbandonInput { code, message }).await
 }
 
+/// 앱이 브라우저에서 결제하도록 받는 결제 토큰 (ADR-0005). 토큰은 다시 받을 수 없으므로 바로 쓴다
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IssuedCheckoutToken {
+    pub token: String,
+    pub expires_at: String,
+}
+
+/// 후원자 본인이, 결제 대기일 때만 받는다. 다시 받으면 이전 토큰은 쓸 수 없다
+pub async fn issue_checkout_token(donation_id: &str) -> ApiResult<IssuedCheckoutToken> {
+    send_json(Method::POST, &format!("/api/donations/{}/checkout-token", encode(donation_id)), &serde_json::json!({})).await
+}
+
 pub async fn fetch_sent_donations() -> ApiResult<Vec<SentDonation>> {
     get_json("/api/donations/sent").await
 }
