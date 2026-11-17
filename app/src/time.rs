@@ -32,6 +32,45 @@ pub fn format_relative(iso: &str) -> String {
     }
 }
 
+/// since부터 now까지의 경과 시간("12:34")
+pub fn format_elapsed(since: &str, now: DateTime<Utc>) -> String {
+    let Ok(start) = DateTime::parse_from_rfc3339(since) else { return String::new() };
+    let seconds = (now - start.with_timezone(&Utc)).num_milliseconds() as f64 / 1000.0;
+    format_duration(seconds)
+}
+
+/// 파일 크기. "1.25 GB", "12.3 MB", "40 KB" (web의 formatBytes와 같다)
+pub fn format_bytes(bytes: u64) -> String {
+    const MB: f64 = 1024.0 * 1024.0;
+    const GB: f64 = MB * 1024.0;
+    let value = bytes as f64;
+    if value >= GB {
+        format!("{:.2} GB", value / GB)
+    } else if value >= MB {
+        format!("{:.1} MB", value / MB)
+    } else {
+        format!("{} KB", (value / 1024.0).ceil())
+    }
+}
+
+/// 12000 → "12,000"
+pub fn format_number(value: u64) -> String {
+    let digits = value.to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// 12000 → "12,000원"
+pub fn format_won(amount: u64) -> String {
+    format!("{}원", format_number(amount))
+}
+
 /// 웹(wasm)과 앱(tokio)에서 같은 방식으로 기다린다
 pub async fn sleep(duration: Duration) {
     #[cfg(target_arch = "wasm32")]
@@ -49,6 +88,13 @@ mod tests {
         assert_eq!(format_duration(125.0), "2:05");
         assert_eq!(format_duration(3725.4), "1:02:05");
         assert_eq!(format_duration(156.27), "2:36");
+    }
+
+    #[test]
+    fn formats_won() {
+        assert_eq!(format_won(500), "500원");
+        assert_eq!(format_won(12_000), "12,000원");
+        assert_eq!(format_won(1_234_567), "1,234,567원");
     }
 
     #[test]

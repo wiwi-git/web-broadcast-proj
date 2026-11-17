@@ -1,11 +1,11 @@
-//! 동영상 댓글. web/src/components/VideoComments.tsx, CommentItem.tsx, CommentForm.tsx와 같다.
+//! 댓글 입력과 댓글 한 개, 동영상 댓글 목록. web/src/components/VideoComments.tsx, CommentItem.tsx, CommentForm.tsx와 같다.
 
 use std::collections::HashSet;
 
 use dioxus::prelude::*;
 
 use super::ConfirmButton;
-use crate::api::{self, COMMENT_MAX_LENGTH, Comment};
+use crate::api::{self, COMMENT_MAX_LENGTH, Comment, CommentTarget};
 use crate::auth::use_auth;
 use crate::route::Route;
 use crate::time::format_relative;
@@ -62,7 +62,7 @@ pub fn VideoComments(video_id: String) -> Element {
         section { class: "comments",
             h2 { class: "comments-title", "댓글 {total_label}" }
             CommentForm {
-                video_id: video_id.clone(),
+                target: CommentTarget::Video(video_id.clone()),
                 on_written: move |comment: Comment| {
                     let mut current = items().unwrap_or_default();
                     current.insert(0, comment);
@@ -114,8 +114,9 @@ pub fn VideoComments(video_id: String) -> Element {
 }
 
 /// 로그인한 User만 쓸 수 있다. 로그인하지 않았으면 로그인 안내를 보여 준다.
+/// compact면 라이브 화면처럼 한 줄 입력칸으로 보여 준다.
 #[component]
-fn CommentForm(video_id: String, on_written: EventHandler<Comment>) -> Element {
+pub fn CommentForm(target: CommentTarget, on_written: EventHandler<Comment>, #[props(default)] compact: bool) -> Element {
     let auth = use_auth();
     let route = use_route::<Route>();
     let mut body = use_signal(String::new);
@@ -132,7 +133,7 @@ fn CommentForm(video_id: String, on_written: EventHandler<Comment>) -> Element {
     }
 
     let submit = move |event: FormEvent| {
-        let video_id = video_id.clone();
+        let target = target.clone();
         async move {
             event.prevent_default();
             let text = body().trim().to_owned();
@@ -141,7 +142,7 @@ fn CommentForm(video_id: String, on_written: EventHandler<Comment>) -> Element {
             }
             busy.set(true);
             error.set(None);
-            match api::write_video_comment(&video_id, &text).await {
+            match api::write_comment(&target, &text).await {
                 Ok(comment) => {
                     on_written.call(comment);
                     body.set(String::new());
@@ -154,17 +155,30 @@ fn CommentForm(video_id: String, on_written: EventHandler<Comment>) -> Element {
 
     let length = body.read().chars().count();
     rsx! {
-        form { class: "comment-form", onsubmit: submit,
-            textarea {
-                class: "text-input",
-                rows: 3,
-                placeholder: "댓글을 남겨 보세요",
-                maxlength: COMMENT_MAX_LENGTH as i64,
-                value: "{body}",
-                oninput: move |e| body.set(e.value()),
+        form { class: if compact { "comment-form compact" } else { "comment-form" }, onsubmit: submit,
+            if compact {
+                input {
+                    r#type: "text",
+                    class: "text-input",
+                    placeholder: "댓글 입력",
+                    maxlength: COMMENT_MAX_LENGTH as i64,
+                    value: "{body}",
+                    oninput: move |e| body.set(e.value()),
+                }
+            } else {
+                textarea {
+                    class: "text-input",
+                    rows: 3,
+                    placeholder: "댓글을 남겨 보세요",
+                    maxlength: COMMENT_MAX_LENGTH as i64,
+                    value: "{body}",
+                    oninput: move |e| body.set(e.value()),
+                }
             }
             div { class: "comment-form-actions",
-                span { class: "hint", "{length} / {COMMENT_MAX_LENGTH}" }
+                if !compact {
+                    span { class: "hint", "{length} / {COMMENT_MAX_LENGTH}" }
+                }
                 button {
                     r#type: "submit",
                     class: "button primary small",
@@ -181,7 +195,7 @@ fn CommentForm(video_id: String, on_written: EventHandler<Comment>) -> Element {
 
 /// Author에게만 수정·삭제 버튼이 보인다. 서버도 Author인지 다시 확인한다.
 #[component]
-fn CommentItem(comment: Comment, on_edited: EventHandler<Comment>, on_deleted: EventHandler<String>) -> Element {
+pub fn CommentItem(comment: Comment, on_edited: EventHandler<Comment>, on_deleted: EventHandler<String>) -> Element {
     let auth = use_auth();
     let mut editing = use_signal(|| false);
     let mut draft = use_signal(String::new);

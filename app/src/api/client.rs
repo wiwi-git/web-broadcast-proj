@@ -52,6 +52,8 @@ impl From<reqwest::Error> for ApiError {
 mod native {
     use std::sync::{Arc, LazyLock};
 
+    use std::path::PathBuf;
+
     use reqwest::cookie::{CookieStore, Jar};
 
     pub struct Http {
@@ -61,6 +63,7 @@ mod native {
 
     pub static HTTP: LazyLock<Http> = LazyLock::new(|| {
         let jar = Arc::new(Jar::default());
+        restore_cookies(&jar);
         let client = reqwest::Client::builder()
             .cookie_provider(jar.clone())
             .build()
@@ -68,12 +71,54 @@ mod native {
         Http { client, jar }
     });
 
+    fn api_url() -> Option<reqwest::Url> {
+        crate::config::resolve("/api").parse().ok()
+    }
+
     impl Http {
         pub fn xsrf_token(&self) -> Option<String> {
-            let url = crate::config::resolve("/api").parse().ok()?;
-            let cookies = self.jar.cookies(&url)?;
+            let cookies = self.jar.cookies(&api_url()?)?;
             super::find_cookie(cookies.to_str().ok()?, "XSRF-TOKEN")
         }
+
+        /// 앱을 다시 켜도 로그인이 유지되도록 API 서버로 보낼 쿠키(세션, XSRF-TOKEN)를 파일에 적어 둔다.
+        /// 서버 세션은 30분 동안 요청이 없으면 끝나므로(spring.session.timeout) 그 뒤에는 다시 로그인해야 한다.
+        pub fn save_cookies(&self) {
+            let (Some(path), Some(url)) = (cookie_file(), api_url()) else { return };
+            let cookies = self.jar.cookies(&url).and_then(|value| value.to_str().ok().map(str::to_owned)).unwrap_or_default();
+            if let Some(dir) = path.parent() {
+                let _ = std::fs::create_dir_all(dir);
+            }
+            let _ = std::fs::write(path, cookies);
+        }
+    }
+
+    fn restore_cookies(jar: &Jar) {
+        let (Some(path), Some(url)) = (cookie_file(), api_url()) else { return };
+        let Ok(saved) = std::fs::read_to_string(path) else { return };
+        for cookie in saved.split("; ").filter(|cookie| cookie.contains('=')) {
+            jar.add_cookie_str(&format!("{cookie}; Path=/"), &url);
+        }
+    }
+
+    /// 앱 데이터 폴더의 쿠키 파일. 테스트는 실제 앱의 로그인을 건드리지 않도록 저장하지 않는다
+    fn cookie_file() -> Option<PathBuf> {
+        if cfg!(test) {
+            return None;
+        }
+        const APP_ID: &str = "com.webbroadcast.app";
+        let home = || std::env::var_os("HOME").map(PathBuf::from);
+        let dir = if cfg!(any(target_os = "macos", target_os = "ios")) {
+            home()?.join("Library/Application Support").join(APP_ID)
+        } else if cfg!(target_os = "windows") {
+            PathBuf::from(std::env::var_os("APPDATA")?).join(APP_ID)
+        } else if cfg!(target_os = "android") {
+            // Android 앱의 내부 저장소. dx는 번들 ID를 패키지 이름으로 쓴다
+            PathBuf::from("/data/data").join(APP_ID).join("files")
+        } else {
+            std::env::var_os("XDG_DATA_HOME").map(PathBuf::from).or_else(|| Some(home()?.join(".local/share")))?.join(APP_ID)
+        };
+        Some(dir.join("cookies"))
     }
 }
 
@@ -122,13 +167,13 @@ fn builder(method: Method, url: &str) -> RequestBuilder {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn xsrf_token() -> Option<String> {
+pub(super) fn xsrf_token() -> Option<String> {
     use wasm_bindgen::JsCast;
     let document = web_sys::window()?.document()?.dyn_into::<web_sys::HtmlDocument>().ok()?;
     find_cookie(&document.cookie().ok()?, "XSRF-TOKEN")
 }
 
-fn request(method: Method, path: &str) -> RequestBuilder {
+pub(super) fn request(method: Method, path: &str) -> RequestBuilder {
     let changes_state = method != Method::GET;
     let builder = builder(method, &config::resolve(path));
     match xsrf_token() {
@@ -138,18 +183,26 @@ fn request(method: Method, path: &str) -> RequestBuilder {
 }
 
 /// 서버는 오류를 ProblemDetail로 보내며, detail이 사용자에게 보여줄 문구다.
-async fn check(response: Response) -> ApiResult<Response> {
+pub(super) async fn check(response: Response) -> ApiResult<Response> {
+    // 응답이 쿠키를 바꿨을 수 있다 (로그인, 로그아웃, 새 XSRF-TOKEN)
+    #[cfg(not(target_arch = "wasm32"))]
+    native::HTTP.save_cookies();
     let status = response.status();
     if status.is_success() {
         return Ok(response);
     }
     let body = response.text().await.unwrap_or_default();
-    let problem: serde_json::Value = serde_json::from_str(&body).unwrap_or_default();
+    Err(server_error(status.as_u16(), &body))
+}
+
+/// ProblemDetail 본문을 ApiError로 바꾼다
+pub(super) fn server_error(status: u16, body: &str) -> ApiError {
+    let problem: serde_json::Value = serde_json::from_str(body).unwrap_or_default();
     let message = problem
         .get("detail")
         .and_then(|detail| detail.as_str())
-        .map_or_else(|| format!("요청에 실패했습니다. ({})", status.as_u16()), str::to_owned);
-    Err(ApiError::Server { status: status.as_u16(), message, problem })
+        .map_or_else(|| format!("요청에 실패했습니다. ({status})"), str::to_owned);
+    ApiError::Server { status, message, problem }
 }
 
 pub async fn get_json<T: DeserializeOwned>(path: &str) -> ApiResult<T> {

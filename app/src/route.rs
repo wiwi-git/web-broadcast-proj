@@ -15,8 +15,13 @@ pub enum Route {
         LiveWatch { id: String },
         #[route("/live/:id/donate")]
         Donate { id: String },
-        #[route("/donations")]
-        Donations {},
+        #[route("/donations?:tab")]
+        Donations { tab: String },
+        // 결제 서비스가 결제 인증을 마치고 돌려보내는 곳. 쿼리 이름(paymentKey 등)은 결제 서비스가 정한다
+        #[route("/donations/success?:..query")]
+        DonationSuccess { query: String },
+        #[route("/donations/fail?:..query")]
+        DonationFail { query: String },
         #[route("/broadcast")]
         Broadcast {},
         #[route("/videos?:page")]
@@ -46,5 +51,50 @@ pub fn safe_next(next: &str) -> Route {
         next.parse().unwrap_or(Route::LiveList {})
     } else {
         Route::LiveList {}
+    }
+}
+
+/// "a=1&b=%ED%95%9C" 같은 쿼리 문자열에서 name의 값을 꺼낸다
+pub fn query_param(query: &str, name: &str) -> Option<String> {
+    query.trim_start_matches('?').split('&').find_map(|pair| {
+        let (key, value) = pair.split_once('=').unwrap_or((pair, ""));
+        (key == name).then(|| decode_component(value))
+    })
+}
+
+fn decode_component(value: &str) -> String {
+    let bytes = value.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'+' => out.push(b' '),
+            b'%' => {
+                let hex = bytes.get(i + 1..i + 3).and_then(|h| std::str::from_utf8(h).ok());
+                if let Some(byte) = hex.and_then(|h| u8::from_str_radix(h, 16).ok()) {
+                    out.push(byte);
+                    i += 3;
+                    continue;
+                }
+                out.push(b'%');
+            }
+            other => out.push(other),
+        }
+        i += 1;
+    }
+    String::from_utf8_lossy(&out).into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reads_query_params() {
+        let query = "paymentKey=tk_1&orderId=abc&amount=5000&message=%EC%B7%A8%EC%86%8C+%EB%90%A8";
+        assert_eq!(query_param(query, "paymentKey").as_deref(), Some("tk_1"));
+        assert_eq!(query_param(query, "amount").as_deref(), Some("5000"));
+        assert_eq!(query_param(query, "message").as_deref(), Some("취소 됨"));
+        assert_eq!(query_param(query, "code"), None);
     }
 }

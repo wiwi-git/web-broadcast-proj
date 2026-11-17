@@ -13,13 +13,16 @@ thiserror = "2"
 
 # 데스크톱·모바일: 앱이 쿠키 저장소를 직접 들고 세션 쿠키와 XSRF-TOKEN을 유지한다
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "rustls-tls"] }
-tokio = { version = "1", features = ["time"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "rustls-tls", "multipart", "stream"] }
+tokio = { version = "1", features = ["time", "fs"] }
+# 업로드할 파일을 조금씩 읽어 보내며 보낸 양을 센다
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = "0.3"
 
 # 웹: 브라우저가 쿠키를 관리하므로 XSRF-TOKEN만 document.cookie에서 읽는다
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 reqwest = { version = "0.12", features = ["json"] }
-web-sys = { version = "0.3", features = ["HtmlDocument"] }
+web-sys = { version = "0.3", features = ["HtmlDocument", "File", "FormData", "ProgressEvent", "XmlHttpRequest", "XmlHttpRequestUpload"] }
 wasm-bindgen = "0.2"
 gloo-timers = { version = "0.3", features = ["futures"] }
 

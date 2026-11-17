@@ -1,14 +1,16 @@
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
+use dioxus::html::FileData;
 use dioxus::prelude::*;
 
-use super::Todo;
 use crate::api::{self, ApiError, DESCRIPTION_MAX_LENGTH, TITLE_MAX_LENGTH, Video, VideoEdit, VideoStatus};
 use crate::auth::{RequireLogin, use_auth};
 use crate::components::{ConfirmButton, HlsPlayer, VideoComments};
 use crate::config;
 use crate::route::Route;
-use crate::time::{format_date, format_duration, sleep};
+use crate::time::{format_bytes, format_date, format_duration, sleep};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(3);
 
@@ -272,11 +274,128 @@ fn EditVideoForm(video: Video, on_saved: EventHandler<Video>, on_cancel: EventHa
     }
 }
 
+/// web/src/pages/UploadPage.tsx와 같은 화면
 #[component]
 pub fn Upload() -> Element {
     rsx! {
-        RequireLogin {
-            Todo { title: "업로드", note: "파일 선택과 진행률 표시 자리." }
+        RequireLogin { UploadForm {} }
+    }
+}
+
+#[component]
+fn UploadForm() -> Element {
+    let navigator = use_navigator();
+    let mut file = use_signal(|| None::<FileData>);
+    let mut title = use_signal(String::new);
+    let mut description = use_signal(String::new);
+    // 업로드 중일 때만 Some. 0.0~1.0
+    let mut progress = use_signal(|| None::<f64>);
+    let mut error = use_signal(|| None::<String>);
+
+    let uploading = progress().is_some();
+    let problem = file.read().as_ref().and_then(|f| api::file_problem(&f.name(), f.size()));
+    let can_submit = file.read().is_some() && problem.is_none() && !title().trim().is_empty() && !uploading;
+    let file_hint = match (&problem, file.read().as_ref()) {
+        (Some(problem), _) => problem.clone(),
+        (None, Some(f)) => format_bytes(f.size()),
+        (None, None) => format!("{} · 최대 2GB", api::ALLOWED_EXTENSIONS.join(", ")),
+    };
+    let accept = api::ALLOWED_EXTENSIONS.iter().map(|ext| format!(".{ext}")).collect::<Vec<_>>().join(",");
+
+    let submit = move |event: FormEvent| async move {
+        event.prevent_default();
+        let Some(selected) = file() else { return };
+        if !can_submit {
+            return;
+        }
+        error.set(None);
+        progress.set(Some(0.0));
+        let total = selected.size().max(1);
+        let sent = Arc::new(AtomicU64::new(0));
+        let input = api::UploadInput { title: title().trim().to_owned(), description: description() };
+
+        // 보낸 양은 업로드하는 쪽이 계속 더하고, 화면은 0.2초마다 읽어 그린다
+        let watched = sent.clone();
+        let watcher = spawn(async move {
+            loop {
+                progress.set(Some(watched.load(Ordering::Relaxed) as f64 / total as f64));
+                sleep(Duration::from_millis(200)).await;
+            }
+        });
+        let result = api::upload_video(&selected, input, sent).await;
+        watcher.cancel();
+        match result {
+            Ok(video) => {
+                navigator.push(Route::VideoDetail { id: video.id });
+            }
+            Err(e) => {
+                error.set(Some(e.to_string()));
+                progress.set(None);
+            }
+        }
+    };
+
+    let title_length = title.read().chars().count();
+    let description_length = description.read().chars().count();
+    rsx! {
+        form { class: "upload-form", onsubmit: submit,
+            h1 { class: "page-title", "동영상 업로드" }
+
+            label { class: "field",
+                span { class: "label", "영상 파일" }
+                input {
+                    r#type: "file",
+                    accept,
+                    disabled: uploading,
+                    onchange: move |e| file.set(e.files().into_iter().next()),
+                }
+                span { class: if problem.is_some() { "hint error" } else { "hint" }, "{file_hint}" }
+            }
+
+            label { class: "field",
+                span { class: "label", "제목" }
+                input {
+                    r#type: "text",
+                    value: "{title}",
+                    maxlength: TITLE_MAX_LENGTH as i64,
+                    disabled: uploading,
+                    placeholder: "동영상 제목",
+                    oninput: move |e| title.set(e.value()),
+                }
+                span { class: "hint counter", "{title_length} / {TITLE_MAX_LENGTH}" }
+            }
+
+            label { class: "field",
+                span { class: "label", "설명 (선택)" }
+                textarea {
+                    rows: 6,
+                    value: "{description}",
+                    maxlength: DESCRIPTION_MAX_LENGTH as i64,
+                    disabled: uploading,
+                    placeholder: "동영상에 대한 설명",
+                    oninput: move |e| description.set(e.value()),
+                }
+                span { class: "hint counter", "{description_length} / {DESCRIPTION_MAX_LENGTH}" }
+            }
+
+            if let Some(message) = error() {
+                p { class: "hint error", "{message}" }
+            }
+
+            if let Some(fraction) = progress() {
+                div { class: "progress", role: "progressbar", aria_valuenow: (fraction * 100.0).round() as i64,
+                    div { class: "progress-bar", style: "width: {fraction * 100.0}%" }
+                    span {
+                        if fraction < 1.0 {
+                            "업로드 중 {(fraction * 100.0).floor()}%"
+                        } else {
+                            "파일 확인 중…"
+                        }
+                    }
+                }
+            } else {
+                button { r#type: "submit", class: "button primary", disabled: !can_submit, "업로드" }
+            }
         }
     }
 }

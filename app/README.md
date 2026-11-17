@@ -22,7 +22,10 @@ dx bundle --platform <...> --release # 배포용 패키지
 app/
 ├── Cargo.toml        플랫폼별 feature(web/desktop/mobile)와 의존성
 ├── Dioxus.toml       앱 이름·번들 ID, 웹 개발 서버의 API 프록시
-├── assets/main.css   ../web/src/index.css를 복사한 스타일
+├── assets/
+│   ├── main.css          ../web/src/index.css를 복사한 스타일
+│   ├── hls.light.min.js  HLS 재생 (hls.js)
+│   └── broadcaster.js    방송하기의 카메라와 WHIP 송출 (WebView 안에서 실행)
 └── src/
     ├── main.rs       진입점. 로그인 상태 context와 라우터를 띄운다
     ├── route.rs      화면 주소(Route enum). ../web/src/App.tsx와 같은 경로
@@ -40,7 +43,7 @@ app/
 - **로그인**: 서버의 세션 쿠키 방식(ADR-0003)을 그대로 씁니다. 웹은 브라우저가 쿠키를 관리합니다.
   데스크톱·모바일은 `reqwest`의 쿠키 저장소가 세션 쿠키와 `XSRF-TOKEN`을 들고 있다가,
   상태를 바꾸는 요청에 `X-XSRF-TOKEN` 헤더를 붙입니다. 서버는 바꾸지 않아도 됩니다.
-  쿠키 저장소는 메모리에만 있어서 앱을 다시 켜면 로그인이 풀립니다.
+  쿠키는 앱 데이터 폴더에 저장해 앱을 다시 켜도 로그인이 유지됩니다 (서버 세션이 살아 있는 동안).
 - **주소**: 앱에는 웹 같은 origin이 없습니다. 그래서 `config::resolve`가 `/api`·`/media`는 Spring(8180)으로,
   `/hls`는 MediaMTX HLS(8888)로, `/whip`은 MediaMTX WHIP(8889)으로 보냅니다.
   안드로이드 에뮬레이터에서는 개발 PC가 `10.0.2.2`로 보입니다. 실제 서버 주소는 빌드할 때
@@ -49,29 +52,43 @@ app/
 ## 서버 연동 테스트
 
 서버를 띄운 뒤 아래 명령을 실행하면 데스크톱·모바일 경로를 확인합니다.
-테스트는 매번 새 회원으로 가입 → 로그아웃 → 로그인 → 목록 조회를 거칩니다.
+테스트는 매번 새 회원으로 가입 → 로그아웃 → 로그인을 거치고, 동영상 업로드도 확인합니다.
+업로드 테스트에 쓸 짧은 영상 파일 경로를 `UPLOAD_TEST_FILE`로 넘깁니다 (없으면 업로드 테스트는 건너뜁니다).
 
 ```bash
-cargo test --no-default-features --features desktop -- --ignored
+UPLOAD_TEST_FILE=/path/to/short.mp4 cargo test --no-default-features --features desktop -- --ignored
 ```
 
 ## 진행 상황
 
-| 화면 | 상태 |
+웹(`../web`)의 화면을 모두 옮겼습니다. 작업 목록과 확인 기록은 `../.scratch/dioxus-app/`에 있습니다.
+
+| 화면 | 확인 |
 |---|---|
-| 머리글, 라우팅, 로그인 확인, 로그인/로그아웃 | 완료 |
-| 동영상 상세 (재생, 처리 중 자동 갱신, 수정·삭제, 댓글) | 완료. 화질 선택은 아직 없음 |
-| 동영상 목록 (카드, 페이지 이동) | 완료 |
-| 라이브 목록 (카드, 종료된 방송, 10초마다 갱신) | 완료 |
-| 라이브 시청, 업로드, 방송하기, 회원가입, 후원, 후원 내역 | 자리만 있음 |
+| 머리글(아이콘), 로그인, 회원가입, 로그아웃 | 웹 빌드, iOS 시뮬레이터 |
+| 라이브 목록, 라이브 시청 (재생, 댓글, 후원 알림, 제목 변경·종료) | 웹 빌드 |
+| 동영상 목록, 상세 (재생, 화질 선택, 수정·삭제, 댓글) | 웹 빌드, iOS 시뮬레이터 |
+| 업로드 (진행률) | 웹 빌드, 데스크톱 경로는 서버 연동 테스트 |
+| 방송하기 (카메라 미리보기, WHIP 송출, 종료) | 웹 빌드 (가짜 카메라) |
+| 후원하기, 결제 결과, 후원 내역 | 웹 빌드 (토스페이먼츠 테스트 결제창 열기·닫기까지) |
 
 ## 플랫폼별로 따로 확인해야 할 것
 
-- **HLS 재생**: `components/hls_player.rs`는 WebView가 HLS를 바로 재생할 수 있으면 그대로 쓰고,
-  아니면 앱에 넣은 hls.js(`assets/hls.light.min.js`, 1.7.4)를 불러 재생합니다.
-  iOS 시뮬레이터와 웹(Chromium)에서 재생을 확인했습니다. Windows(WebView2)와 Android는 아직 확인하지 않았습니다.
-- **방송하기(카메라·마이크, WebRTC/WHIP)**: 앱마다 권한 선언이 필요합니다.
-  iOS는 Info.plist의 카메라·마이크 사용 설명, Android는 매니페스트의 CAMERA·RECORD_AUDIO 권한입니다.
-  WebView에서 `getUserMedia`를 허용하는지도 플랫폼마다 확인해야 합니다.
-- **후원 결제(토스페이먼츠)**: JS SDK뿐이라 WebView 안에서 JS로 호출해야 합니다.
-  결제 뒤 돌아오는 success/fail 주소를 앱에서 어떻게 받을지(딥링크 등) 정해야 합니다.
+- **HLS 재생**: `components/hls_player.rs`는 빌드마다 순서가 다릅니다.
+  웹 빌드는 웹과 같이 hls.js(`assets/hls.light.min.js`, 1.7.4)를 먼저 씁니다 (화질 선택 가능).
+  앱은 `<video>`가 HLS를 바로 재생할 수 있으면(macOS·iOS) 그쪽을 씁니다. hls.js는 영상 조각을 JS로 받아
+  교차 출처 요청이 되는데, 서버의 `/media`가 CORS 헤더를 주지 않아 앱 origin에서는 재생이 멈추기 때문입니다.
+  그래서 iOS 앱에는 화질 선택이 없습니다. Windows(WebView2)와 Android는 hls.js를 쓰게 되므로
+  서버에 CORS를 열지 정해야 하고, 아직 확인하지 않았습니다.
+- **방송하기(카메라·마이크, WebRTC/WHIP)**: 카메라와 송출은 `assets/broadcaster.js`가 WebView 안에서 합니다.
+  권한 선언은 `Dioxus.toml`의 `[permissions]`에 있습니다 (iOS·macOS Info.plist, Android 매니페스트로 바뀝니다).
+  앱 WebView에서 `getUserMedia`가 열리는지는 실기기에서 확인해야 합니다. 시뮬레이터에는 카메라가 없습니다.
+- **업로드**: 데스크톱·모바일은 파일 선택 창이 준 경로의 파일을 reqwest로 조금씩 읽어 보냅니다.
+  앱 창에서 파일 선택 창이 뜨는지(특히 iOS)는 아직 확인하지 않았습니다.
+- **후원 결제(토스페이먼츠)**: 결제창이 WebView 전체를 결제 서비스로 넘긴 뒤 `앱 origin + /donations/success`로 돌아옵니다.
+  앱 origin(`dioxus://`, `http://dioxus.index.html`)을 결제 서비스가 받아 주는지, 돌아왔을 때 라우터가 그 주소를 읽는지
+  확인해야 합니다. 안 되면 딥링크나 서버의 중계 페이지가 필요합니다.
+- **로그인 유지**: 데스크톱·모바일은 API 서버로 보낼 쿠키를 앱 데이터 폴더의 `cookies` 파일에 적어 두고 다시 켤 때 읽습니다.
+  서버 세션은 30분 동안 요청이 없으면 끝나므로(`spring.session.timeout`) 그 뒤에는 다시 로그인해야 합니다.
+- **웹 빌드의 미디어 주소**: dx의 proxy는 경로 앞부분을 떼어 주지 못하므로 웹 빌드에서도 `/hls`, `/whip`은
+  MediaMTX(8888, 8889)로 바로 보냅니다.

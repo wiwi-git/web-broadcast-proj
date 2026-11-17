@@ -14,3 +14,8 @@ backend = "http://localhost:8180/api/"
 
 [[web.proxy]]
 backend = "http://localhost:8180/media/"
+
+# 방송하기에서 카메라·마이크를 연다. iOS·macOS Info.plist의 사용 설명과 Android 매니페스트 권한으로 바뀐다
+[permissions]
+camera = { description = "방송 화면을 송출하려면 카메라가 필요합니다." }
+microphone = { description = "방송 소리를 송출하려면 마이크가 필요합니다." }
