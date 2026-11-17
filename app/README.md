@@ -76,18 +76,19 @@ UPLOAD_TEST_FILE=/path/to/short.mp4 cargo test --no-default-features --features 
 
 - **HLS 재생**: `components/hls_player.rs`는 빌드마다 순서가 다릅니다.
   웹 빌드는 웹과 같이 hls.js(`assets/hls.light.min.js`, 1.7.4)를 먼저 씁니다 (화질 선택 가능).
-  앱은 `<video>`가 HLS를 바로 재생할 수 있으면(macOS·iOS) 그쪽을 씁니다. hls.js는 영상 조각을 JS로 받아
-  교차 출처 요청이 되는데, 서버의 `/media`가 CORS 헤더를 주지 않아 앱 origin에서는 재생이 멈추기 때문입니다.
-  그래서 iOS 앱에는 화질 선택이 없습니다. Windows(WebView2)와 Android는 hls.js를 쓰게 되므로
-  서버에 CORS를 열지 정해야 하고, 아직 확인하지 않았습니다.
+  앱의 라이브(`/hls`)는 hls.js를 씁니다. macOS WKWebView의 자체 재생은 저지연 라이브를 첫 장면에서 멈춘 채
+  따라가지 못했고, MediaMTX는 CORS를 허용합니다. 앱의 동영상(`/media`)은 `<video>`가 HLS를 바로 재생할 수 있으면
+  (macOS·iOS) 그쪽을 씁니다. 서버의 `/media`가 CORS 헤더를 주지 않아 hls.js로는 앱 origin에서 받을 수 없기 때문이고,
+  그래서 맥·iOS 앱의 동영상에는 화질 선택이 없습니다. Windows(WebView2)와 Android는 동영상도 hls.js를 쓰게 되므로
+  서버 `/media`에 CORS를 열지 정해야 하고, 아직 확인하지 않았습니다.
 - **방송하기(카메라·마이크, WebRTC/WHIP)**: 카메라와 송출은 `assets/broadcaster.js`가 WebView 안에서 합니다.
   권한 선언은 `Dioxus.toml`의 `[permissions]`에 있습니다 (iOS·macOS Info.plist, Android 매니페스트로 바뀝니다).
-  앱 WebView에서 `getUserMedia`가 열리는지는 실기기에서 확인해야 합니다. 시뮬레이터에는 카메라가 없습니다.
+  **맥 앱에서는 카메라가 열리지 않습니다.** WebView에 카메라 장치가 보이지 않고(마이크는 보임), macOS에 권한 요청도
+  가지 않습니다. 네이티브에서 카메라 권한을 먼저 요청하는 등의 처리가 필요합니다. iOS·Android는 실기기에서 확인해야 합니다.
 - **업로드**: 데스크톱·모바일은 파일 선택 창이 준 경로의 파일을 reqwest로 조금씩 읽어 보냅니다.
   앱 창에서 파일 선택 창이 뜨는지(특히 iOS)는 아직 확인하지 않았습니다.
-- **후원 결제(토스페이먼츠)**: 결제창이 WebView 전체를 결제 서비스로 넘긴 뒤 `앱 origin + /donations/success`로 돌아옵니다.
-  앱 origin(`dioxus://`, `http://dioxus.index.html`)을 결제 서비스가 받아 주는지, 돌아왔을 때 라우터가 그 주소를 읽는지
-  확인해야 합니다. 안 되면 딥링크나 서버의 중계 페이지가 필요합니다.
+- **후원 결제(토스페이먼츠)**: 웹 빌드는 됩니다. **맥 앱에서는 결제 서비스가 앱 주소(`dioxus://index.html/donations/success`)를
+  "잘못된 successUrl"로 거부합니다.** 결제 결과를 받을 http(s) 주소(서버의 중계 페이지 → 앱 딥링크 등)가 필요합니다.
 - **로그인 유지**: 데스크톱·모바일은 API 서버로 보낼 쿠키를 앱 데이터 폴더의 `cookies` 파일에 적어 두고 다시 켤 때 읽습니다.
   서버 세션은 30분 동안 요청이 없으면 끝나므로(`spring.session.timeout`) 그 뒤에는 다시 로그인해야 합니다.
 - **웹 빌드의 미디어 주소**: dx의 proxy는 경로 앞부분을 떼어 주지 못하므로 웹 빌드에서도 `/hls`, `/whip`은

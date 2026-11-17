@@ -9,3 +9,5 @@ Status: resolved
 웹 빌드에서 확인했다: 금액 검사, 토스페이먼츠 테스트 결제창 열기·닫기(USER_CANCEL → 후원 취소), 실패 주소(abandon), 성공 주소(approve 요청, 가짜 키는 결제 서비스가 거절), 값이 빠진 주소. 실제 테스트 결제로 DONE까지 가는 흐름은 하지 않았다.
 
 데스크톱·모바일 앱은 아직 정하지 않았다: 결제창이 WebView 전체를 결제 서비스로 넘긴 뒤 successUrl(앱 origin + /donations/success)로 돌아오는데, 앱 origin(dioxus:// 또는 http://dioxus.index.html)을 결제 서비스가 받아 주는지, 돌아왔을 때 라우터가 그 주소를 읽는지 확인해야 한다. 안 되면 딥링크나 서버의 중계 페이지가 필요하다.
+
+맥 앱(2026-11-17): 결제창을 열면 토스페이먼츠가 "잘못된 successUrl 입니다."로 거부한다. 앱 origin(dioxus://index.html)은 결제 결과 주소로 쓸 수 없다. 후원은 취소로 정리된다. http(s) 중계 주소(서버 페이지 → 앱 딥링크 등)가 필요하다.

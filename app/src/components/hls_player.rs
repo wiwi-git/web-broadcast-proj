@@ -1,12 +1,12 @@
 //! HLS 재생기. web/src/components/HlsPlayer.tsx와 같은 역할이다.
 //!
-//! 재생은 WebView 안의 `<video>`가 한다. 어느 쪽을 먼저 쓰는지는 빌드마다 다르다.
+//! 재생은 WebView 안의 `<video>`가 한다. hls.js와 `<video>` 자체 재생 중 무엇을 쓸지는 이렇게 정한다.
 //! - 웹 빌드: 웹과 같이 hls.js를 먼저 쓴다. 최신 Chromium은 자체 HLS 재생을 지원한다고 답하지만
 //!   저지연(LL-HLS) 라이브를 재생하지 못한다.
-//! - 데스크톱·모바일: `<video>`가 HLS를 바로 재생할 수 있으면(macOS·iOS의 WKWebView) 그대로 쓴다.
-//!   hls.js는 영상 조각을 JS로 받으므로 앱 origin(dioxus://)에서 서버로 가는 교차 출처 요청이 되는데,
-//!   서버의 /media는 CORS를 허용하지 않아 재생이 멈춘다. 자체 재생은 CORS가 필요 없다.
-//! hls.js로 재생하면 웹처럼 화질을 고를 수 있다. 자체 HLS 재생일 때는 화질 선택이 없다.
+//! - 데스크톱·모바일의 라이브(`/hls`, MediaMTX): hls.js를 쓴다. macOS WKWebView의 자체 재생은 LL-HLS를
+//!   첫 장면에서 멈춘 채 따라가지 못했다(맥 앱에서 확인). MediaMTX는 CORS를 허용하므로 hls.js로 받을 수 있다.
+//! - 데스크톱·모바일의 동영상(`/media`, Spring): 자체 재생이 되면 그쪽을 쓴다. hls.js는 영상 조각을 JS로 받아
+//!   앱 origin(dioxus://)에서 교차 출처 요청이 되는데, 서버의 /media는 CORS 헤더를 주지 않아 재생이 멈춘다.
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -23,11 +23,10 @@ fn next_element_id() -> String {
 }
 
 /// 재생기를 붙이는 스크립트. 문자열은 JSON으로 넣어 따옴표 등이 깨지지 않게 한다.
-fn attach_script(element_id: &str, src: &str) -> String {
+fn attach_script(element_id: &str, src: &str, prefer_native: bool) -> String {
     let id = serde_json::to_string(element_id).unwrap_or_default();
     let src = serde_json::to_string(src).unwrap_or_default();
     let hls_js = serde_json::to_string(&HLS_JS.to_string()).unwrap_or_default();
-    let prefer_native = cfg!(not(target_arch = "wasm32"));
     format!(
         r#"
         const video = document.getElementById({id});
@@ -89,6 +88,7 @@ pub fn HlsPlayer(src: String, poster: Option<String>) -> Element {
     let element_id = use_hook(next_element_id);
     let mut levels = use_signal(Vec::<Level>::new);
     let mut selected = use_signal(|| AUTO);
+    let prefer_native = cfg!(not(target_arch = "wasm32")) && !src.starts_with("/hls");
     let src = config::resolve(&src);
     let poster = poster.map(|poster| config::resolve(&poster));
 
@@ -108,7 +108,7 @@ pub fn HlsPlayer(src: String, poster: Option<String>) -> Element {
                 playsinline: true,
                 poster,
                 onmounted: move |_| {
-                    let script = attach_script(&mounted_id, &mounted_src);
+                    let script = attach_script(&mounted_id, &mounted_src, prefer_native);
                     async move {
                         let mut player = document::eval(&script);
                         while let Ok(mut parsed) = player.recv::<Vec<Level>>().await {

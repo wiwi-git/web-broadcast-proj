@@ -17,7 +17,8 @@
     if (name === 'NotAllowedError') return '카메라와 마이크 권한을 허용해 주세요.'
     if (name === 'NotFoundError') return '사용할 수 있는 카메라나 마이크가 없습니다.'
     if (name === 'NotReadableError') return '다른 앱이 카메라를 사용 중입니다.'
-    return '카메라를 열 수 없습니다.'
+    // 알 수 없는 오류는 원인을 찾을 수 있도록 이름을 함께 보여 준다
+    return `카메라를 열 수 없습니다. (${name || (error && error.message) || '알 수 없는 오류'})`
   }
 
   function stopTracks() {
