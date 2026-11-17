@@ -2,6 +2,8 @@
 //! 같은 코드를 `dx serve --platform <web|desktop|android|ios>`로 빌드한다.
 
 mod api;
+#[cfg(not(target_arch = "wasm32"))]
+mod app_link;
 mod auth;
 mod components;
 mod config;
@@ -16,7 +18,10 @@ use route::Route;
 const MAIN_CSS: Asset = asset!("/assets/main.css");
 
 fn main() {
+    #[cfg(target_arch = "wasm32")]
     dioxus::launch(App);
+    #[cfg(not(target_arch = "wasm32"))]
+    dioxus::LaunchBuilder::new().with_cfg(app_link::config()).launch(App);
 }
 
 #[component]

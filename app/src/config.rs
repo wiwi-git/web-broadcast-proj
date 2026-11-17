@@ -10,6 +10,7 @@
 //! - `API_ORIGIN`: Spring 서버 (`/api`, `/media`)
 //! - `HLS_ORIGIN`: MediaMTX HLS (`/hls` 접두사를 떼고 넘긴다)
 //! - `WHIP_ORIGIN`: MediaMTX WHIP (`/whip` 접두사를 떼고 넘긴다)
+//! - `WEB_ORIGIN`: 웹(../web). 앱은 후원 결제를 기본 브라우저의 웹 화면에서 한다
 
 /// 안드로이드 에뮬레이터에서 개발 PC의 localhost는 10.0.2.2로 보인다
 #[cfg(target_os = "android")]
@@ -28,6 +29,18 @@ fn hls_origin() -> String {
 fn whip_origin() -> String {
     option_env!("WHIP_ORIGIN").map_or_else(|| format!("{DEV_HOST}:8889"), str::to_owned)
 }
+
+/// 웹(React) 주소. 앱의 후원 결제는 이 주소의 후원 화면을 기본 브라우저로 열어 진행한다
+// 앱(데스크톱·모바일)에서만 쓴다
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+pub fn web_origin() -> String {
+    option_env!("WEB_ORIGIN").map_or_else(|| format!("{DEV_HOST}:5173"), str::to_owned)
+}
+
+/// 앱을 여는 딥링크 스킴 (Dioxus.toml의 [deep_links])
+// 앱(데스크톱·모바일)에서만 쓴다
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+pub const APP_SCHEME: &str = "webbroadcast";
 
 /// 서버가 준 경로를 요청할 수 있는 주소로 바꾼다. 이미 절대 주소면 그대로 둔다.
 pub fn resolve(path: &str) -> String {

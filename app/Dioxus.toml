@@ -19,3 +19,7 @@ backend = "http://localhost:8180/media/"
 [permissions]
 camera = { description = "방송 화면을 송출하려면 카메라가 필요합니다." }
 microphone = { description = "방송 소리를 송출하려면 마이크가 필요합니다." }
+
+# 브라우저에서 후원 결제를 마치면 webbroadcast://donations 로 앱을 다시 연다
+[deep_links]
+schemes = ["webbroadcast"]

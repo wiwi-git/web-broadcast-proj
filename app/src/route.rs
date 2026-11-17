@@ -54,6 +54,17 @@ pub fn safe_next(next: &str) -> Route {
     }
 }
 
+/// 딥링크(`webbroadcast://donations?tab=received`)를 앱 화면 주소로 바꾼다.
+/// 스킴 뒤의 첫 부분이 경로의 첫 부분이 된다. 알 수 없으면 첫 화면으로 보낸다.
+// 앱(데스크톱·모바일)에서만 쓴다
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+pub fn app_link_route(link: &str) -> Route {
+    match link.split_once("://") {
+        Some((scheme, rest)) if scheme == crate::config::APP_SCHEME => safe_next(&format!("/{rest}")),
+        _ => Route::LiveList {},
+    }
+}
+
 /// "a=1&b=%ED%95%9C" 같은 쿼리 문자열에서 name의 값을 꺼낸다
 pub fn query_param(query: &str, name: &str) -> Option<String> {
     query.trim_start_matches('?').split('&').find_map(|pair| {
@@ -88,6 +99,14 @@ fn decode_component(value: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn maps_app_links_to_routes() {
+        assert_eq!(app_link_route("webbroadcast://donations"), Route::Donations { tab: String::new() });
+        assert_eq!(app_link_route("webbroadcast://donations?tab=received"), Route::Donations { tab: "received".to_owned() });
+        assert_eq!(app_link_route("https://example.com/donations"), Route::LiveList {});
+        assert_eq!(app_link_route("webbroadcast:////evil.example"), Route::LiveList {});
+    }
 
     #[test]
     fn reads_query_params() {

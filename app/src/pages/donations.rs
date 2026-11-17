@@ -9,8 +9,12 @@ use crate::route::{Route, query_param};
 use crate::time::{format_date, format_number, format_won};
 
 /// 토스페이먼츠 결제위젯 SDK. 웹은 npm 패키지(@tosspayments/tosspayments-sdk)가 이 스크립트를 불러온다
+// 웹 빌드에서만 쓴다 (앱은 브라우저로 결제한다)
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 const TOSS_SDK: &str = "https://js.tosspayments.com/v2/standard";
 
+// 웹 빌드에서만 쓴다 (앱은 브라우저로 결제한다)
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
 fn amount_error(amount: Option<u64>) -> Option<&'static str> {
     match amount {
         None => Some("금액을 입력해 주세요."),
@@ -62,8 +66,54 @@ fn DonateLoader(id: String) -> Element {
             }
         };
     }
+    // 앱(데스크톱·모바일)은 결제를 기본 브라우저의 웹 후원 화면에서 한다. app/src/app_link.rs 참고
+    #[cfg(not(target_arch = "wasm32"))]
+    return rsx! {
+        DonateInBrowser { broadcast }
+    };
+    #[cfg(target_arch = "wasm32")]
     rsx! {
         DonateForm { broadcast, customer_key: me.id, customer_name: me.nickname }
+    }
+}
+
+/// 앱의 후원하기. 토스페이먼츠 결제창은 http(s) 화면이라 Dioxus 앱 안에 띄울 수 없어서(앱이 http(s) 이동을
+/// 모두 기본 브라우저로 넘긴다) 웹의 후원 화면을 브라우저로 연다. 결제가 끝나면 웹이 딥링크로 앱을 다시 연다.
+#[cfg(not(target_arch = "wasm32"))]
+#[component]
+fn DonateInBrowser(broadcast: BroadcastInfo) -> Element {
+    let mut opened = use_signal(|| false);
+    let mut error = use_signal(|| None::<String>);
+    let url = format!("{}/live/{}/donate?app=1", crate::config::web_origin(), api::encode(&broadcast.id));
+
+    rsx! {
+        div { class: "donate-form",
+            h1 { "후원하기" }
+            p { class: "meta",
+                strong { class: "owner-name", "{broadcast.owner.nickname}" }
+                "님의 방송 · {broadcast.title}"
+            }
+            p { "후원 결제는 브라우저에서 진행합니다. 결제를 마치면 앱으로 돌아와 후원 내역을 보여 줍니다." }
+            p { class: "hint", "브라우저에서 로그인이 필요할 수 있습니다. 테스트 결제라 실제로 돈이 빠져나가지 않습니다." }
+            if let Some(message) = error() {
+                p { class: "hint error", "{message}" }
+            }
+            if opened() {
+                p { class: "hint", "브라우저에서 후원을 이어서 진행해 주세요." }
+            }
+            div { class: "actions",
+                Link { to: Route::LiveWatch { id: broadcast.id.clone() }, class: "button", "방송으로 돌아가기" }
+                button {
+                    r#type: "button",
+                    class: "button primary",
+                    onclick: move |_| match webbrowser::open(&url) {
+                        Ok(()) => opened.set(true),
+                        Err(e) => error.set(Some(format!("브라우저를 열지 못했습니다. {e}"))),
+                    },
+                    if opened() { "브라우저 다시 열기" } else { "브라우저에서 후원하기" }
+                }
+            }
+        }
     }
 }
 

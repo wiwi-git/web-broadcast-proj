@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { abandonDonation, ApiError, approveDonation, type SentDonation } from '../api.ts'
+import { APP_DONATIONS_LINK, isFromApp } from '../appLink.ts'
 import { formatWon } from '../format.ts'
 
 /**
@@ -68,7 +69,7 @@ export function DonationSuccessPage() {
       </div>
     )
   }
-  return <DonationOutcome donation={view.donation} />
+  return <DonationOutcome donation={view.donation} fromApp={isFromApp(params)} />
 }
 
 /** 결제창을 닫았거나 결제 인증에 실패했을 때 결제 서비스가 돌려보내는 곳(failUrl) */
@@ -89,10 +90,15 @@ export function DonationFailPage() {
   if (!donationId) return <p className="notice error">{message ?? '결제에 실패했습니다.'}</p>
   if (view.kind === 'loading') return <p className="notice">결과를 정리하는 중…</p>
   if (view.kind === 'error') return <p className="notice error">{view.message}</p>
-  return <DonationOutcome donation={view.donation} />
+  return <DonationOutcome donation={view.donation} fromApp={isFromApp(params)} />
 }
 
-function DonationOutcome({ donation }: { donation: SentDonation }) {
+function DonationOutcome({ donation, fromApp }: { donation: SentDonation; fromApp: boolean }) {
+  // 앱에서 넘어온 후원이면 결과가 정해진 뒤 앱을 다시 연다. 막히면 아래 버튼으로 연다
+  useEffect(() => {
+    if (fromApp) window.location.href = APP_DONATIONS_LINK
+  }, [fromApp])
+
   const who = `${donation.recipient.nickname}님에게 ${formatWon(donation.amount)}`
   const text = {
     DONE: `${who}을 후원했습니다. 방송 화면에 후원이 표시됩니다.`,
@@ -106,6 +112,11 @@ function DonationOutcome({ donation }: { donation: SentDonation }) {
     <div className="notice">
       <p className={donation.status === 'FAILED' ? 'error' : undefined}>{text}</p>
       <div className="actions">
+        {fromApp && (
+          <a href={APP_DONATIONS_LINK} className="button primary">
+            앱으로 돌아가기
+          </a>
+        )}
         {donation.broadcast.id && (
           <Link to={`/live/${donation.broadcast.id}`} className="button primary">
             방송으로 돌아가기

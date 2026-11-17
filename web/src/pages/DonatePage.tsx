@@ -1,6 +1,6 @@
 import { loadTossPayments, type TossPaymentsPayment } from '@tosspayments/tosspayments-sdk'
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useParams, useSearchParams } from 'react-router'
 import {
   abandonDonation,
   DONATION_AMOUNT_UNIT,
@@ -14,6 +14,7 @@ import {
   type Broadcast,
 } from '../api.ts'
 import { useAuth } from '../auth/useAuth.ts'
+import { APP_DONATIONS_LINK, isFromApp } from '../appLink.ts'
 import { formatWon } from '../format.ts'
 
 function amountError(amount: number | null): string | null {
@@ -33,6 +34,8 @@ function amountError(amount: number | null): string | null {
  */
 export default function DonatePage() {
   const { id = '' } = useParams()
+  const [searchParams] = useSearchParams()
+  const fromApp = isFromApp(searchParams)
   const { me } = useAuth()
   const [broadcast, setBroadcast] = useState<Broadcast | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -66,17 +69,20 @@ export default function DonatePage() {
       </div>
     )
   }
-  return <DonateForm broadcast={broadcast} customerKey={me.id} customerName={me.nickname} />
+  return <DonateForm broadcast={broadcast} customerKey={me.id} customerName={me.nickname} fromApp={fromApp} />
 }
 
 function DonateForm({
   broadcast,
   customerKey,
   customerName,
+  fromApp,
 }: {
   broadcast: Broadcast
   customerKey: string
   customerName: string
+  /** 앱에서 브라우저로 넘어온 후원. 결제 결과 화면이 앱으로 돌려보낸다 */
+  fromApp: boolean
 }) {
   const [amountText, setAmountText] = useState(String(DONATION_PRESETS[1]))
   const [message, setMessage] = useState('')
@@ -127,8 +133,8 @@ function DonateForm({
         orderId,
         orderName: checkout.orderName,
         customerName,
-        successUrl: `${origin}/donations/success`,
-        failUrl: `${origin}/donations/fail?donationId=${encodeURIComponent(orderId)}`,
+        successUrl: `${origin}/donations/success${fromApp ? '?app=1' : ''}`,
+        failUrl: `${origin}/donations/fail?donationId=${encodeURIComponent(orderId)}${fromApp ? '&app=1' : ''}`,
       })
     } catch (e) {
       // 결제창으로 넘어가지 못했거나 결제창을 닫은 경우. 결제를 마치지 않았으므로 취소로 끝낸다
@@ -193,7 +199,17 @@ function DonateForm({
       </label>
 
       {error && <p className="hint error">{error}</p>}
-      {canceled && <p className="hint">후원을 취소했습니다. 결제되지 않았습니다.</p>}
+      {canceled && (
+        <p className="hint">
+          후원을 취소했습니다. 결제되지 않았습니다.
+          {fromApp && (
+            <>
+              {' '}
+              <a href={APP_DONATIONS_LINK}>앱으로 돌아가기</a>
+            </>
+          )}
+        </p>
+      )}
       <p className="hint">결제수단은 다음에 열리는 토스페이먼츠 결제창에서 고릅니다. 테스트 결제라 실제로 돈이 빠져나가지 않습니다.</p>
       <div className="actions">
         <Link to={`/live/${broadcast.id}`} className="button">

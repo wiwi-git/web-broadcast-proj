@@ -15,7 +15,8 @@ const https = process.env.HTTPS === '1'
 export default defineConfig({
   plugins: [react(), ...(https ? [basicSsl()] : [])],
   server: {
-    host: https ? true : undefined,
+    // 기본값(localhost)이면 Node가 IPv6(::1)에만 열어서, localhost를 127.0.0.1로 찾는 Firefox는 연결하지 못한다
+    host: https ? true : '127.0.0.1',
     proxy: {
       '/api': springServer,
       '/media': springServer,

@@ -8,6 +8,9 @@ use crate::route::Route;
 
 #[component]
 pub fn Shell() -> Element {
+    #[cfg(not(target_arch = "wasm32"))]
+    crate::app_link::use_app_links();
+
     rsx! {
         header { class: "app-header",
             nav { class: "nav",
