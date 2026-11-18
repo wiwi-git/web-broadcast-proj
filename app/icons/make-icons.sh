@@ -8,6 +8,7 @@
 #   icon-1024.png                투명 없는 정사각형 (iOS 원본)
 #   ios/AppIcon*.png             iOS 홈 화면 아이콘. dx가 iOS 빌드에 아이콘을 넣지 않아 scripts/ios-device.sh가 넣는다
 #   macos-1024.png               macOS용. macOS는 모서리를 깎아 주지 않으므로 둥근 사각형으로 만든다
+#   macos.icns                   macOS 앱 아이콘 (위 PNG를 iconutil로 묶음). scripts/mac-app.sh와 dx bundle이 쓴다
 #   icon.ico                     Windows용
 set -euo pipefail
 
@@ -41,6 +42,14 @@ magick "$dir/icon-1024.png" -resize 824x824 \
   \( -size 824x824 xc:black -fill white -draw "roundrectangle 0,0 823,823 185,185" \) \
   -alpha off -compose CopyOpacity -composite \
   -compose over -background none -gravity center -extent 1024x1024 "$dir/macos-1024.png"
+
+iconset="$work/macos.iconset"
+mkdir -p "$iconset"
+for size in 16 32 128 256 512; do
+  magick "$dir/macos-1024.png" -resize "${size}x${size}" "$iconset/icon_${size}x${size}.png"
+  magick "$dir/macos-1024.png" -resize "$((size * 2))x$((size * 2))" "$iconset/icon_${size}x${size}@2x.png"
+done
+iconutil -c icns "$iconset" -o "$dir/macos.icns"
 
 magick "$dir/icon-1024.png" -define icon:auto-resize=256,128,64,48,32,16 "$dir/icon.ico"
 

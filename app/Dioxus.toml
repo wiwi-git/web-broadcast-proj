@@ -4,9 +4,10 @@ name = "web-broadcast-app"
 [bundle]
 identifier = "com.webbroadcast.app"
 publisher = "Web Broadcast"
-# 웹 파비콘으로 만든 아이콘 (icons/make-icons.sh). macOS는 PNG로 .icns를, Windows는 .ico를 쓴다.
-# iOS·Android 빌드에는 dx(0.7)가 아이콘을 넣지 않는다. iOS는 scripts/ios-device.sh가 넣는다.
-icon = ["icons/macos-1024.png", "icons/icon.ico"]
+# 웹 파비콘으로 만든 아이콘 (icons/make-icons.sh). 배포 패키지(dx bundle)에서 macOS는 .icns를, Windows는 .ico를 쓴다.
+# 개발 빌드(dx build)와 iOS·Android 빌드에는 dx(0.7)가 아이콘을 넣지 않는다.
+# 맥은 scripts/mac-app.sh, iOS는 scripts/ios-device.sh가 넣는다.
+icon = ["icons/macos.icns", "icons/icon.ico"]
 
 # iOS 홈 화면 아이콘 파일 이름. 파일은 scripts/ios-device.sh가 앱 번들에 복사한다
 [ios.plist]

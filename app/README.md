@@ -26,7 +26,12 @@ scripts/ios-device.sh
 ```
 
 앱 아이콘은 웹 파비콘(`web/public/favicon.svg`)으로 만듭니다. 파비콘을 바꾸면 `icons/make-icons.sh`를 다시 실행합니다.
-macOS·Windows는 `Dioxus.toml`의 `[bundle] icon`으로 들어가고, iOS는 dx(0.7)가 아이콘을 넣지 않아 위 스크립트가 넣습니다.
+배포 패키지(`dx bundle`)에서는 macOS·Windows 아이콘이 `Dioxus.toml`의 `[bundle] icon`으로 들어갑니다.
+dx(0.7)는 개발 빌드와 iOS 빌드에 아이콘을 넣지 않으므로, 아이폰은 위 스크립트가, 맥 앱은 아래 스크립트가 넣습니다.
+
+```bash
+scripts/mac-app.sh   # 맥 앱을 개발 빌드로 만들어 아이콘을 넣고 실행
+```
 Android는 아직 dx 기본 아이콘입니다.
 
 ## 구조
