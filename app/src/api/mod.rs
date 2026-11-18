@@ -8,6 +8,8 @@ mod upload;
 
 pub use client::{ApiError, ApiResult};
 pub use upload::{ALLOWED_EXTENSIONS, UploadInput, file_problem, upload_video};
+#[cfg(any(target_os = "ios", target_os = "android"))]
+pub use upload::upload_path;
 
 use client::{get_json, send_empty, send_json};
 use reqwest::Method;

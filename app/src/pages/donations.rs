@@ -91,7 +91,7 @@ enum PayOutcome {
 
 /// 앱(데스크톱·모바일)의 결제 (ADR-0005). 토스페이먼츠 결제창은 http(s) 화면이라 Dioxus 앱 안에 띄울 수 없다
 /// (앱이 http(s) 이동을 모두 기본 브라우저로 넘긴다). 그래서 결제 토큰을 받아 기본 브라우저로 웹의 결제 화면을 연다.
-/// 결제 화면은 로그인 없이 토큰으로 이 후원 하나만 결제하고, 끝나면 webbroadcast://donations 로 앱을 다시 연다.
+/// 결제 화면은 로그인 없이 토큰으로 이 후원 하나만 결제하고, 끝나면 webbroadcast://live/{방송 id} 로 후원한 방송 화면을 다시 연다.
 #[cfg(not(target_arch = "wasm32"))]
 async fn pay_in_browser(donation_id: &str) -> PayOutcome {
     let issued = match api::issue_checkout_token(donation_id).await {

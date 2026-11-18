@@ -10,14 +10,14 @@ import {
   type DonationStatus,
   type SentDonation,
 } from '../api.ts'
-import { APP_DONATIONS_LINK } from '../appLink.ts'
+import { APP_DONATIONS_LINK, appLink } from '../appLink.ts'
 import { formatWon } from '../format.ts'
 
 /**
  * 앱(데스크톱·모바일)의 후원 결제 화면 (ADR-0005).
  * 앱은 결제창을 앱 안에 띄울 수 없어서, 결제 토큰을 받아 기본 브라우저로 이 화면을 연다.
  * 로그인하지 않아도 토큰으로 그 후원 하나만 결제한다. 후원자는 토큰을 받은 앱의 회원이다.
- * 결제가 끝나면 webbroadcast://donations 로 앱을 다시 연다.
+ * 결제가 끝나면 후원한 방송 화면(webbroadcast://live/{id})으로 앱을 다시 연다.
  */
 
 const STATUS_TEXT: Record<Exclude<DonationStatus, 'PENDING'>, string> = {
@@ -39,9 +39,9 @@ function once(key: string, send: () => Promise<SentDonation>): Promise<SentDonat
   return pending
 }
 
-function BackToApp({ primary = false }: { primary?: boolean }) {
+function BackToApp({ href = APP_DONATIONS_LINK, primary = false }: { href?: string; primary?: boolean }) {
   return (
-    <a href={APP_DONATIONS_LINK} className={primary ? 'button primary' : 'button'}>
+    <a href={href} className={primary ? 'button primary' : 'button'}>
       앱으로 돌아가기
     </a>
   )
@@ -121,7 +121,7 @@ export default function CheckoutPage() {
       <p className="hint">앱에서 시작한 후원입니다. 이 브라우저의 로그인과 상관없이 앱의 계정으로 후원됩니다.</p>
       <p className="hint">결제수단은 다음에 열리는 토스페이먼츠 결제창에서 고릅니다. 테스트 결제라 실제로 돈이 빠져나가지 않습니다.</p>
       <div className="actions">
-        <BackToApp />
+        <BackToApp href={appLink(donation.broadcast.id)} />
         <button type="button" className="button primary" disabled={busy} onClick={pay}>
           {busy ? '결제 진행 중…' : `${formatWon(donation.amount)} 결제하기`}
         </button>
@@ -205,9 +205,10 @@ export function CheckoutFailPage() {
 
 /** 결과를 보여 주고 앱을 다시 연다. 브라우저가 막으면 버튼으로 연다 */
 function CheckoutOutcome({ donation }: { donation: SentDonation }) {
+  const backToApp = appLink(donation.broadcast.id)
   useEffect(() => {
-    window.location.href = APP_DONATIONS_LINK
-  }, [])
+    window.location.href = backToApp
+  }, [backToApp])
 
   const who = `${donation.recipient.nickname}님에게 ${formatWon(donation.amount)}`
   const text = {
@@ -222,7 +223,7 @@ function CheckoutOutcome({ donation }: { donation: SentDonation }) {
     <div className="notice">
       <p className={donation.status === 'FAILED' ? 'error' : undefined}>{text}</p>
       <div className="actions">
-        <BackToApp primary />
+        <BackToApp href={backToApp} primary />
       </div>
     </div>
   )

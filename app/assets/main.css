@@ -1089,3 +1089,17 @@ textarea,
 select {
   font-size: max(16px, 1em);
 }
+
+/* iOS·안드로이드의 파일 선택 버튼과 고른 파일 이름 */
+.file-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.file-row .file-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

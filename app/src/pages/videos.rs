@@ -282,10 +282,51 @@ pub fn Upload() -> Element {
     }
 }
 
+/// 고른 파일. iOS·안드로이드는 Dioxus의 파일 입력이 동작하지 않아 웹뷰에서 고른다 (components/webview_file.rs)
+#[derive(Clone)]
+enum Picked {
+    Native(FileData),
+    #[cfg(any(target_os = "ios", target_os = "android"))]
+    WebView(crate::components::PickedFile),
+}
+
+impl Picked {
+    fn name(&self) -> String {
+        match self {
+            Picked::Native(file) => file.name(),
+            #[cfg(any(target_os = "ios", target_os = "android"))]
+            Picked::WebView(file) => file.name.clone(),
+        }
+    }
+
+    fn size(&self) -> u64 {
+        match self {
+            Picked::Native(file) => file.size(),
+            #[cfg(any(target_os = "ios", target_os = "android"))]
+            Picked::WebView(file) => file.size,
+        }
+    }
+}
+
+/// 고른 파일을 보낸다. 웹뷰에서 고른 파일은 먼저 임시 파일로 옮기고(`copied`) 보낸다(`sent`)
+async fn upload(picked: &Picked, input: api::UploadInput, copied: Arc<AtomicU64>, sent: Arc<AtomicU64>) -> api::ApiResult<api::Video> {
+    let _ = &copied;
+    match picked {
+        Picked::Native(file) => api::upload_video(file, input, sent).await,
+        #[cfg(any(target_os = "ios", target_os = "android"))]
+        Picked::WebView(file) => {
+            let path = crate::components::copy_to_temp(&file.name, copied).await?;
+            let result = api::upload_path(&path, file.name.clone(), file.size, input, sent).await;
+            let _ = tokio::fs::remove_file(&path).await;
+            result
+        }
+    }
+}
+
 #[component]
 fn UploadForm() -> Element {
     let navigator = use_navigator();
-    let mut file = use_signal(|| None::<FileData>);
+    let mut file = use_signal(|| None::<Picked>);
     let mut title = use_signal(String::new);
     let mut description = use_signal(String::new);
     // 업로드 중일 때만 Some. 0.0~1.0
@@ -310,19 +351,23 @@ fn UploadForm() -> Element {
         }
         error.set(None);
         progress.set(Some(0.0));
-        let total = selected.size().max(1);
+        // 웹뷰에서 고른 파일은 옮기기와 보내기를 반씩 센다
+        let steps = if matches!(selected, Picked::Native(_)) { 1 } else { 2 };
+        let total = selected.size().max(1) * steps;
+        let copied = Arc::new(AtomicU64::new(0));
         let sent = Arc::new(AtomicU64::new(0));
         let input = api::UploadInput { title: title().trim().to_owned(), description: description() };
 
         // 보낸 양은 업로드하는 쪽이 계속 더하고, 화면은 0.2초마다 읽어 그린다
-        let watched = sent.clone();
+        let (watched_copy, watched_send) = (copied.clone(), sent.clone());
         let watcher = spawn(async move {
             loop {
-                progress.set(Some(watched.load(Ordering::Relaxed) as f64 / total as f64));
+                let done = watched_copy.load(Ordering::Relaxed) + watched_send.load(Ordering::Relaxed);
+                progress.set(Some(done as f64 / total as f64));
                 sleep(Duration::from_millis(200)).await;
             }
         });
-        let result = api::upload_video(&selected, input, sent).await;
+        let result = upload(&selected, input, copied, sent).await;
         watcher.cancel();
         match result {
             Ok(video) => {
@@ -341,13 +386,18 @@ fn UploadForm() -> Element {
         form { class: "upload-form", onsubmit: submit,
             h1 { class: "page-title", "동영상 업로드" }
 
-            label { class: "field",
+            // 안의 파일 선택 버튼이 label이라 label 안에 label이 되지 않게 div로 둔다
+            div { class: "field",
                 span { class: "label", "영상 파일" }
-                input {
-                    r#type: "file",
-                    accept,
-                    disabled: uploading,
-                    onchange: move |e| file.set(e.files().into_iter().next()),
+                if cfg!(any(target_os = "ios", target_os = "android")) {
+                    {webview_picker(accept.clone(), uploading, file)}
+                } else {
+                    input {
+                        r#type: "file",
+                        accept,
+                        disabled: uploading,
+                        onchange: move |e| file.set(e.files().into_iter().next().map(Picked::Native)),
+                    }
                 }
                 span { class: if problem.is_some() { "hint error" } else { "hint" }, "{file_hint}" }
             }
@@ -398,4 +448,22 @@ fn UploadForm() -> Element {
             }
         }
     }
+}
+
+#[cfg(any(target_os = "ios", target_os = "android"))]
+fn webview_picker(accept: String, disabled: bool, mut file: Signal<Option<Picked>>) -> Element {
+    use crate::components::WebViewFilePicker;
+    rsx! {
+        div { class: "file-row",
+            WebViewFilePicker { accept, disabled, on_pick: move |picked| file.set(Some(Picked::WebView(picked))) }
+            if let Some(picked) = file() {
+                span { class: "file-name", "{picked.name()}" }
+            }
+        }
+    }
+}
+
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
+fn webview_picker(_accept: String, _disabled: bool, _file: Signal<Option<Picked>>) -> Element {
+    rsx! {}
 }

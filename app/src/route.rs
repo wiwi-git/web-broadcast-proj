@@ -54,7 +54,7 @@ pub fn safe_next(next: &str) -> Route {
     }
 }
 
-/// 딥링크(`webbroadcast://donations?tab=received`)를 앱 화면 주소로 바꾼다.
+/// 딥링크(`webbroadcast://live/{id}`, `webbroadcast://donations?tab=received`)를 앱 화면 주소로 바꾼다.
 /// 스킴 뒤의 첫 부분이 경로의 첫 부분이 된다. 알 수 없으면 첫 화면으로 보낸다.
 // 앱(데스크톱·모바일)에서만 쓴다
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
@@ -104,6 +104,8 @@ mod tests {
     fn maps_app_links_to_routes() {
         assert_eq!(app_link_route("webbroadcast://donations"), Route::Donations { tab: String::new() });
         assert_eq!(app_link_route("webbroadcast://donations?tab=received"), Route::Donations { tab: "received".to_owned() });
+        // 결제를 마치면 후원한 방송 화면으로 돌아온다
+        assert_eq!(app_link_route("webbroadcast://live/abc-123"), Route::LiveWatch { id: "abc-123".to_owned() });
         assert_eq!(app_link_route("https://example.com/donations"), Route::LiveList {});
         assert_eq!(app_link_route("webbroadcast:////evil.example"), Route::LiveList {});
     }

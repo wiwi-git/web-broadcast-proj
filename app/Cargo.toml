@@ -22,6 +22,10 @@ futures-util = "0.3"
 webbrowser = "1"
 
 # 웹: 브라우저가 쿠키를 관리하므로 XSRF-TOKEN만 document.cookie에서 읽는다
+# iOS·안드로이드 파일 선택: 웹뷰가 고른 파일을 조각내 Rust로 넘길 때 쓴다 (components/webview_file.rs)
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+base64 = "0.22"
+
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 reqwest = { version = "0.12", features = ["json"] }
 web-sys = { version = "0.3", features = ["HtmlDocument", "File", "FormData", "ProgressEvent", "XmlHttpRequest", "XmlHttpRequestUpload"] }
