@@ -177,7 +177,7 @@ pub fn LiveWatch(id: String) -> Element {
                 div { class: "stage",
                     match (&broadcast.status, &broadcast.playback_url) {
                         (BroadcastStatus::Live, Some(src)) => rsx! {
-                            HlsPlayer { key: "{broadcast.id}", src: src.clone() }
+                            HlsPlayer { key: "{broadcast.id}", src: src.clone(), webrtc_url: broadcast.webrtc_url.clone(), autoplay: true }
                         },
                         (BroadcastStatus::Pending, _) => rsx! {
                             div { class: "player-placeholder",
@@ -381,6 +381,14 @@ fn bridge_error(result: &serde_json::Value) -> Option<String> {
     result.get("error").and_then(|e| e.as_str()).map(str::to_owned)
 }
 
+/// 송출할 대상
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Source {
+    Camera,
+    /// 데스크톱에서 화면(창·전체 화면)을 공유한다. 소리는 마이크로 보낸다
+    Screen,
+}
+
 /// - Preview: 카메라 미리보기, 제목 입력
 /// - Starting: Broadcast를 만들고 미디어 서버에 연결하는 중
 /// - OnAir: 송출 중. 서버 상태가 준비 → 방송 중으로 바뀌는 것을 지켜본다
@@ -404,6 +412,10 @@ pub fn Broadcast() -> Element {
 #[component]
 fn Broadcaster() -> Element {
     let mut facing = use_signal(|| "user");
+    // 무엇을 송출할지. 화면 공유는 지원하는 기기(데스크톱)에서만 고를 수 있다
+    let mut source = use_signal(|| Source::Camera);
+    let can_share_screen = use_resource(|| async { broadcaster("canShareScreen()").await.as_bool() == Some(true) });
+    let can_share_screen = can_share_screen().unwrap_or(false);
     let mut camera_ready = use_signal(|| false);
     let mut camera_error = use_signal(|| None::<String>);
     let mut title = use_signal(String::new);
@@ -424,19 +436,24 @@ fn Broadcaster() -> Element {
     let elapsed = use_elapsed(live_since);
     let transmitting = matches!(phase(), Phase::Starting | Phase::OnAir { .. }) && !dropped;
     // 방송자도 휴대폰 화면에서 바로 후원을 볼 수 있게 미리보기 위에 띄운다
-    let BroadcastDonations { mut arrived, .. } = use_broadcast_donations(on_air_id.clone(), is_live);
+    let BroadcastDonations { donations, mut arrived } = use_broadcast_donations(on_air_id.clone(), is_live);
     let camera_wanted = phase() != Phase::Ended && !dropped;
 
-    // 카메라 열기. 전환하면 기존 트랙을 닫고 새로 연다
-    use_effect(use_reactive!(|(camera_wanted, facing)| {
+    // 카메라나 화면 열기. 전환하면 기존 트랙을 닫고 새로 연다
+    use_effect(use_reactive!(|(camera_wanted, facing, source)| {
         let facing = facing();
+        let source = source();
         spawn(async move {
             camera_ready.set(false);
             if !camera_wanted {
                 broadcaster("closeCamera()").await;
                 return;
             }
-            let result = broadcaster(&format!("openCamera({CAMERA_ID:?}, {facing:?})")).await;
+            let call = match source {
+                Source::Camera => format!("openCamera({CAMERA_ID:?}, {facing:?})"),
+                Source::Screen => format!("openScreen({CAMERA_ID:?})"),
+            };
+            let result = broadcaster(&call).await;
             match bridge_error(&result) {
                 Some(message) => camera_error.set(Some(message)),
                 None => {
@@ -469,7 +486,7 @@ fn Broadcaster() -> Element {
         loop {
             sleep(Duration::from_secs(2)).await;
             if broadcaster("failed()").await.as_bool() == Some(true) {
-                error.set(Some("송출 연결이 끊겼습니다.".to_owned()));
+                error.set(Some("송출이 끊겼습니다. 연결이 끊겼거나 화면 공유를 멈췄습니다.".to_owned()));
                 return;
             }
         }
@@ -569,7 +586,8 @@ fn Broadcaster() -> Element {
             div { class: "camera",
                 video {
                     id: CAMERA_ID,
-                    class: if facing() == "user" { "mirrored" } else { "" },
+                    // 전면 카메라 미리보기만 거울처럼 보여 준다
+                    class: if source() == Source::Camera && facing() == "user" { "mirrored" } else { "" },
                     autoplay: true,
                     muted: true,
                     playsinline: true,
@@ -591,7 +609,7 @@ fn Broadcaster() -> Element {
                         },
                     }
                 }
-                if phase() == Phase::Preview {
+                if phase() == Phase::Preview && source() == Source::Camera {
                     button {
                         r#type: "button",
                         class: "button camera-switch",
@@ -601,7 +619,7 @@ fn Broadcaster() -> Element {
                 }
             }
 
-            if let Phase::OnAir { title: on_air_title, .. } = phase() {
+            if let Phase::OnAir { id: on_air_id, title: on_air_title } = phase() {
                 div { class: "broadcaster-controls",
                     p { class: "broadcaster-title", "{on_air_title}" }
                     if let Some(message) = error() {
@@ -615,8 +633,24 @@ fn Broadcaster() -> Element {
                         "방송 종료"
                     }
                 }
+                // 방송하면서 시청자 댓글과 후원을 본다
+                LiveComments { broadcast_id: on_air_id.clone(), active: true, donations: donations() }
             } else {
                 form { class: "broadcaster-controls", onsubmit: start,
+                    if can_share_screen {
+                        div { class: "source-switch", role: "group", "aria-label": "송출할 대상",
+                            for (option , label) in [(Source::Camera, "카메라"), (Source::Screen, "화면")] {
+                                button {
+                                    r#type: "button",
+                                    class: if source() == option { "button primary" } else { "button" },
+                                    "aria-pressed": source() == option,
+                                    disabled: starting,
+                                    onclick: move |_| source.set(option),
+                                    "{label}"
+                                }
+                            }
+                        }
+                    }
                     input {
                         r#type: "text",
                         class: "text-input",

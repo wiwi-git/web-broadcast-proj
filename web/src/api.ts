@@ -182,6 +182,8 @@ export interface Broadcast {
   endedAt: string | null
   /** 방송 중일 때만 존재 */
   playbackUrl: string | null
+  /** 방송 중일 때만 존재. WebRTC(WHEP) 시청 주소 (ADR-0006) */
+  webrtcUrl: string | null
 }
 
 export interface BroadcastList {

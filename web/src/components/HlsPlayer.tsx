@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Hls from 'hls.js'
+import { needsWebRtc, watch } from '../live/whep.ts'
 
 interface Level {
   index: number
@@ -10,11 +11,29 @@ interface Level {
 const AUTO = -1
 const RETRY_DELAY_MS = 2000
 
+/** 바로 재생한다. 브라우저가 소리 있는 자동 재생을 막으면 소리를 끄고 재생한다 */
+function startPlaying(video: HTMLVideoElement) {
+  video.play().catch(() => {
+    video.muted = true
+    video.play().catch(() => {})
+  })
+}
+
+interface Props {
+  src: string
+  poster?: string
+  /** 라이브는 화면에 들어오자마자 재생한다 */
+  autoPlay?: boolean
+  /** 라이브의 WHEP 주소. 송출 소리(Opus)를 HLS로 재생하지 못하는 기기(iOS)는 이걸로 본다 (ADR-0006) */
+  webrtcUrl?: string
+}
+
 /**
  * HLS 재생기. 대부분의 브라우저는 hls.js로 재생하고,
  * hls.js를 못 쓰는 Safari(iOS)는 자체 HLS 지원으로 재생한다 (이때는 화질 선택 없음).
+ * 라이브는 iOS에서 WebRTC로 본다.
  */
-export default function HlsPlayer({ src, poster }: { src: string; poster?: string }) {
+export default function HlsPlayer({ src, poster, autoPlay = false, webrtcUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const hlsRef = useRef<Hls | null>(null)
   const [levels, setLevels] = useState<Level[]>([])
@@ -24,8 +43,13 @@ export default function HlsPlayer({ src, poster }: { src: string; poster?: strin
     const video = videoRef.current
     if (!video) return
 
+    if (webrtcUrl && needsWebRtc()) {
+      return watch(webrtcUrl, video, () => startPlaying(video))
+    }
+
     if (!Hls.isSupported()) {
       video.src = src
+      if (autoPlay) startPlaying(video)
       return
     }
 
@@ -37,6 +61,7 @@ export default function HlsPlayer({ src, poster }: { src: string; poster?: strin
           .map((level, index) => ({ index, height: Math.min(level.width, level.height) }))
           .sort((a, b) => b.height - a.height),
       )
+      if (autoPlay) startPlaying(video)
     })
     // 라이브 플레이리스트는 시작 직후나 네트워크가 흔들릴 때 잠깐 실패할 수 있으므로 다시 시도한다
     let retryTimer: ReturnType<typeof setTimeout> | undefined
@@ -58,7 +83,7 @@ export default function HlsPlayer({ src, poster }: { src: string; poster?: strin
       setLevels([])
       setSelected(AUTO)
     }
-  }, [src])
+  }, [src, autoPlay, webrtcUrl])
 
   function changeLevel(index: number) {
     setSelected(index)

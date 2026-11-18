@@ -520,6 +520,21 @@ button.danger:hover:not(:disabled) {
   height: 44px;
 }
 
+/* 카메라와 화면 중 송출할 대상 */
+.source-switch {
+  display: flex;
+  gap: 8px;
+}
+
+.source-switch .button {
+  flex: 1;
+}
+
+/* 방송 화면의 댓글은 카메라 아래에 둔다 */
+.broadcaster .live-comments {
+  height: 360px;
+}
+
 /* 회원 */
 
 .account {

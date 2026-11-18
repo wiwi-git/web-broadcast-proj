@@ -31,7 +31,7 @@ export default function LiveWatchPage() {
       <article className="live-main">
         <div className="stage">
         {broadcast.status === 'LIVE' && broadcast.playbackUrl ? (
-          <HlsPlayer src={broadcast.playbackUrl} />
+          <HlsPlayer src={broadcast.playbackUrl} webrtcUrl={broadcast.webrtcUrl ?? undefined} autoPlay />
         ) : (
           <div className="player-placeholder">
             {broadcast.status === 'PENDING' ? (

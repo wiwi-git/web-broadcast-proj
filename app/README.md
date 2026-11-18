@@ -17,6 +17,18 @@ dx bundle --platform <...> --release # 배포용 패키지 (데스크톱·모바
 dx bundle --platform web --release --profile web-release # 웹 배포용 패키지 (크기를 줄인 설정, Cargo.toml 참고)
 ```
 
+아이폰 실기기에 설치하려면 Xcode에서 Bundle Identifier `com.webbroadcast.app`으로 빈 앱을 한 번 실행해
+프로비저닝 프로파일을 만든 뒤 아래 스크립트를 씁니다. Mac의 Wi-Fi 주소를 서버 주소로 넣어 빌드하고,
+아이콘을 넣어 다시 서명한 뒤 설치·실행합니다 (`.scratch/device-testing/issues/04-ios-app-on-real-iphone.md` 참고).
+
+```bash
+scripts/ios-device.sh
+```
+
+앱 아이콘은 웹 파비콘(`web/public/favicon.svg`)으로 만듭니다. 파비콘을 바꾸면 `icons/make-icons.sh`를 다시 실행합니다.
+macOS·Windows는 `Dioxus.toml`의 `[bundle] icon`으로 들어가고, iOS는 dx(0.7)가 아이콘을 넣지 않아 위 스크립트가 넣습니다.
+Android는 아직 dx 기본 아이콘입니다.
+
 ## 구조
 
 ```
@@ -78,14 +90,16 @@ UPLOAD_TEST_FILE=/path/to/short.mp4 cargo test --no-default-features --features 
 - **HLS 재생**: `components/hls_player.rs`는 빌드마다 순서가 다릅니다.
   웹 빌드는 웹과 같이 hls.js(`assets/hls.light.min.js`, 1.7.4)를 먼저 씁니다 (화질 선택 가능).
   앱의 라이브(`/hls`)는 hls.js를 씁니다. macOS WKWebView의 자체 재생은 저지연 라이브를 첫 장면에서 멈춘 채
-  따라가지 못했고, MediaMTX는 CORS를 허용합니다. 앱의 동영상(`/media`)은 `<video>`가 HLS를 바로 재생할 수 있으면
+  따라가지 못했고, MediaMTX는 CORS를 허용합니다. 다만 iOS는 송출 소리(Opus)가 든 HLS를 재생하지 못해서,
+  Opus를 못 푸는 기기는 라이브를 WebRTC(WHEP)로 받습니다(ADR-0006, 웹도 같음). 앱의 동영상(`/media`)은 `<video>`가 HLS를 바로 재생할 수 있으면
   (macOS·iOS) 그쪽을 씁니다. 서버의 `/media`가 CORS 헤더를 주지 않아 hls.js로는 앱 origin에서 받을 수 없기 때문이고,
   그래서 맥·iOS 앱의 동영상에는 화질 선택이 없습니다. Windows(WebView2)와 Android는 동영상도 hls.js를 쓰게 되므로
   서버 `/media`에 CORS를 열지 정해야 하고, 아직 확인하지 않았습니다.
 - **방송하기(카메라·마이크, WebRTC/WHIP)**: 카메라와 송출은 `assets/broadcaster.js`가 WebView 안에서 합니다.
   권한 선언은 `Dioxus.toml`의 `[permissions]`에 있습니다 (iOS·macOS Info.plist, Android 매니페스트로 바뀝니다).
-  **맥 앱에서는 카메라가 열리지 않습니다.** WebView에 카메라 장치가 보이지 않고(마이크는 보임), macOS에 권한 요청도
-  가지 않습니다. 네이티브에서 카메라 권한을 먼저 요청하는 등의 처리가 필요합니다. iOS·Android는 실기기에서 확인해야 합니다.
+  데스크톱은 카메라 대신 화면(창·전체 화면)을 골라 송출할 수 있습니다. 소리는 마이크로 보냅니다.
+  2026-11-18에 맥 앱에서 카메라 송출과 화면 송출, 아이폰 앱에서 카메라 송출을 확인했습니다. 그 전에는 맥 앱 WebView에
+  카메라 장치가 보이지 않았는데, 다시 빌드한 뒤로는 열렸고 원인은 확인하지 못했습니다. Android는 실기기에서 확인해야 합니다.
 - **업로드**: 데스크톱·모바일은 파일 선택 창이 준 경로의 파일을 reqwest로 조금씩 읽어 보냅니다.
   앱 창에서 파일 선택 창이 뜨는지(특히 iOS)는 아직 확인하지 않았습니다.
 - **후원 결제(토스페이먼츠)**: 웹 빌드는 앱 안에서 결제창을 엽니다. 데스크톱·모바일 앱은 결제창을 앱 안에 띄울 수 없어서

@@ -1,4 +1,4 @@
-// 방송하기 화면의 카메라와 WHIP 송출. web/src/pages/BroadcastPage.tsx, web/src/live/whip.ts, useWakeLock.ts를 옮겼다.
+// 방송하기 화면의 카메라·화면 공유와 WHIP 송출. web/src/pages/BroadcastPage.tsx, web/src/live/whip.ts, useWakeLock.ts를 옮겼다.
 // MediaStream은 WebView 안에만 있으므로 카메라와 송출은 여기서 하고, 방송 시작·종료 API와 화면 상태는 Rust가 맡는다.
 // 같은 네트워크 안의 미디어 서버를 가정하므로 STUN/TURN 없이 연결한다.
 (() => {
@@ -19,6 +19,19 @@
     if (name === 'NotReadableError') return '다른 앱이 카메라를 사용 중입니다.'
     // 알 수 없는 오류는 원인을 찾을 수 있도록 이름을 함께 보여 준다
     return `카메라를 열 수 없습니다. (${name || (error && error.message) || '알 수 없는 오류'})`
+  }
+
+  function screenErrorMessage(error) {
+    const name = error && error.name
+    if (name === 'NotAllowedError') return '화면 공유를 취소했거나 권한이 없습니다. 다시 고르거나 시스템 설정에서 화면 기록 권한을 허용해 주세요.'
+    return `화면을 공유할 수 없습니다. (${name || (error && error.message) || '알 수 없는 오류'})`
+  }
+
+  function show(videoId, opened) {
+    stopTracks()
+    stream = opened
+    const video = document.getElementById(videoId)
+    if (video) video.srcObject = opened
   }
 
   function stopTracks() {
@@ -83,14 +96,38 @@
           video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
           audio: { echoCancellation: true, noiseSuppression: true },
         })
-        stopTracks()
-        stream = opened
-        const video = document.getElementById(videoId)
-        if (video) video.srcObject = opened
+        show(videoId, opened)
         return { ok: true }
       } catch (e) {
         return { error: cameraErrorMessage(e) }
       }
+    },
+
+    /** 화면 공유를 지원하는지. 휴대폰은 지원하지 않는다 */
+    canShareScreen() {
+      return !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia)
+    },
+
+    /** 화면을 골라 videoId의 <video>에 보여 준다. 소리는 마이크로 보내고, 마이크를 못 열면 화면 소리를 보낸다 */
+    async openScreen(videoId) {
+      stopTracks()
+      if (!this.canShareScreen()) return { error: '이 기기에서는 화면을 공유할 수 없습니다.' }
+      let screen
+      try {
+        screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30 } }, audio: true })
+      } catch (e) {
+        return { error: screenErrorMessage(e) }
+      }
+      let mic = null
+      try {
+        mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+      } catch {
+        // 마이크 없이 화면만 보낸다
+      }
+      const audio = mic ? mic.getAudioTracks() : screen.getAudioTracks()
+      if (mic) screen.getAudioTracks().forEach((track) => track.stop())
+      show(videoId, new MediaStream([...screen.getVideoTracks(), ...audio]))
+      return { ok: true }
     },
 
     closeCamera() {
@@ -130,9 +167,11 @@
       }
     },
 
-    /** 송출 연결이 끊겼는지 */
+    /** 송출 연결이 끊겼거나, 공유하던 화면을 브라우저·시스템에서 멈췄는지 */
     failed() {
-      return !!connection && connection.connectionState === 'failed'
+      if (!connection) return false
+      const video = stream && stream.getVideoTracks()[0]
+      return connection.connectionState === 'failed' || (!!video && video.readyState === 'ended')
     },
 
     stopPublish() {

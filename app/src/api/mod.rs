@@ -240,6 +240,9 @@ pub struct Broadcast {
     pub ended_at: Option<String>,
     /// 방송 중일 때만 존재
     pub playback_url: Option<String>,
+    /// 방송 중일 때만 존재. WebRTC(WHEP) 시청 주소 (ADR-0006)
+    #[serde(default)]
+    pub webrtc_url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
