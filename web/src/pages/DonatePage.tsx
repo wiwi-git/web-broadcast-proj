@@ -15,6 +15,7 @@ import {
 } from '../api.ts'
 import { useAuth } from '../auth/useAuth.ts'
 import { formatWon } from '../format.ts'
+import { liftAboveKeyboard } from '../keyboardInset.ts'
 
 function amountError(amount: number | null): string | null {
   if (amount == null) return '금액을 입력해 주세요.'
@@ -167,6 +168,8 @@ function DonateForm({
             type="text"
             inputMode="numeric"
             className="text-input"
+            // 숫자 키패드가 아래 후원하기 버튼을 가리지 않게 입력칸을 화면 위쪽으로 올린다
+            onFocus={(e) => liftAboveKeyboard(e.currentTarget)}
             aria-label="직접 입력한 금액"
             value={amountText}
             onChange={(e) => setAmountText(e.target.value.replace(/[^\d]/g, ''))}

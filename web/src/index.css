@@ -14,7 +14,9 @@
   --radius: 8px;
 
   color-scheme: dark;
-  font-family: system-ui, -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  /* iOS Safari·WebView는 system-ui·-apple-system이 앞에 있으면 한글을 다음 폰트로 넘기지 못하고 ? 상자로 그린다
+     (iOS 26.3 시뮬레이터에서 확인, app/assets/main.css와 같음). 그래서 한글 폰트를 맨 앞에 둔다. */
+  font-family: 'Apple SD Gothic Neo', system-ui, -apple-system, 'Noto Sans KR', sans-serif;
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
@@ -1068,4 +1070,22 @@ button.danger:hover:not(:disabled) {
 .confirm-message {
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+/* iOS는 글자 크기가 16px보다 작은 입력칸을 누르면 화면을 확대한다 (app/assets/main.css와 같음). 터치 기기만 */
+@media (pointer: coarse) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+}
+
+/* 휴대폰에서 입력칸에 초점이 있으면 본문 아래를 비워, 키보드에 가린 내용을 올려 볼 수 있게 한다 (keyboardInset.ts) */
+@media (pointer: coarse) {
+  .app-main:has(input:focus, textarea:focus)::after {
+    content: '';
+    display: block;
+    height: 60vh;
+  }
 }
