@@ -46,3 +46,12 @@ inherits = "dev"
 
 [profile.android-dev]
 inherits = "dev"
+
+# 웹(wasm) 배포 전용. 내려받을 크기를 줄인다. 데스크톱·모바일 배포는 기본 release를 쓴다.
+# panic = "abort"는 넣지 않는다: 웹에서는 원래 그렇게 동작하고, 앱에서는 패닉 하나로 앱 전체가 꺼진다.
+# strip도 하지 않는다: 오류 위치에 함수 이름이 남아야 배포판 오류를 찾을 수 있다.
+[profile.web-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1

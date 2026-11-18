@@ -13,7 +13,8 @@ dx serve --platform desktop          # macOS 창으로 실행 (Windows 앱은 Wi
 dx serve --platform web --port 8090  # 브라우저 (8180은 Spring 서버가 쓴다)
 dx serve --platform android          # 안드로이드 에뮬레이터 (Android SDK/NDK 필요)
 dx serve --platform ios              # iOS 시뮬레이터 (Mac + Xcode 필요)
-dx bundle --platform <...> --release # 배포용 패키지
+dx bundle --platform <...> --release # 배포용 패키지 (데스크톱·모바일)
+dx bundle --platform web --release --profile web-release # 웹 배포용 패키지 (크기를 줄인 설정, Cargo.toml 참고)
 ```
 
 ## 구조
