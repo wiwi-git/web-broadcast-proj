@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>duse.dev</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f6f6f4;
+    --card: #ffffff;
+    --border: #e4e4df;
+    --text: #1d1d1b;
+    --muted: #6b6b66;
+    --on: #1f9d55;
+    --on-bg: #e3f5ea;
+    --off: #8a8a84;
+    --off-bg: #eeeeea;
+    --warn: #b7791f;
+    --warn-bg: #fbf0dc;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615;
+      --card: #20201e;
+      --border: #30302d;
+      --text: #ecece8;
+      --muted: #9a9a94;
+      --on: #4ade80;
+      --on-bg: #163222;
+      --off: #8f8f89;
+      --off-bg: #2a2a27;
+      --warn: #f6c35b;
+      --warn-bg: #3a2f16;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+  }
+  main { max-width: 880px; margin: 0 auto; padding: 64px 16px 48px; }
+  header h1 { font-size: 2.25rem; margin: 0; letter-spacing: -0.02em; }
+  header p { margin: 6px 0 0; color: var(--muted); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+    margin-top: 32px;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  a.card:hover { border-color: var(--muted); transform: translateY(-1px); }
+  .card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .card h2 { font-size: 1.15rem; margin: 0; }
+  .card p { margin: 0; color: var(--muted); font-size: 0.92rem; line-height: 1.5; }
+  .card .url { font-size: 0.85rem; color: var(--muted); }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .badge.on { color: var(--on); background: var(--on-bg); }
+  .badge.off { color: var(--off); background: var(--off-bg); }
+  .badge.partial, .badge.starting, .badge.unknown { color: var(--warn); background: var(--warn-bg); }
+  .meta { margin-top: 24px; font-size: 0.85rem; color: var(--muted); }
+  .empty { margin-top: 32px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>duse.dev</h1>
+    <p>이 서버에서 돌아가는 서비스</p>
+  </header>
+  <div class="grid" id="services"></div>
+  <p class="empty" id="empty" hidden>상태를 불러오지 못했어요.</p>
+  <p class="meta" id="meta"></p>
+</main>
+<script>
+  const LABELS = {
+    on: '켜짐',
+    off: '꺼짐',
+    partial: '일부만 켜짐',
+    starting: '켜지는 중',
+    unknown: '확인 불가',
+  }
+
+  function card(service) {
+    const element = document.createElement(service.status === 'on' && service.url ? 'a' : 'div')
+    element.className = 'card'
+    if (element.tagName === 'A') element.href = service.url
+
+    const top = document.createElement('div')
+    top.className = 'card-top'
+    const name = document.createElement('h2')
+    name.textContent = service.name
+    const badge = document.createElement('span')
+    badge.className = 'badge ' + service.status
+    badge.textContent = LABELS[service.status] ?? service.status
+    top.append(name, badge)
+
+    const description = document.createElement('p')
+    description.textContent = service.description
+
+    const url = document.createElement('span')
+    url.className = 'url'
+    url.textContent = service.url.replace(/^https?:\/\//, '')
+
+    element.append(top, description, url)
+    return element
+  }
+
+  async function refresh() {
+    const grid = document.getElementById('services')
+    const empty = document.getElementById('empty')
+    const meta = document.getElementById('meta')
+    try {
+      const response = await fetch('/status.json', { cache: 'no-store' })
+      if (!response.ok) throw new Error(response.status)
+      const data = await response.json()
+      grid.replaceChildren(...data.services.map(card))
+      empty.hidden = true
+      const updated = new Date(data.updated_at)
+      meta.textContent = '상태 확인: ' + updated.toLocaleString('ko-KR') + ' · 1분마다 갱신'
+    } catch {
+      empty.hidden = false
+    }
+  }
+
+  refresh()
+  setInterval(refresh, 60000)
+</script>
+</body>
+</html>

@@ -306,6 +306,7 @@ UDP/TCP 8189 (WebRTC 미디어)   → MediaMTX 직접
 | `compose.prod.yaml` | `/opt/web-broadcast/` | 운영용 덮어쓰기. DB를 밖에 열지 않고 내부 포트는 127.0.0.1에만 묶는다. MediaMTX가 서버를 컨테이너 이름으로 부른다 |
 | `deploy/env.example` | `/opt/web-broadcast/.env` | 공인 IP와 비밀값(DB 비밀번호, 동시 송출 비밀값, 토스 테스트 키). 서버에서 만들고 git에 올리지 않는다 |
 | `deploy/Caddyfile` | `/etc/caddy/Caddyfile` | `duse.dev` 메인 페이지와 `live.duse.dev` 경로 분배 |
+| `deploy/duse-dev/` | `/var/www/duse.dev/`, `/etc/duse/services.json`, `/usr/local/bin/duse-status-json`, systemd | `duse.dev` 첫 화면. 서비스 목록과 켜짐/꺼짐을 카드로 보여 준다. 타이머가 1분마다 컨테이너 상태와 헬스 체크를 `status.json`에 쓰고 페이지가 읽는다 |
 | `deploy/egress-cap.sh`, `.service` | `/usr/local/sbin/`, `/etc/systemd/system/` | 나가는 트래픽을 29 Mbit/s로 묶어 OCI 무료 송신 한도(월 10 TB)를 넘지 않게 한다. 동시 시청은 10명 남짓이 한계다 |
 
 코드는 git이 아니라 PC에서 rsync로 보낸다. 서버 이미지는 서버에서 빌드하고, 웹은 PC에서 빌드해 올린다.
