@@ -99,7 +99,7 @@ UPLOAD_TEST_FILE=/path/to/short.mp4 cargo test --no-default-features --features 
   Opus를 못 푸는 기기는 라이브를 WebRTC(WHEP)로 받습니다(ADR-0006, 웹도 같음). 앱의 동영상(`/media`)은 `<video>`가 HLS를 바로 재생할 수 있으면
   (macOS·iOS) 그쪽을 씁니다. 서버의 `/media`가 CORS 헤더를 주지 않아 hls.js로는 앱 origin에서 받을 수 없기 때문이고,
   그래서 맥·iOS 앱의 동영상에는 화질 선택이 없습니다. Windows(WebView2)와 Android는 동영상도 hls.js를 쓰게 되므로
-  서버 `/media`에 CORS를 열지 정해야 하고, 아직 확인하지 않았습니다.
+  운영 서버는 Caddy가 `/media`에 CORS 헤더를 붙입니다(`deploy/Caddyfile`). Windows 실기기 재생은 아직 확인하지 않았습니다.
 - **방송하기(카메라·마이크, WebRTC/WHIP)**: 카메라와 송출은 `assets/broadcaster.js`가 WebView 안에서 합니다.
   권한 선언은 `Dioxus.toml`의 `[permissions]`에 있습니다 (iOS·macOS Info.plist, Android 매니페스트로 바뀝니다).
   데스크톱은 카메라 대신 화면(창·전체 화면)을 골라 송출할 수 있습니다. 소리는 마이크로 보냅니다.

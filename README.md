@@ -6,6 +6,8 @@
 ```
 server/     Spring Boot 4 (Java 25) API 서버, 그리고 같은 코드로 띄우는 ffmpeg HLS 변환 워커
 web/        React + Vite + TypeScript
+app/        Rust(Dioxus) 클라이언트. Windows·macOS 데스크톱 앱 (모바일·웹도 같은 코드)
+deploy/     운영 서버(OCI) 설정: Caddy, 다운로드 페이지, duse.dev 첫 화면, 송신 상한
 mediamtx/   라이브 미디어 서버(MediaMTX) 설정
 k8s/        로컬 쿠버네티스 배포와 오토스케일(HPA) 설정
 load-test/  k6 부하 테스트
@@ -288,6 +290,93 @@ cd server && ./gradlew test
 
 웹 서버(nginx 등)는 Vite 개발 서버처럼 `/hls/*`를 MediaMTX 8888로, `/whip/*`를 8889로 넘겨야 한다. 이때 앞의 접두사는 떼고 넘긴다. MediaMTX는 첫 HLS 요청을 `/live/...`로 리다이렉트하므로, 응답의 `Location` 헤더에도 `/hls`를 다시 붙여야 한다 (nginx `proxy_redirect`).
 
+## 공개 주소
+
+| 주소 | 내용 |
+| --- | --- |
+| https://live.duse.dev | 방송 서비스 (웹 화면과 API) |
+| https://live.duse.dev/actuator/health | 상태 확인. 서버와 DB가 정상이면 `{"status":"UP"}` |
+| https://live.duse.dev/api/broadcasts | 방송 목록 API (데스크톱 앱이 부르는 것과 같다) |
+| https://live.duse.dev/download/ | 데스크톱 앱 다운로드 페이지 ([소스](deploy/download/index.html)) |
+| https://duse.dev | 같은 서버에 올린 서비스들의 켜짐/꺼짐 카드 |
+
+## 도메인과 HTTPS
+
+| 항목 | 값 |
+| --- | --- |
+| 도메인 | `duse.dev` — **등록함** (2026-11-19, Cloudflare Registrar, 상태 Active) |
+| 최초 등록 비용 | <!-- TODO: Cloudflare 결제 내역의 금액 --> 미기재 (1년) |
+| 갱신 비용 | <!-- TODO: Cloudflare 도메인 관리 화면의 갱신 가격 --> 미기재 / 1년 |
+| 서비스 주소 | `live.duse.dev` (서브도메인) |
+| DNS | Cloudflare DNS. `.dev`를 Cloudflare Registrar에서 사면 네임서버를 Cloudflare 밖으로 옮길 수 없다 |
+| 인증서 | Let's Encrypt, Caddy가 자동 발급·갱신 (90일 인증서, 만료 30일 전쯤 갱신) |
+
+### DNS 구성
+
+Cloudflare 대시보드 → `duse.dev` → **DNS → Records**에 두 줄을 넣는다.
+
+| Type | Name | Content | Proxy status |
+| --- | --- | --- | --- |
+| A | `@` | `161.33.218.209` (OCI VM 공인 IP) | DNS only (회색 구름) |
+| A | `*` | `161.33.218.209` | DNS only |
+
+- `*`(와일드카드)가 있어서 `live.duse.dev`처럼 새 서브도메인을 만들 때 DNS를 다시 건드리지 않는다.
+- **프록시를 끈다.** Cloudflare 프록시는 HTTP(S)만 넘겨서 WebRTC 미디어(UDP/TCP 8189)가 통하지 않고, 인증서도 서버가 직접 받아야 하기 때문이다.
+- 확인: `dig +short live.duse.dev` → `161.33.218.209`
+
+### HTTPS 구성
+
+`.dev`는 브라우저에 HSTS가 미리 들어 있어(HSTS preload) HTTP로는 열리지 않는다. 그래서 처음부터 HTTPS가 필요하다.
+
+1. OCI 보안 목록과 서버 iptables에서 80, 443/TCP를 연다(아래 "OCI VM" 참고). 인증서 발급 검증에 80/443이 쓰인다.
+2. 서버에 Caddy를 설치한다([공식 apt 저장소](https://caddyserver.com/docs/install#debian-ubuntu-raspbian)). systemd 서비스로 돈다.
+3. [deploy/Caddyfile](deploy/Caddyfile)을 `/etc/caddy/Caddyfile`에 두고 반영한다.
+   ```bash
+   sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+   sudo systemctl reload caddy
+   ```
+   Caddyfile에 사이트 이름(`live.duse.dev`)만 적으면 Caddy가 Let's Encrypt에서 인증서를 받고, HTTP→HTTPS 리다이렉트도 켠다. 갱신도 Caddy가 알아서 한다.
+4. 확인: `curl -sI https://live.duse.dev`가 200이고, 인증서 발급자가 Let's Encrypt인지 본다.
+   ```bash
+   echo | openssl s_client -connect live.duse.dev:443 -servername live.duse.dev 2>/dev/null | openssl x509 -noout -issuer -enddate
+   ```
+
+## OCI VM
+
+| 항목 | 값 |
+| --- | --- |
+| 리전 | 도쿄 `ap-tokyo-1` (계정의 홈 리전) |
+| Shape | `VM.Standard.A1.Flex` (Ampere ARM64) |
+| OCPU / 메모리 | **1 OCPU / 6GB** |
+| OS | Ubuntu 24.04 (aarch64) |
+| 부트 볼륨 | 약 45GB |
+| 네트워크 | VCN `duse-vcn`의 공개 서브넷, 공인 IP `161.33.218.209` |
+| 열린 포트 | 22, 80, 443/TCP, 8189/TCP·UDP (OCI 보안 목록과 서버 iptables 두 곳) |
+
+### 이 사양을 고른 이유
+
+- Always Free의 Arm 기반 A1은 계정 전체에 **월 3,000 OCPU 시간·18,000 GB 시간**(상시 4 OCPU·24GB에 해당)까지 무료다. Always Free는 홈 리전에서만 만들 수 있다. 이 계정에는 다른 A1 인스턴스가 없어 한도를 모두 쓸 수 있었다.
+- 과제 기준은 2 OCPU·12GB지만, 도쿄 리전에 A1 재고가 없어 생성이 **"Out of capacity"**로 실패했다(2026-11-19). 1 OCPU·6GB로 줄여도 처음에는 같은 오류가 났고, 다시 시도해서 만들어졌다. 홈 리전은 바꿀 수 없어 다른 리전으로 옮기는 대안은 없었다.
+- 다른 무료 대안인 `VM.Standard.E2.1.Micro`(AMD, 1/8 OCPU·1GB)는 Spring 서버, PostgreSQL, MediaMTX, ffmpeg 변환 워커를 함께 돌리기에 메모리가 부족하다. 그래서 작더라도 A1을 골랐다.
+- 1 OCPU·6GB에서 방송 서비스 전체가 약 1.3GB를 쓴다. 남은 무료 한도(3 OCPU·18GB)로 재고가 생기면 같은 인스턴스를 늘릴 수 있다(Edit → Shape, 재시작 필요).
+- ARM이라서 Docker 이미지가 `linux/arm64`를 지원해야 한다. 이 프로젝트의 이미지(Temurin JDK, PostgreSQL, MediaMTX)는 모두 지원한다.
+
+### 무료 범위를 넘지 않게 막은 것
+
+- 계정은 Pay As You Go다(2026-11-04 전환). 그래서 **할당량 정책 `free-tier-only`**로 A1(4 OCPU·24GB)과 E2 Micro, 블록 스토리지 200GB 말고는 만들 수 없게 막았다.
+- 예산 $1에 실제 지출 1%·99% 알림을 걸었다.
+- 무료 송신 한도(월 10TB)를 넘지 않게 [deploy/egress-cap.sh](deploy/egress-cap.sh)가 서버 송신을 29 Mbit/s로 묶는다.
+
+### 처음부터 다시 만드는 순서
+
+1. OCI 콘솔 → Compute → Instances → Create. 이미지 Ubuntu 24.04, Shape `VM.Standard.A1.Flex`(Ampere), OCPU·메모리 지정, 공개 서브넷, 공인 IP 할당, SSH 공개 키 등록.
+2. 네트워킹 → VCN → Security Lists → `Default Security List`의 수신 규칙에 80, 443/TCP와 8189/TCP·UDP를 더한다.
+3. 서버에 접속해 iptables에서 같은 포트를 연다(Ubuntu 이미지는 22만 열려 있다). `sudo netfilter-persistent save`로 저장한다.
+4. Docker(compose 플러그인 포함)와 Caddy를 설치하고, `ubuntu` 사용자를 `docker` 그룹에 넣는다.
+5. DNS A 레코드를 새 공인 IP로 바꾼다(위 "DNS 구성").
+6. 아래 "운영 서버 배포"대로 코드를 보내고, `/opt/web-broadcast/.env`를 [deploy/env.example](deploy/env.example) 보고 만든다.
+7. Caddyfile과 다운로드 페이지를 올린다(위 "HTTPS 구성", 아래 "데스크톱 앱 배포").
+
 ## 운영 서버 배포 (OCI, https://live.duse.dev)
 
 OCI 도쿄 리전의 무료 Ampere A1 VM(Ubuntu 24.04, ARM) 한 대에 올린다. 도메인 `duse.dev`는 Cloudflare에서 관리하며, `@`와 `*` A 레코드가 서버 공인 IP를 가리킨다(프록시 끔, DNS only). 앞단의 Caddy가 HTTPS 인증서를 자동으로 받고 경로별로 나눠 넘긴다.
@@ -324,4 +413,60 @@ ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 \
 rsync -az --delete -e "ssh -i ~/.ssh/oci_duse" web/dist/ ubuntu@161.33.218.209:/var/www/live.duse.dev/
 ```
 
+Caddyfile과 다운로드 페이지를 바꿨으면 함께 올린다.
+
+```bash
+rsync -az -e "ssh -i ~/.ssh/oci_duse" deploy/Caddyfile deploy/download/index.html ubuntu@161.33.218.209:/tmp/
+ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 'sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak \
+  && sudo install -m 644 /tmp/Caddyfile /etc/caddy/Caddyfile \
+  && sudo install -D -m 644 /tmp/index.html /var/www/live-download/index.html \
+  && sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && sudo systemctl reload caddy'
+```
+
+배포 환경의 값은 모두 서버의 `/opt/web-broadcast/.env`([deploy/env.example](deploy/env.example))와 [compose.prod.yaml](compose.prod.yaml)의 환경변수로 넣는다. 서비스 주소(DB, MediaMTX, 서버 서로의 주소)는 compose 서비스 이름으로 정하고, 공개 주소는 Caddyfile이 정한다. 데스크톱 앱이 쓸 서버 주소는 빌드할 때 넣는다(아래).
+
 방화벽은 두 겹이다. OCI 보안 목록(`Default Security List for duse-vcn`)과 서버 iptables(`/etc/iptables/rules.v4`) 모두에서 22, 80, 443/TCP와 8189/TCP·UDP만 연다. 비용은 OCI 할당량 정책 `free-tier-only`(무료 A1·E2 Micro와 디스크 200GB만 허용)와 $1 예산의 1% 지출 알림으로 막는다.
+
+## 데스크톱 앱 (Windows·macOS)
+
+[app/](app/)의 Rust([Dioxus](https://dioxuslabs.com) 0.7) 클라이언트를 데스크톱 패키지로 만든다. 화면은 OS의 WebView(Windows: WebView2, macOS: WKWebView)로 그리고, API 요청은 Rust(reqwest)가 한다. 앱을 열면 첫 화면이 라이브 목록(`GET /api/broadcasts`)이고, 방송을 누르면 HLS(`/hls`, hls.js)로 재생한다. 동영상 목록과 재생(`/media`)도 된다.
+
+| OS | 아키텍처 | 패키지 | 파일 |
+| --- | --- | --- | --- |
+| Windows 10·11 | x64 | 설치 파일 (.msi) | `WebBroadcast-windows-x64.msi` |
+| macOS 11 이상 | arm64 (Apple Silicon) | 디스크 이미지 (.dmg, 끌어 놓아 설치) | `WebBroadcast-macos-arm64.dmg` |
+
+### 빌드와 패키징
+
+- [app/scripts/bundle-desktop.sh](app/scripts/bundle-desktop.sh): 지금 OS의 패키지를 만든다. 서버 주소(`https://live.duse.dev`)를 빌드할 때 앱에 넣는다(`API_ORIGIN`, `HLS_ORIGIN`, `WHIP_ORIGIN`, `WEB_ORIGIN`, [app/src/config.rs](app/src/config.rs)). 다른 서버를 쓰려면 `SERVER=https://… app/scripts/bundle-desktop.sh`.
+  - macOS: `dx bundle`로 `.app`을 만들고, 번들 전체를 임시(ad-hoc) 서명한 뒤 `hdiutil`로 DMG를 만든다.
+  - Windows: `dx bundle --package-types msi` (WiX). Git Bash에서 실행한다.
+- [.github/workflows/desktop.yml](.github/workflows/desktop.yml): GitHub Actions의 `windows-latest`(x64)와 `macos-latest`(arm64) 러너에서 위 스크립트를 돌린다. `desktop-v*` 태그를 올리면 GitHub Release를 만들고 두 파일을 붙인다.
+  ```bash
+  git tag desktop-v0.1.0 && git push origin desktop-v0.1.0
+  ```
+
+필요한 것(로컬 빌드): Rust stable, `dx` 0.7.10(`cargo binstall dioxus-cli@0.7.10`), Windows는 Git Bash.
+
+### 다운로드 페이지
+
+https://live.duse.dev/download/ ([deploy/download/index.html](deploy/download/index.html))에 OS별 링크, 지원 아키텍처, 설치·실행 방법이 있다. 파일 링크(`/download/WebBroadcast-…`)는 Caddy가 GitHub Releases의 최신 릴리스 파일로 넘긴다(`releases/latest/download/…`). 그래서 새 태그를 올리면 페이지를 고치지 않아도 새 버전이 받아진다. 큰 파일이 OCI 송신 한도를 쓰지 않는 것도 이유다.
+
+Windows 앱은 동영상(`/media`)을 hls.js로 받아서 앱 origin에서 교차 출처 요청이 된다. 그래서 Caddy가 `/media/*`에 `Access-Control-Allow-Origin: *`를 붙인다(동영상은 원래 누구나 볼 수 있다). macOS 앱은 동영상을 WKWebView 자체 재생으로 틀기 때문에 이 헤더가 필요 없고, 라이브(`/hls`)는 MediaMTX가 CORS를 허용한다.
+
+### 설치·실행 확인 절차
+
+1. 외부 네트워크(휴대폰 테더링 등)에서 https://live.duse.dev/download/ 를 연다. 주소창의 자물쇠(인증서 Let's Encrypt)를 확인한다.
+2. 웹(https://live.duse.dev/broadcast)에서 방송을 하나 시작해 둔다. 동영상도 하나 이상 올라가 있어야 한다.
+3. **Windows**: 페이지의 Windows 링크로 `.msi`를 받는다 → 실행 → SmartScreen이 뜨면 "추가 정보 → 실행" → 설치 → 시작 메뉴에서 `WebBroadcast`로 검색해 실행.
+4. **macOS**: 페이지의 macOS 링크로 `.dmg`를 받는다 → 열어서 앱을 응용 프로그램 폴더로 끌어 놓기 → 실행 → 막히면 시스템 설정 → 개인정보 보호 및 보안 → "그래도 열기".
+5. 각 OS에서 확인한다: (a) 첫 화면에 방송 목록이 보인다, (b) 방송 중인 방송을 눌러 영상과 소리가 나온다, (c) 동영상 목록에서 영상을 눌러 재생된다.
+
+### 테스트 결과
+
+<!-- TODO: 실제로 확인한 뒤 채운다 -->
+
+| 날짜 | OS (버전) | 아키텍처 | 네트워크 | 다운로드·설치 | 방송 목록 | 라이브 재생 | 동영상 재생 | 비고 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| | Windows ( ) | x64 | | 미확인 | 미확인 | 미확인 | 미확인 | |
+| | macOS ( ) | arm64 | | 미확인 | 미확인 | 미확인 | 미확인 | |

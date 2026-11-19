@@ -22,8 +22,28 @@ live.duse.dev {
 	handle /api/* {
 		reverse_proxy 127.0.0.1:8180
 	}
-	handle /media/* {
+
+	# 상태 확인: Spring Boot Actuator가 DB 연결까지 보고 {"status":"UP"}을 돌려준다
+	handle /actuator/health* {
 		reverse_proxy 127.0.0.1:8180
+	}
+
+	# 동영상 HLS. Windows 앱(WebView2)은 hls.js로 받아서 앱 origin에서 교차 출처 요청이 된다.
+	# 동영상은 누구나 볼 수 있으므로 모든 origin에 읽기를 허용한다 (쿠키는 보내지 않는다)
+	handle /media/* {
+		header Access-Control-Allow-Origin *
+		reverse_proxy 127.0.0.1:8180
+	}
+
+	# 데스크톱 앱 다운로드 페이지 (deploy/download/)
+	redir /download /download/ permanent
+	handle_path /download/* {
+		# 패키지 파일은 GitHub Releases에 있다. 도메인 주소로 받을 수 있게 최신 릴리스로 넘긴다
+		@package path /WebBroadcast-*
+		redir @package https://github.com/wiwi-git/web-broadcast-proj/releases/latest/download{path} temporary
+
+		root * /var/www/live-download
+		file_server
 	}
 
 	# HLS 시청: /hls 접두사를 떼고 MediaMTX로, 리다이렉트 주소에는 다시 붙인다

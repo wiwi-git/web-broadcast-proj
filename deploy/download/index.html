@@ -1,0 +1,119 @@
+<!doctype html>
+<!--
+  데스크톱 앱 다운로드 페이지. 서버의 /var/www/live-download/ 에 두고 https://live.duse.dev/download/ 로 연다.
+  패키지 링크(WebBroadcast-*)는 Caddy가 GitHub Releases의 최신 릴리스 파일로 넘긴다 (deploy/Caddyfile).
+  패키지는 .github/workflows/desktop.yml 이 만든다.
+-->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Web Broadcast 앱 다운로드</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #1b1f24;
+      --muted: #5c6670;
+      --line: #e1e5ea;
+      --accent: #e5484d;
+      --accent-text: #ffffff;
+      --code: #eef1f4;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111317;
+        --card: #1a1d22;
+        --text: #e8eaed;
+        --muted: #9aa3ad;
+        --line: #2c3138;
+        --accent: #ff6369;
+        --accent-text: #111317;
+        --code: #24282f;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Segoe UI", sans-serif;
+    }
+    main { max-width: 860px; margin: 0 auto; padding: 40px 16px 64px; }
+    h1 { margin: 0 0 4px; font-size: 28px; }
+    h2 { margin: 0 0 4px; font-size: 20px; }
+    h3 { margin: 20px 0 6px; font-size: 15px; }
+    p.lead { margin: 0 0 32px; color: var(--muted); }
+    a { color: var(--accent); }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 24px; }
+    .meta { margin: 0 0 16px; color: var(--muted); font-size: 14px; }
+    .button {
+      display: inline-block; padding: 10px 18px; border-radius: 8px;
+      background: var(--accent); color: var(--accent-text); font-weight: 600; text-decoration: none;
+    }
+    ol { margin: 0; padding-left: 20px; }
+    li { margin: 4px 0; }
+    code { background: var(--code); border-radius: 4px; padding: 1px 5px; font-size: 13px; word-break: break-all; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+    section.more { margin-top: 32px; }
+    footer { margin-top: 32px; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Web Broadcast 데스크톱 앱</h1>
+  <p class="lead">
+    <a href="https://live.duse.dev">live.duse.dev</a>의 라이브 방송과 동영상을 데스크톱 앱으로 봅니다.
+    앱은 이 서버(<code>https://live.duse.dev</code>)에 연결되도록 빌드되어 있습니다.
+  </p>
+
+  <div class="grid">
+    <div class="card" id="windows">
+      <h2>Windows</h2>
+      <p class="meta">Windows 10·11 · x64 (64비트 Intel/AMD) · 설치 파일 .msi</p>
+      <a class="button" href="WebBroadcast-windows-x64.msi">Windows용 다운로드</a>
+      <h3>설치와 실행</h3>
+      <ol>
+        <li><code>WebBroadcast-windows-x64.msi</code>를 실행합니다.</li>
+        <li>"Windows의 PC 보호" 창이 뜨면 <b>추가 정보 → 실행</b>을 누릅니다 (코드 서명을 하지 않은 앱이라 뜹니다).</li>
+        <li>설치 마법사를 끝까지 진행합니다.</li>
+        <li>시작 메뉴에서 <b>WebBroadcast</b>로 검색해 앱을 엽니다.</li>
+      </ol>
+      <p class="meta" style="margin-top:12px">화면은 Microsoft Edge WebView2로 그립니다. Windows 10·11에는 기본으로 들어 있습니다.</p>
+    </div>
+
+    <div class="card" id="macos">
+      <h2>macOS</h2>
+      <p class="meta">macOS 11 이상 · Apple Silicon (arm64, M1 이후) · 디스크 이미지 .dmg</p>
+      <a class="button" href="WebBroadcast-macos-arm64.dmg">macOS용 다운로드</a>
+      <h3>설치와 실행</h3>
+      <ol>
+        <li><code>WebBroadcast-macos-arm64.dmg</code>를 열고 앱을 <b>응용 프로그램</b> 폴더로 끌어 놓습니다.</li>
+        <li>응용 프로그램 폴더에서 앱을 엽니다. Apple 공증을 받지 않은 앱이라 처음에는 열리지 않고 경고가 뜹니다.</li>
+        <li><b>시스템 설정 → 개인정보 보호 및 보안</b> 아래쪽의 <b>그래도 열기</b>를 누르고 다시 엽니다.</li>
+        <li>"손상되었기 때문에 열 수 없습니다"가 뜨면 터미널에서 아래 명령을 실행한 뒤 다시 엽니다.<br>
+          <code>xattr -dr com.apple.quarantine /Applications/WebBroadcastApp.app</code></li>
+      </ol>
+    </div>
+  </div>
+
+  <section class="more card">
+    <h2>앱에서 확인할 것</h2>
+    <table>
+      <tr><th>화면</th><th>확인 방법</th></tr>
+      <tr><td>라이브 목록</td><td>앱을 열면 첫 화면에 방송 중인 방송과 최근 종료된 방송이 보입니다.</td></tr>
+      <tr><td>라이브 재생</td><td>방송 중인 방송을 누르면 영상이 재생됩니다. 방송이 없으면 웹(<a href="https://live.duse.dev/broadcast">live.duse.dev/broadcast</a>)에서 하나 시작합니다.</td></tr>
+      <tr><td>동영상 재생</td><td>머리글의 동영상 목록에서 영상을 누르면 재생됩니다.</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    모든 버전: <a href="https://github.com/wiwi-git/web-broadcast-proj/releases">GitHub Releases</a> ·
+    소스: <a href="https://github.com/wiwi-git/web-broadcast-proj">github.com/wiwi-git/web-broadcast-proj</a> (<code>app/</code>)
+  </footer>
+</main>
+</body>
+</html>
