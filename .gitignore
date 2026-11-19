@@ -1,2 +1,4 @@
 .DS_Store
 .env
+# 개인 서버(duse.dev) 사용 설명서. 접속 정보가 있어 올리지 않는다
+duse-server.md
