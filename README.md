@@ -464,9 +464,11 @@ Windows 앱은 동영상(`/media`)을 hls.js로 받아서 앱 origin에서 교�
 
 ### 테스트 결과
 
-<!-- TODO: 실제로 확인한 뒤 채운다 -->
+빌드: GitHub Actions [desktop 실행](https://github.com/wiwi-git/web-broadcast-proj/actions/runs/44633769932)에서 두 패키지 모두 성공 (2026-11-20, 릴리스 [desktop-v0.1.0](https://github.com/wiwi-git/web-broadcast-proj/releases/tag/desktop-v0.1.0)).
+
+<!-- TODO: Windows 실기기와 macOS 재생은 직접 확인한 뒤 채운다 -->
 
 | 날짜 | OS (버전) | 아키텍처 | 네트워크 | 다운로드·설치 | 방송 목록 | 라이브 재생 | 동영상 재생 | 비고 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | | Windows ( ) | x64 | | 미확인 | 미확인 | 미확인 | 미확인 | |
-| | macOS ( ) | arm64 | | 미확인 | 미확인 | 미확인 | 미확인 | |
+| 2026-11-20 | macOS 15.7.9 | arm64 | 개발 PC 인터넷 (외부에서 공개 주소로 접속) | 성공: `live.duse.dev/download/` 링크로 받은 DMG, 서명 검증 통과 | 성공: 라이브 목록(방송 0개)과 동영상 목록이 운영 서버에서 표시됨 | 미확인 (방송 없음) | 상세 화면과 재생기 표시까지 확인, 재생은 미확인 | |
