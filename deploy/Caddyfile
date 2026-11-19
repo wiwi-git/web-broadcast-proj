@@ -1,0 +1,49 @@
+# duse.dev 메인 페이지
+duse.dev {
+	root * /var/www/duse.dev
+	file_server
+	encode gzip
+}
+
+# www.duse.dev 는 duse.dev 로 보냄
+www.duse.dev {
+	redir https://duse.dev{uri} permanent
+}
+
+# 방송 프로젝트 (/opt/web-broadcast, docker compose)
+live.duse.dev {
+	encode gzip
+
+	# MediaMTX만 부르는 서버 내부 API는 밖으로 열지 않는다
+	handle /api/internal/* {
+		respond 404
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8180
+	}
+	handle /media/* {
+		reverse_proxy 127.0.0.1:8180
+	}
+
+	# HLS 시청: /hls 접두사를 떼고 MediaMTX로, 리다이렉트 주소에는 다시 붙인다
+	handle_path /hls/* {
+		reverse_proxy 127.0.0.1:8888 {
+			header_down Location ^/ /hls/
+		}
+	}
+
+	# WHIP 송출: /whip 접두사를 떼고 MediaMTX로
+	handle_path /whip/* {
+		reverse_proxy 127.0.0.1:8889
+	}
+
+	# 나머지는 React 앱 (새로고침해도 index.html)
+	handle {
+		root * /var/www/live.duse.dev
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+# 새 서비스는 위처럼 블록을 추가한다

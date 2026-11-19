@@ -287,3 +287,40 @@ cd server && ./gradlew test
 웹 서버(nginx 등)는 `/api/internal/*`을 밖으로 넘기지 않는다. MediaMTX만 서버에 직접 부르는 경로다(유튜브 동시 송출, ADR-0007).
 
 웹 서버(nginx 등)는 Vite 개발 서버처럼 `/hls/*`를 MediaMTX 8888로, `/whip/*`를 8889로 넘겨야 한다. 이때 앞의 접두사는 떼고 넘긴다. MediaMTX는 첫 HLS 요청을 `/live/...`로 리다이렉트하므로, 응답의 `Location` 헤더에도 `/hls`를 다시 붙여야 한다 (nginx `proxy_redirect`).
+
+## 운영 서버 배포 (OCI, https://live.duse.dev)
+
+OCI 도쿄 리전의 무료 Ampere A1 VM(Ubuntu 24.04, ARM) 한 대에 올린다. 도메인 `duse.dev`는 Cloudflare에서 관리하며, `@`와 `*` A 레코드가 서버 공인 IP를 가리킨다(프록시 끔, DNS only). 앞단의 Caddy가 HTTPS 인증서를 자동으로 받고 경로별로 나눠 넘긴다.
+
+```
+https://live.duse.dev ─ Caddy ─┬─ /                → React 빌드 (/var/www/live.duse.dev)
+                               ├─ /api, /media     → server 컨테이너 (127.0.0.1:8180)
+                               ├─ /hls             → MediaMTX 8888 (접두사 떼고, Location에 다시 붙임)
+                               ├─ /whip            → MediaMTX 8889 (접두사 떼고)
+                               └─ /api/internal    → 404
+UDP/TCP 8189 (WebRTC 미디어)   → MediaMTX 직접
+```
+
+| 파일 | 서버 위치 | 내용 |
+| --- | --- | --- |
+| `compose.prod.yaml` | `/opt/web-broadcast/` | 운영용 덮어쓰기. DB를 밖에 열지 않고 내부 포트는 127.0.0.1에만 묶는다. MediaMTX가 서버를 컨테이너 이름으로 부른다 |
+| `deploy/env.example` | `/opt/web-broadcast/.env` | 공인 IP와 비밀값(DB 비밀번호, 동시 송출 비밀값, 토스 테스트 키). 서버에서 만들고 git에 올리지 않는다 |
+| `deploy/Caddyfile` | `/etc/caddy/Caddyfile` | `duse.dev` 메인 페이지와 `live.duse.dev` 경로 분배 |
+| `deploy/egress-cap.sh`, `.service` | `/usr/local/sbin/`, `/etc/systemd/system/` | 나가는 트래픽을 29 Mbit/s로 묶어 OCI 무료 송신 한도(월 10 TB)를 넘지 않게 한다. 동시 시청은 10명 남짓이 한계다 |
+
+코드는 git이 아니라 PC에서 rsync로 보낸다. 서버 이미지는 서버에서 빌드하고, 웹은 PC에서 빌드해 올린다.
+
+```bash
+# 서버 코드와 설정 보내고 컨테이너 다시 띄우기
+rsync -az --delete -e "ssh -i ~/.ssh/oci_duse" \
+  --exclude .gradle/ --exclude build/ --exclude data/ --exclude config/local.properties \
+  compose.yaml compose.prod.yaml mediamtx server ubuntu@161.33.218.209:/opt/web-broadcast/
+ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 \
+  'cd /opt/web-broadcast && docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build'
+
+# 웹 빌드해서 올리기
+(cd web && npm run build)
+rsync -az --delete -e "ssh -i ~/.ssh/oci_duse" web/dist/ ubuntu@161.33.218.209:/var/www/live.duse.dev/
+```
+
+방화벽은 두 겹이다. OCI 보안 목록(`Default Security List for duse-vcn`)과 서버 iptables(`/etc/iptables/rules.v4`) 모두에서 22, 80, 443/TCP와 8189/TCP·UDP만 연다. 비용은 OCI 할당량 정책 `free-tier-only`(무료 A1·E2 Micro와 디스크 200GB만 허용)와 $1 예산의 1% 지출 알림으로 막는다.
