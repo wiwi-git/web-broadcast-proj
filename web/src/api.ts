@@ -184,6 +184,18 @@ export interface Broadcast {
   playbackUrl: string | null
   /** 방송 중일 때만 존재. WebRTC(WHEP) 시청 주소 (ADR-0006) */
   webrtcUrl: string | null
+  /** Owner에게만, 유튜브 동시 송출을 켠 방송일 때만 존재 (ADR-0007) */
+  simulcastStatus?: SimulcastStatus | null
+}
+
+/** 유튜브 동시 송출 중계가 마지막으로 알린 상태 */
+export type SimulcastStatus = 'CONNECTING' | 'LIVE' | 'FAILED'
+
+/** 내 YouTube Key와 동시 송출 기본값. 키는 끝 네 자리만 온다. available이 false면 서버에 동시 송출 설정이 없다 */
+export interface SimulcastSetting {
+  available: boolean
+  youtubeKeyLast4: string | null
+  onByDefault: boolean
 }
 
 export interface BroadcastList {
@@ -208,8 +220,21 @@ export function fetchBroadcast(id: string): Promise<Broadcast> {
   return getJson(`/api/broadcasts/${encodeURIComponent(id)}`)
 }
 
-export function startBroadcast(title: string): Promise<StartedBroadcast> {
-  return sendJson('POST', '/api/broadcasts', { title })
+/** simulcast면 내 유튜브 채널로도 내보낸다 (ADR-0007) */
+export function startBroadcast(title: string, simulcast = false): Promise<StartedBroadcast> {
+  return sendJson('POST', '/api/broadcasts', { title, simulcast })
+}
+
+export function fetchSimulcast(): Promise<SimulcastSetting> {
+  return getJson('/api/simulcast')
+}
+
+export function saveYouTubeKey(key: string): Promise<SimulcastSetting> {
+  return sendJson('PUT', '/api/simulcast/youtube-key', { key })
+}
+
+export function deleteYouTubeKey(): Promise<void> {
+  return request('/api/simulcast/youtube-key', { method: 'DELETE' })
 }
 
 export function renameBroadcast(id: string, title: string): Promise<Broadcast> {

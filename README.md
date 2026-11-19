@@ -54,6 +54,34 @@ load-test/  k6 부하 테스트
 
 파일 대신 `TOSS_CLIENT_KEY`, `TOSS_SECRET_KEY` 환경변수로 넣어도 된다. 둘 다 있으면 파일이 이긴다. 다른 기능은 키가 없어도 동작하고, 후원만 "결제가 설정되지 않았습니다"로 막힌다. 결제위젯 키(`test_gck_`)나 라이브 키를 넣으면 서버가 시작하지 않는다.
 
+## 유튜브 동시 송출
+
+방송을 시작할 때 "유튜브에도 송출"을 고르면 같은 방송이 방송자 본인의 유튜브 채널에도 라이브로 나간다. 송출은 한 번만 하고, MediaMTX가 띄운 ffmpeg가 영상은 그대로, 소리만 AAC로 바꿔 유튜브에 다시 보낸다([ADR-0007](docs/adr/0007-simulcast-relayed-by-mediamtx-ffmpeg.md)). 방송자는 유튜브 스튜디오의 스트림 키를 방송하기 화면에서 한 번 등록한다. 서버는 키를 암호화해 저장하고 끝 네 자리만 보여 준다. 유튜브 연결이 실패해도 방송은 계속되고, 방송자 화면에 "유튜브: 연결 실패"가 뜬다.
+
+### 동시 송출 켜기
+
+서버와 MediaMTX가 같은 중계 비밀 값을 알아야 한다. 값이 없으면 동시 송출만 화면에 나타나지 않는다.
+
+1. 루트 `.env`에 `SIMULCAST_RELAY_SECRET=<openssl rand -hex 32 값>`을 넣고 `docker compose up -d mediamtx`로 MediaMTX를 다시 띄운다.
+2. `server/config/local.properties`에 같은 값과 암호화 키를 넣고 서버를 다시 시작한다.
+   ```properties
+   simulcast.relay-secret=<1과 같은 값>
+   simulcast.encryption-key=<openssl rand -base64 32 값>
+   ```
+   암호화 키를 바꾸면 저장된 유튜브 키를 읽을 수 없으니 다시 등록해야 한다.
+
+유튜브 대신 로컬에서 받아 보려면 RTMP 수신기를 띄우고, 서버의 수신 주소를 바꾼다.
+
+```bash
+docker compose --profile simulcast-test up -d rtmp-sink
+```
+
+```properties
+simulcast.youtube-url=rtmp://rtmp-sink:1935/live2
+```
+
+수신기에 들어온 방송은 `docker compose logs rtmp-sink`에서 `live2/<등록한 키>` 경로로 보인다.
+
 ## 개발 환경 실행
 
 필요한 것: JDK 25, Node 24, Docker, ffmpeg (`brew install ffmpeg`)
@@ -134,6 +162,7 @@ cd web && npm run dev               # 웹은 그대로 http://localhost:5173 (AP
 | `VIDEO_WORKER_ENABLED` | `false` (서버), 워커는 `SPRING_PROFILES_ACTIVE=worker` | 변환을 누가 맡는지 |
 | `TOSS_CLIENT_KEY` / `TOSS_SECRET_KEY` | `test_ck_…` / `test_sk_…` | 선택. Secret `toss-keys`로 넣는다 |
 | `LAN_IP` (`.env`) | `192.168.0.10` | 선택. 휴대폰 송출용. `k8s/up.sh`가 MediaMTX에 넘긴다 |
+| `SIMULCAST_ENCRYPTION_KEY` / `SIMULCAST_RELAY_SECRET` | `openssl rand -base64 32` / `openssl rand -hex 32` | 선택. 유튜브 동시 송출. Secret `simulcast`로 넣으면 서버와 MediaMTX가 함께 읽는다 |
 
 토스페이먼츠 테스트 키는 저장소에 넣지 않고 클러스터에 직접 만든다.
 
@@ -141,6 +170,15 @@ cd web && npm run dev               # 웹은 그대로 http://localhost:5173 (AP
 kubectl -n webbroadcast create secret generic toss-keys \
   --from-literal=TOSS_CLIENT_KEY=test_ck_... --from-literal=TOSS_SECRET_KEY=test_sk_...
 kubectl -n webbroadcast rollout restart deployment/server
+```
+
+유튜브 동시 송출도 같은 방식으로 넣는다.
+
+```bash
+kubectl -n webbroadcast create secret generic simulcast \
+  --from-literal=SIMULCAST_ENCRYPTION_KEY="$(openssl rand -base64 32)" \
+  --from-literal=SIMULCAST_RELAY_SECRET="$(openssl rand -hex 32)"
+kubectl -n webbroadcast rollout restart deployment/server deployment/mediamtx
 ```
 
 ### 스케일 아웃·인 확인 절차
@@ -209,9 +247,9 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 | `PATCH` | `/api/videos/{id}` | 👤 | JSON `{title, description}` |
 | `DELETE` | `/api/videos/{id}` | 👤 | 파일과 댓글도 함께 지운다. 204 |
 | `GET` | `/media/videos/{id}/...` | 🔓 | HLS 플레이리스트·세그먼트·썸네일 |
-| `POST` | `/api/broadcasts` | 🔑 | JSON `{title}`. 준비 상태의 Broadcast와 `streamKey`, `whipUrl`. 진행 중인 방송이 있으면 409와 `activeBroadcastId` |
+| `POST` | `/api/broadcasts` | 🔑 | JSON `{title, simulcast}`. 준비 상태의 Broadcast와 `streamKey`, `whipUrl`. 진행 중인 방송이 있으면 409와 `activeBroadcastId`. `simulcast`가 true인데 유튜브 키가 없으면 400 |
 | `GET` | `/api/broadcasts` | 🔓 | `live`(방송 중)와 `recentlyEnded`(최근 종료 20개) |
-| `GET` | `/api/broadcasts/{id}` | 🔓 | Broadcast 하나. 방송 중이면 `playbackUrl`(LL-HLS) 포함 |
+| `GET` | `/api/broadcasts/{id}` | 🔓 | Broadcast 하나. 방송 중이면 `playbackUrl`(LL-HLS) 포함. 소유자가 보면 `simulcastStatus`(`CONNECTING`/`LIVE`/`FAILED`, 동시 송출을 켠 방송만) 포함 |
 | `PATCH` | `/api/broadcasts/{id}` | 👤 | JSON `{title}` |
 | `POST` | `/api/broadcasts/{id}/end` | 👤 | 204 |
 | `DELETE` | `/api/broadcasts/{id}` | 👤 | 진행 중이면 송출을 끊는다. 댓글도 함께 지운다. 204 |
@@ -228,7 +266,11 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 | `POST` | `/api/donations/{id}/abandon` | 👤 | JSON `{code, message}` (결제 서비스가 `failUrl`로 준 값). 후원자만 |
 | `GET` | `/api/donations/sent` | 🔑 | 내가 보낸 후원 최근 50개 (모든 상태) |
 | `GET` | `/api/donations/received` | 🔑 | 내가 받은 완료된 후원 최근 50개와 전체 건수·합계 |
+| `GET` | `/api/simulcast` | 🔑 | 내 동시 송출 설정 `{available, youtubeKeyLast4, onByDefault}`. `available`이 false면 서버에 설정이 없다 |
+| `PUT` | `/api/simulcast/youtube-key` | 🔑 | JSON `{key}`. 유튜브 스트림 키 등록·변경. 끝 네 자리만 돌려준다 |
+| `DELETE` | `/api/simulcast/youtube-key` | 🔑 | 204 |
 | `POST` | `/api/media-server/auth` | | MediaMTX 인증 훅 (내부용) |
+| `GET`·`POST` | `/api/internal/simulcast/target`, `/status` | | MediaMTX 동시 송출 중계 스크립트 전용. `X-Relay-Secret` 헤더가 맞지 않으면 404 |
 
 오류는 ProblemDetail 형식이며 `detail`에 사용자에게 보여줄 문구가 담긴다. 로그인이 필요하면 401, 권한이 없거나 CSRF 토큰이 없으면 403이다.
 
@@ -238,8 +280,10 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 cd server && ./gradlew test
 ```
 
-`AccessControlTest`와 `DonationTest`는 Testcontainers로 PostgreSQL을 띄워 HTTP 요청으로 확인하므로 Docker가 실행 중이어야 한다. `AccessControlTest`는 공개 범위와 소유자·작성자 권한을, `DonationTest`는 후원의 결제 흐름을 본다. `DonationTest`는 토스페이먼츠 대신 가짜 결제 서비스로 승인·거절·결과 모름을 정한다.
+`AccessControlTest`, `DonationTest`, `SimulcastTest`는 Testcontainers로 PostgreSQL을 띄워 HTTP 요청으로 확인하므로 Docker가 실행 중이어야 한다. `AccessControlTest`는 공개 범위와 소유자·작성자 권한을, `DonationTest`는 후원의 결제 흐름을 본다. `DonationTest`는 토스페이먼츠 대신 가짜 결제 서비스로 승인·거절·결과 모름을 정한다. `SimulcastTest`는 유튜브 키 암호화 저장과 중계 내부 API를 본다(실제 중계는 위의 로컬 RTMP 수신기로 확인한다).
 
 ## 배포할 때 주의
+
+웹 서버(nginx 등)는 `/api/internal/*`을 밖으로 넘기지 않는다. MediaMTX만 서버에 직접 부르는 경로다(유튜브 동시 송출, ADR-0007).
 
 웹 서버(nginx 등)는 Vite 개발 서버처럼 `/hls/*`를 MediaMTX 8888로, `/whip/*`를 8889로 넘겨야 한다. 이때 앞의 접두사는 떼고 넘긴다. MediaMTX는 첫 HLS 요청을 `/live/...`로 리다이렉트하므로, 응답의 `Location` 헤더에도 `/hls`를 다시 붙여야 한다 (nginx `proxy_redirect`).

@@ -245,6 +245,44 @@ pub struct Broadcast {
     /// 방송 중일 때만 존재. WebRTC(WHEP) 시청 주소 (ADR-0006)
     #[serde(default)]
     pub webrtc_url: Option<String>,
+    /// Owner에게만, 유튜브 동시 송출을 켠 방송일 때만 존재 (ADR-0007)
+    #[serde(default)]
+    pub simulcast_status: Option<SimulcastStatus>,
+}
+
+/// 유튜브 동시 송출 중계가 마지막으로 알린 상태
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SimulcastStatus {
+    Connecting,
+    Live,
+    Failed,
+}
+
+/// 내 YouTube Key와 동시 송출 기본값. 키는 끝 네 자리만 온다. available이 false면 서버에 동시 송출 설정이 없다
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SimulcastSetting {
+    pub available: bool,
+    pub youtube_key_last4: Option<String>,
+    pub on_by_default: bool,
+}
+
+pub async fn fetch_simulcast() -> ApiResult<SimulcastSetting> {
+    get_json("/api/simulcast").await
+}
+
+#[derive(Serialize)]
+struct YouTubeKey<'a> {
+    key: &'a str,
+}
+
+pub async fn save_youtube_key(key: &str) -> ApiResult<SimulcastSetting> {
+    send_json(Method::PUT, "/api/simulcast/youtube-key", &YouTubeKey { key }).await
+}
+
+pub async fn delete_youtube_key() -> ApiResult<()> {
+    send_empty(Method::DELETE, "/api/simulcast/youtube-key").await
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -278,8 +316,15 @@ struct BroadcastTitle<'a> {
     title: &'a str,
 }
 
-pub async fn start_broadcast(title: &str) -> ApiResult<StartedBroadcast> {
-    send_json(Method::POST, "/api/broadcasts", &BroadcastTitle { title }).await
+#[derive(Serialize)]
+struct BroadcastStart<'a> {
+    title: &'a str,
+    simulcast: bool,
+}
+
+/// simulcast면 내 유튜브 채널로도 내보낸다 (ADR-0007)
+pub async fn start_broadcast(title: &str, simulcast: bool) -> ApiResult<StartedBroadcast> {
+    send_json(Method::POST, "/api/broadcasts", &BroadcastStart { title, simulcast }).await
 }
 
 pub async fn rename_broadcast(id: &str, title: &str) -> ApiResult<Broadcast> {

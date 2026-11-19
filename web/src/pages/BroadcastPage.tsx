@@ -5,6 +5,7 @@ import { publish, type WhipSession } from '../live/whip.ts'
 import ConfirmButton from '../components/ConfirmButton.tsx'
 import DonationAlert from '../components/DonationAlert.tsx'
 import LiveComments from '../components/LiveComments.tsx'
+import SimulcastPicker, { SimulcastStatusLine } from '../components/SimulcastPicker.tsx'
 import { useBroadcast } from '../live/useBroadcast.ts'
 import { useBroadcastDonations } from '../live/useBroadcastDonations.ts'
 import { useElapsed } from '../live/useElapsed.ts'
@@ -65,6 +66,8 @@ export default function BroadcastPage() {
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
+  /** 유튜브에도 송출할지 (ADR-0007). 방송 중에는 바꾸지 않는다 */
+  const [simulcast, setSimulcast] = useState(false)
   const [phase, setPhase] = useState<Phase>({ kind: 'preview' })
   const [error, setError] = useState<string | null>(null)
   /** 이미 진행 중인 내 방송이 있어 시작하지 못했을 때 그 방송 */
@@ -140,7 +143,7 @@ export default function BroadcastPage() {
     setPhase({ kind: 'starting' })
     let started: StartedBroadcast | null = null
     try {
-      started = await startBroadcast(title.trim())
+      started = await startBroadcast(title.trim(), simulcast)
       const session = await publish(`${started.whipUrl}?key=${encodeURIComponent(started.streamKey)}`, stream)
       sessionRef.current = session
       session.connection.addEventListener('connectionstatechange', () => {
@@ -241,6 +244,7 @@ export default function BroadcastPage() {
         <>
           <div className="broadcaster-controls">
             <p className="broadcaster-title">{title.trim()}</p>
+            {broadcast?.simulcastStatus && <SimulcastStatusLine status={broadcast.simulcastStatus} />}
             {error && <p className="hint error">{error}</p>}
             <ConfirmButton className="button danger" message="방송을 종료할까요?" confirmLabel="종료" onConfirm={handleEnd}>
               방송 종료
@@ -276,6 +280,7 @@ export default function BroadcastPage() {
             placeholder="방송 제목"
             onChange={(e) => setTitle(e.target.value)}
           />
+          <SimulcastPicker on={simulcast} onChange={setSimulcast} disabled={phase.kind === 'starting'} />
           {error && <p className="hint error">{error}</p>}
           {blockingId && (
             <ConfirmButton

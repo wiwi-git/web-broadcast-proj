@@ -26,6 +26,7 @@ kubectl apply -k k8s/metrics-server
 echo "▶ 앱 적용"
 kubectl apply -f k8s/app/namespace.yaml
 kubectl -n "$NAMESPACE" create configmap mediamtx-config --from-file=mediamtx/mediamtx.yml \
+  --from-file=mediamtx/simulcast.sh \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -k k8s/app
 

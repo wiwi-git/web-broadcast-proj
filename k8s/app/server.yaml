@@ -28,6 +28,9 @@ spec:
             - secretRef: { name: db-credentials }
             # 토스페이먼츠 테스트 키 (선택). 없으면 후원만 "결제가 설정되지 않았습니다"가 된다
             - secretRef: { name: toss-keys, optional: true }
+            # 유튜브 동시 송출 (선택, ADR-0007). SIMULCAST_ENCRYPTION_KEY와 SIMULCAST_RELAY_SECRET.
+            # MediaMTX도 같은 Secret에서 SIMULCAST_RELAY_SECRET을 읽는다
+            - secretRef: { name: simulcast, optional: true }
           env:
             # 변환은 워커 Pod가 맡는다 (ADR-0004)
             - name: VIDEO_WORKER_ENABLED

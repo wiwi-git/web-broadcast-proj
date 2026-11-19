@@ -20,6 +20,8 @@ import com.webbroadcast.donation.DonationNotFoundException;
 import com.webbroadcast.donation.DonationNotPendingException;
 import com.webbroadcast.donation.InvalidDonationException;
 import com.webbroadcast.donation.PaymentUnavailableException;
+import com.webbroadcast.simulcast.InvalidYouTubeKeyException;
+import com.webbroadcast.simulcast.SimulcastNotConfiguredException;
 import com.webbroadcast.user.DuplicateUserException;
 import com.webbroadcast.user.InvalidSignUpException;
 import com.webbroadcast.user.NotOwnerException;
@@ -35,7 +37,7 @@ import com.webbroadcast.web.donation.PaymentNotConfiguredException;
 class ApiExceptionHandler {
 
 	@ExceptionHandler({ InvalidUploadException.class, InvalidBroadcastException.class, InvalidCommentException.class,
-			InvalidSignUpException.class, InvalidDonationException.class })
+			InvalidSignUpException.class, InvalidDonationException.class, InvalidYouTubeKeyException.class })
 	ProblemDetail badRequest(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
 	}
@@ -84,6 +86,12 @@ class ApiExceptionHandler {
 	ProblemDetail paymentNotConfigured(PaymentNotConfiguredException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
 				"후원 결제가 아직 설정되지 않았습니다. 서버의 토스페이먼츠 키를 확인해 주세요.");
+	}
+
+	@ExceptionHandler(SimulcastNotConfiguredException.class)
+	ProblemDetail simulcastNotConfigured(SimulcastNotConfiguredException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+				"유튜브 동시 송출이 아직 설정되지 않았습니다. 서버의 동시 송출 설정을 확인해 주세요.");
 	}
 
 	@ExceptionHandler(MaxUploadSizeExceededException.class)

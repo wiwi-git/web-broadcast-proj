@@ -18,6 +18,8 @@ export default defineConfig({
     // 기본값(localhost)이면 Node가 IPv6(::1)에만 열어서, localhost를 127.0.0.1로 찾는 Firefox는 연결하지 못한다
     host: https ? true : '127.0.0.1',
     proxy: {
+      // MediaMTX만 부르는 서버 내부 API(유튜브 동시 송출 중계, ADR-0007)는 웹으로 넘기지 않는다
+      '^/api/internal/': { target: springServer, bypass: () => false },
       '/api': springServer,
       '/media': springServer,
       '/hls': {

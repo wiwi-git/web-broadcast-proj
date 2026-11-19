@@ -530,6 +530,49 @@ button.danger:hover:not(:disabled) {
   flex: 1;
 }
 
+/* 유튜브 동시 송출 (방송 시작 전) */
+.simulcast {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.simulcast-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.simulcast-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.simulcast-check input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.simulcast-check .hint {
+  margin-left: auto;
+  font-weight: 400;
+}
+
+.simulcast-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.broadcaster-controls .simulcast-actions .button {
+  height: 36px;
+}
+
 /* 방송 화면의 댓글은 카메라 아래에 둔다 */
 .broadcaster .live-comments {
   height: 360px;

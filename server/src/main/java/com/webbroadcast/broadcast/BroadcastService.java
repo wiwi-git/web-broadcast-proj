@@ -3,12 +3,15 @@ package com.webbroadcast.broadcast;
 import java.time.Clock;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
+import com.webbroadcast.simulcast.SimulcastService;
 import com.webbroadcast.user.NotOwnerException;
 import com.webbroadcast.user.User;
 import com.webbroadcast.user.UserService;
@@ -27,16 +30,26 @@ public class BroadcastService {
 
 	private final BroadcastRepository repository;
 	private final UserService userService;
+	private final SimulcastService simulcastService;
 	private final Clock clock;
 
-	BroadcastService(BroadcastRepository repository, UserService userService, Clock clock) {
+	BroadcastService(BroadcastRepository repository, UserService userService, SimulcastService simulcastService,
+			Clock clock) {
 		this.repository = repository;
 		this.userService = userService;
+		this.simulcastService = simulcastService;
 		this.clock = clock;
 	}
 
-	public Started start(UUID ownerId, String rawTitle) {
+	/** simulcast면 Owner의 유튜브 채널로도 내보낸다 (ADR-0007). 고른 값은 다음 방송의 기본값이 된다 */
+	public Started start(UUID ownerId, String rawTitle, boolean simulcast) {
 		String title = validTitle(rawTitle);
+		if (simulcast) {
+			simulcastService.requireAvailable();
+			if (!simulcastService.hasYouTubeKey(ownerId)) {
+				throw new InvalidBroadcastException("유튜브에도 송출하려면 유튜브 키를 먼저 등록해 주세요.");
+			}
+		}
 		repository.findFirstByOwnerIdAndStatusIn(ownerId, ACTIVE).ifPresent(active -> {
 			throw new BroadcastInProgressException(active.getId());
 		});
@@ -44,7 +57,8 @@ public class BroadcastService {
 		String key = StreamKey.generate();
 		try {
 			Broadcast broadcast = repository.saveAndFlush(
-					Broadcast.pending(UUID.randomUUID(), owner, title, StreamKey.hash(key), clock.instant()));
+					Broadcast.pending(UUID.randomUUID(), owner, title, StreamKey.hash(key), simulcast, clock.instant()));
+			simulcastService.rememberChoice(ownerId, simulcast);
 			return new Started(broadcast, key);
 		}
 		catch (DataIntegrityViolationException e) {
@@ -112,6 +126,28 @@ public class BroadcastService {
 			.flatMap(repository::findById)
 			.filter(b -> b.getStatus() != BroadcastStatus.ENDED)
 			.isPresent();
+	}
+
+	/** MediaMTX 중계 스크립트가 보낼 유튜브 주소. 동시 송출을 켠 진행 중인 방송이고 Owner의 키가 있을 때만 있다 */
+	public Optional<String> simulcastTarget(String mediaPath) {
+		return MediaPath.parse(mediaPath)
+			.flatMap(repository::findById)
+			.filter(Broadcast::wantsSimulcast)
+			.flatMap(b -> simulcastService.youtubeUrl(b.getOwner().getId()));
+	}
+
+	/** 중계 스크립트가 알린 유튜브 상태를 남긴다. 그 사이 종료·삭제된 방송이면 무시한다 */
+	public void reportSimulcast(String mediaPath, SimulcastStatus status) {
+		MediaPath.parse(mediaPath).flatMap(repository::findById).ifPresent(broadcast -> {
+			if (broadcast.reportSimulcast(status)) {
+				try {
+					repository.save(broadcast);
+				}
+				catch (OptimisticLockingFailureException e) {
+					// 같은 때 상태 동기화나 Owner의 요청이 저장했다. 다음 보고나 화면 갱신에 영향이 없다
+				}
+			}
+		});
 	}
 
 	private Broadcast ownedBy(UUID id, UUID userId) {

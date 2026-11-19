@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.webbroadcast.broadcast.Broadcast;
 import com.webbroadcast.broadcast.BroadcastService;
 import com.webbroadcast.broadcast.MediaPath;
 import com.webbroadcast.user.CurrentUser;
@@ -28,6 +29,10 @@ class BroadcastController {
 	private static final String WHIP_PATH = "/whip/";
 
 	record TitleRequest(String title) {
+	}
+
+	/** simulcast: 유튜브에도 송출할지 (ADR-0007). 없으면 하지 않는다 */
+	record StartRequest(String title, Boolean simulcast) {
 	}
 
 	/** 송출할 때 whipUrl에 streamKey를 붙인다 */
@@ -48,11 +53,12 @@ class BroadcastController {
 	}
 
 	@PostMapping
-	ResponseEntity<StartResponse> start(@AuthenticationPrincipal CurrentUser user, @RequestBody TitleRequest request) {
-		BroadcastService.Started started = broadcastService.start(user.id(), request.title());
+	ResponseEntity<StartResponse> start(@AuthenticationPrincipal CurrentUser user, @RequestBody StartRequest request) {
+		BroadcastService.Started started = broadcastService.start(user.id(), request.title(),
+				Boolean.TRUE.equals(request.simulcast()));
 		UUID id = started.broadcast().getId();
 		return ResponseEntity.created(URI.create("/api/broadcasts/" + id))
-			.body(new StartResponse(BroadcastResponse.from(started.broadcast()), started.streamKey(), whipUrl(id)));
+			.body(new StartResponse(BroadcastResponse.forOwner(started.broadcast()), started.streamKey(), whipUrl(id)));
 	}
 
 	@GetMapping
@@ -62,15 +68,18 @@ class BroadcastController {
 				broadcastService.listRecentlyEnded().stream().map(BroadcastResponse::from).toList());
 	}
 
+	/** 로그인하지 않아도 볼 수 있다. Owner가 보면 유튜브 동시 송출 상태가 함께 담긴다 */
 	@GetMapping("/{id}")
-	BroadcastResponse get(@PathVariable UUID id) {
-		return BroadcastResponse.from(broadcastService.get(id));
+	BroadcastResponse get(@AuthenticationPrincipal CurrentUser user, @PathVariable UUID id) {
+		Broadcast broadcast = broadcastService.get(id);
+		boolean owner = user != null && broadcast.getOwner().is(user.id());
+		return owner ? BroadcastResponse.forOwner(broadcast) : BroadcastResponse.from(broadcast);
 	}
 
 	@PatchMapping("/{id}")
 	BroadcastResponse rename(@AuthenticationPrincipal CurrentUser user, @PathVariable UUID id,
 			@RequestBody TitleRequest request) {
-		return BroadcastResponse.from(broadcastService.rename(id, user.id(), request.title()));
+		return BroadcastResponse.forOwner(broadcastService.rename(id, user.id(), request.title()));
 	}
 
 	@PostMapping("/{id}/end")

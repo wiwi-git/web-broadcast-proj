@@ -5,7 +5,10 @@ use dioxus::prelude::*;
 
 use crate::api::{self, ApiError, BROADCAST_TITLE_MAX_LENGTH, Broadcast as BroadcastInfo, BroadcastList, BroadcastStatus};
 use crate::auth::{RequireLogin, use_auth};
-use crate::components::{BroadcastDonations, ConfirmButton, DonationAlert, HlsPlayer, LiveComments, use_broadcast_donations};
+use crate::components::{
+    BroadcastDonations, ConfirmButton, DonationAlert, HlsPlayer, LiveComments, SimulcastPicker, SimulcastStatusLine,
+    use_broadcast_donations,
+};
 use crate::config;
 use crate::route::Route;
 use crate::time::{format_date, format_elapsed, format_relative, sleep};
@@ -419,6 +422,8 @@ fn Broadcaster() -> Element {
     let mut camera_ready = use_signal(|| false);
     let mut camera_error = use_signal(|| None::<String>);
     let mut title = use_signal(String::new);
+    // 유튜브에도 송출할지 (ADR-0007). 방송 중에는 바꾸지 않는다
+    let simulcast = use_signal(|| false);
     let mut phase = use_signal(|| Phase::Preview);
     let mut error = use_signal(|| None::<String>);
     // 이미 진행 중인 내 방송이 있어 시작하지 못했을 때 그 방송
@@ -506,7 +511,7 @@ fn Broadcaster() -> Element {
         error.set(None);
         blocking_id.set(None);
         phase.set(Phase::Starting);
-        let started = match api::start_broadcast(&name).await {
+        let started = match api::start_broadcast(&name, simulcast()).await {
             Ok(started) => started,
             Err(e) => {
                 if let ApiError::Server { problem, .. } = &e {
@@ -580,6 +585,7 @@ fn Broadcaster() -> Element {
     }
 
     let alert = arrived.read().front().cloned().filter(|_| is_live);
+    let simulcast_status = broadcast.as_ref().and_then(|b| b.simulcast_status);
     let starting = phase() == Phase::Starting;
     rsx! {
         div { class: "broadcaster",
@@ -622,6 +628,9 @@ fn Broadcaster() -> Element {
             if let Phase::OnAir { id: on_air_id, title: on_air_title } = phase() {
                 div { class: "broadcaster-controls",
                     p { class: "broadcaster-title", "{on_air_title}" }
+                    if let Some(status) = simulcast_status {
+                        SimulcastStatusLine { status }
+                    }
                     if let Some(message) = error() {
                         p { class: "hint error", "{message}" }
                     }
@@ -660,6 +669,7 @@ fn Broadcaster() -> Element {
                         placeholder: "방송 제목",
                         oninput: move |e| title.set(e.value()),
                     }
+                    SimulcastPicker { on: simulcast, disabled: starting }
                     if let Some(message) = error() {
                         p { class: "hint error", "{message}" }
                     }

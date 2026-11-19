@@ -21,11 +21,16 @@ services:
       retries: 10
 
   mediamtx:
-    image: bluenviron/mediamtx:1.21.3
+    # 유튜브 동시 송출을 ffmpeg로 중계하므로 ffmpeg가 든 이미지를 쓴다 (ADR-0007)
+    image: bluenviron/mediamtx:1.21.3-ffmpeg
     volumes:
       - ./mediamtx/mediamtx.yml:/mediamtx.yml:ro
+      - ./mediamtx/simulcast.sh:/simulcast.sh:ro
     environment:
       MTX_WEBRTCADDITIONALHOSTS: ${LAN_IP:-}
+      # 중계 스크립트가 유튜브 주소를 묻고 상태를 알리는 서버. 서버의 simulcast.relay-secret과 같은 값을 .env에 둔다
+      SIMULCAST_SERVER_URL: ${SIMULCAST_SERVER_URL:-http://host.docker.internal:8180}
+      SIMULCAST_RELAY_SECRET: ${SIMULCAST_RELAY_SECRET:-}
     ports:
       - "8888:8888"            # LL-HLS (Viewer)
       - "8889:8889"            # WHIP (Broadcaster)
@@ -35,6 +40,16 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # 유튜브 대신 동시 송출을 받아 보는 로컬 RTMP 수신기. 서버의 simulcast.youtube-url을 rtmp://rtmp-sink:1935/live2로 바꿔 쓴다
+  #   docker compose --profile simulcast-test up -d rtmp-sink
+  rtmp-sink:
+    profiles: [simulcast-test]
+    image: bluenviron/mediamtx:1.21.3
+    environment:
+      MTX_WEBRTC: "no"
+      MTX_HLS: "no"
+      MTX_SRT: "no"
+
   server:
     profiles: [app]
     build: ./server
@@ -43,6 +58,8 @@ services:
       DB_USERNAME: webbroadcast
       DB_PASSWORD: webbroadcast
       MEDIAMTX_API_URL: http://mediamtx:9997
+      SIMULCAST_ENCRYPTION_KEY: ${SIMULCAST_ENCRYPTION_KEY:-}
+      SIMULCAST_RELAY_SECRET: ${SIMULCAST_RELAY_SECRET:-}
       # 변환은 worker 컨테이너가 맡는다
       VIDEO_WORKER_ENABLED: "false"
     ports:

@@ -50,6 +50,14 @@ public class Broadcast {
 
 	private Instant endedAt;
 
+	/** 유튜브 동시 송출을 켰는지. 방송을 시작할 때 정하고 바꾸지 않는다 (ADR-0007) */
+	@Column(nullable = false)
+	private boolean simulcast;
+
+	@Enumerated(EnumType.STRING)
+	@Column(length = 20)
+	private SimulcastStatus simulcastStatus;
+
 	/** BroadcastSync와 Owner의 요청이 겹칠 때, 지워진 Broadcast를 되살리거나 종료를 덮어쓰지 않게 한다 */
 	@Version
 	private long version;
@@ -57,8 +65,11 @@ public class Broadcast {
 	protected Broadcast() {
 	}
 
-	static Broadcast pending(UUID id, User owner, String title, String streamKeyHash, Instant now) {
+	static Broadcast pending(UUID id, User owner, String title, String streamKeyHash, boolean simulcast,
+			Instant now) {
 		Broadcast broadcast = new Broadcast();
+		broadcast.simulcast = simulcast;
+		broadcast.simulcastStatus = simulcast ? SimulcastStatus.CONNECTING : null;
 		broadcast.id = id;
 		broadcast.owner = owner;
 		broadcast.title = title;
@@ -118,6 +129,20 @@ public class Broadcast {
 		}
 	}
 
+	/** 중계 스크립트가 알린 유튜브 상태를 남긴다. 동시 송출을 켜지 않았거나 끝난 방송은 바꾸지 않는다. 바뀌었으면 true */
+	boolean reportSimulcast(SimulcastStatus reported) {
+		if (!simulcast || status == BroadcastStatus.ENDED || simulcastStatus == reported) {
+			return false;
+		}
+		simulcastStatus = reported;
+		return true;
+	}
+
+	/** 중계할 수 있는 방송인지. 영상이 들어오자마자 중계가 시작되므로 아직 준비 상태일 수 있다 */
+	boolean wantsSimulcast() {
+		return simulcast && status != BroadcastStatus.ENDED;
+	}
+
 	void end(Instant now) {
 		if (status != BroadcastStatus.ENDED) {
 			status = BroadcastStatus.ENDED;
@@ -151,5 +176,13 @@ public class Broadcast {
 
 	public Instant getEndedAt() {
 		return endedAt;
+	}
+
+	public boolean isSimulcast() {
+		return simulcast;
+	}
+
+	public SimulcastStatus getSimulcastStatus() {
+		return simulcastStatus;
 	}
 }

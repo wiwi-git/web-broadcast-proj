@@ -115,6 +115,14 @@ _Avoid_: 유저, 관객
 Broadcast의 Owner에게만 주어지는 송출 연결용 비밀 값. 이 값을 가진 쪽만 영상을 보낼 수 있다. 종료·수정·삭제는 Stream Key가 아니라 Owner인지로 판단한다.
 _Avoid_: 토큰, 비밀번호
 
+**Simulcast (동시 송출)**:
+Broadcaster가 고른 Broadcast를 그 Broadcaster의 유튜브 채널에도 라이브로 함께 내보내는 것. 서버가 중계하므로 송출은 한 번만 한다(ADR-0007). 방송을 시작할 때 고르고 방송 중에는 바꾸지 않는다. 유튜브 쪽이 실패해도 Broadcast는 계속된다.
+_Avoid_: 멀티스트리밍, 재송출, 리스트리밍
+
+**YouTube Key (유튜브 키)**:
+Broadcaster의 유튜브 채널로 Simulcast할 때 쓰는 비밀 값. 유튜브 스튜디오가 발급하고 Broadcaster가 붙여넣어 등록한다. User 한 명에 하나이며, 등록 후에는 끝 네 자리만 보여 준다.
+_Avoid_: 스트림 키(Stream Key와 헷갈린다), 유튜브 토큰
+
 ### 방송 상태
 
 **준비 (Pending)**:
