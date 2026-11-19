@@ -94,3 +94,34 @@ pub fn LogoutIcon() -> Element {
         }
     }
 }
+
+/// 앱 다운로드: 아래쪽 화살표와 받침
+#[component]
+pub fn DownloadIcon() -> Element {
+    rsx! {
+        Icon {
+            path { d: "M12 4v11M7 10l5 5 5-5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" }
+        }
+    }
+}
+
+/// 내 계정: 사람
+#[component]
+pub fn UserIcon() -> Element {
+    rsx! {
+        Icon {
+            circle { cx: "12", cy: "8", r: "4" }
+            path { d: "M4 20a8 8 0 0 1 16 0" }
+        }
+    }
+}
+
+/// 닫기: X
+#[component]
+pub fn CloseIcon() -> Element {
+    rsx! {
+        Icon {
+            path { d: "M6 6l12 12M18 6L6 18" }
+        }
+    }
+}

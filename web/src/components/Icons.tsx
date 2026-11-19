@@ -71,3 +71,25 @@ export const LogoutIcon = () => (
     <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4M10 12h11M17 8l4 4-4 4" />
   </Icon>
 )
+
+/** 앱 다운로드: 아래쪽 화살표와 받침 */
+export const DownloadIcon = () => (
+  <Icon>
+    <path d="M12 4v11M7 10l5 5 5-5M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" />
+  </Icon>
+)
+
+/** 내 계정: 사람 */
+export const UserIcon = () => (
+  <Icon>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 20a8 8 0 0 1 16 0" />
+  </Icon>
+)
+
+/** 닫기: X */
+export const CloseIcon = () => (
+  <Icon>
+    <path d="M6 6l12 12M18 6L6 18" />
+  </Icon>
+)
