@@ -56,6 +56,15 @@ mkdir -p dist
 if [ "$os" = macos ]; then
   built="$(find "$out_dir" -maxdepth 2 -name "*.app" -print -quit)"
   [ -n "$built" ] || { echo "앱을 찾지 못했습니다 ($out_dir/*.app)" >&2; exit 1; }
+  # dx bundle(0.7.10)은 Dioxus.toml의 [permissions]를 macOS Info.plist에 넣지 않는다 (dx build는 넣는다).
+  # 사용 설명이 없으면 WKWebView가 navigator.mediaDevices를 아예 숨겨서 카메라도 화면 공유도 쓸 수 없으므로 직접 넣는다.
+  # 문구는 Dioxus.toml의 [permissions]와 같게 유지한다
+  plist="$built/Contents/Info.plist"
+  plutil -replace NSCameraUsageDescription -string "방송 화면을 송출하려면 카메라가 필요합니다." "$plist"
+  plutil -replace NSMicrophoneUsageDescription -string "방송 소리를 송출하려면 마이크가 필요합니다." "$plist"
+  for key in NSCameraUsageDescription NSMicrophoneUsageDescription; do
+    plutil -extract "$key" raw "$plist" >/dev/null || { echo "Info.plist에 $key가 없습니다" >&2; exit 1; }
+  done
   # Apple 개발자 인증서가 없으므로 임시(ad-hoc) 서명으로 번들 전체를 봉인한다. 공증은 하지 않는다
   codesign --force --deep --sign - "$built"
   codesign --verify --deep --strict "$built"

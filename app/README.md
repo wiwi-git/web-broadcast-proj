@@ -103,8 +103,10 @@ UPLOAD_TEST_FILE=/path/to/short.mp4 cargo test --no-default-features --features 
 - **방송하기(카메라·마이크, WebRTC/WHIP)**: 카메라와 송출은 `assets/broadcaster.js`가 WebView 안에서 합니다.
   권한 선언은 `Dioxus.toml`의 `[permissions]`에 있습니다 (iOS·macOS Info.plist, Android 매니페스트로 바뀝니다).
   데스크톱은 카메라 대신 화면(창·전체 화면)을 골라 송출할 수 있습니다. 소리는 마이크로 보냅니다.
-  2026-11-18에 맥 앱에서 카메라 송출과 화면 송출, 아이폰 앱에서 카메라 송출을 확인했습니다. 그 전에는 맥 앱 WebView에
-  카메라 장치가 보이지 않았는데, 다시 빌드한 뒤로는 열렸고 원인은 확인하지 못했습니다. Android는 실기기에서 확인해야 합니다.
+  2026-11-18에 맥 앱에서 카메라 송출과 화면 송출, 아이폰 앱에서 카메라 송출을 확인했습니다. Info.plist에 카메라·마이크
+  사용 설명(`NSCameraUsageDescription`, `NSMicrophoneUsageDescription`)이 없으면 WKWebView가 `navigator.mediaDevices`를
+  아예 숨겨서 카메라도 화면 공유도 쓸 수 없습니다. `dx bundle`(0.7.10)은 `[permissions]`를 macOS Info.plist에 넣지 않으므로
+  `scripts/bundle-desktop.sh`가 직접 넣습니다 (`dx build`는 넣습니다). Android는 실기기에서 확인해야 합니다.
 - **업로드**: 데스크톱은 파일 선택 창이 준 경로의 파일을 reqwest로 조금씩 읽어 보냅니다.
   iOS·안드로이드는 Dioxus(0.7)의 파일 입력이 아무 창도 띄우지 않아서(네이티브 파일 창이 데스크톱에만 있음),
   `components/webview_file.rs`가 웹뷰 자체의 선택 창을 띄우고 고른 파일을 임시 파일로 옮겨 같은 방식으로 보냅니다.
