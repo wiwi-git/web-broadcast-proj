@@ -304,9 +304,9 @@ cd server && ./gradlew test
 
 | 항목 | 값 |
 | --- | --- |
-| 도메인 | `duse.dev` — **등록함** (2026-11-19, Cloudflare Registrar, 상태 Active) |
-| 최초 등록 비용 | <!-- TODO: Cloudflare 결제 내역의 금액 --> 미기재 (1년) |
-| 갱신 비용 | <!-- TODO: Cloudflare 도메인 관리 화면의 갱신 가격 --> 미기재 / 1년 |
+| 도메인 | `duse.dev` — **등록함** (2026-11-19, Cloudflare Registrar, 상태 Active, 만료 2027-11-19) |
+| 최초 등록 비용 | **US$8.20** (1년, 2026-11-19 결제) |
+| 갱신 비용 | **US$12.20 / 1년** (Cloudflare 도메인 관리 화면의 갱신 가격. 최초 결제 금액보다 높다) |
 | 서비스 주소 | `live.duse.dev` (서브도메인) |
 | DNS | Cloudflare DNS. `.dev`를 Cloudflare Registrar에서 사면 네임서버를 Cloudflare 밖으로 옮길 수 없다 |
 | 인증서 | Let's Encrypt, Caddy가 자동 발급·갱신 (90일 인증서, 만료 30일 전쯤 갱신) |
