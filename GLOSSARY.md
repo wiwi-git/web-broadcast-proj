@@ -44,6 +44,10 @@ _Avoid_: 수혜자, 스트리머
 Donation 한 건의 돈을 실제로 옮기는 결제 서비스 쪽 거래. Donation은 결제 요청 전에 먼저 만들어지고, 결제가 승인되어야 완료된다.
 _Avoid_: 주문, 거래
 
+**Checkout Token (결제 토큰)**:
+앱의 Donor가 기본 브라우저에서 결제하도록 Donation 한 건에 붙여 주는 짧게 쓰는 비밀 값. 이 값만 있으면 로그인 없이 그 Donation 하나를 결제하거나 취소할 수 있다(ADR-0005). 다시 받으면 이전 값은 쓸 수 없다.
+_Avoid_: 결제 세션, 주문 토큰
+
 ### 후원 상태
 
 **결제 대기 (Pending)**:
@@ -110,6 +114,14 @@ _Avoid_: 유저, 관객
 **Stream Key (방송 키)**:
 Broadcast의 Owner에게만 주어지는 송출 연결용 비밀 값. 이 값을 가진 쪽만 영상을 보낼 수 있다. 종료·수정·삭제는 Stream Key가 아니라 Owner인지로 판단한다.
 _Avoid_: 토큰, 비밀번호
+
+**Simulcast (동시 송출)**:
+Broadcaster가 고른 Broadcast를 그 Broadcaster의 유튜브 채널에도 라이브로 함께 내보내는 것. 서버가 중계하므로 송출은 한 번만 한다(ADR-0007). 방송을 시작할 때 고르고 방송 중에는 바꾸지 않는다. 유튜브 쪽이 실패해도 Broadcast는 계속된다.
+_Avoid_: 멀티스트리밍, 재송출, 리스트리밍
+
+**YouTube Key (유튜브 키)**:
+Broadcaster의 유튜브 채널로 Simulcast할 때 쓰는 비밀 값. 유튜브 스튜디오가 발급하고 Broadcaster가 붙여넣어 등록한다. User 한 명에 하나이며, 등록 후에는 끝 네 자리만 보여 준다.
+_Avoid_: 스트림 키(Stream Key와 헷갈린다), 유튜브 토큰
 
 ### 방송 상태
 

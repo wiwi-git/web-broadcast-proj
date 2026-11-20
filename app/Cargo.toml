@@ -1,0 +1,61 @@
+[package]
+name = "web-broadcast-app"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+chrono = "0.4"
+dioxus = { version = "0.7.10", features = ["router"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+# 데스크톱·모바일: 앱이 쿠키 저장소를 직접 들고 세션 쿠키와 XSRF-TOKEN을 유지한다
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "rustls-tls", "multipart", "stream"] }
+tokio = { version = "1", features = ["time", "fs"] }
+# 업로드할 파일을 조금씩 읽어 보내며 보낸 양을 센다
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = "0.3"
+# 앱의 후원 결제는 기본 브라우저에서 한다
+webbrowser = "1"
+
+# 웹: 브라우저가 쿠키를 관리하므로 XSRF-TOKEN만 document.cookie에서 읽는다
+# iOS·안드로이드 파일 선택: 웹뷰가 고른 파일을 조각내 Rust로 넘길 때 쓴다 (components/webview_file.rs)
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+base64 = "0.22"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+reqwest = { version = "0.12", features = ["json"] }
+web-sys = { version = "0.3", features = ["HtmlDocument", "File", "FormData", "ProgressEvent", "XmlHttpRequest", "XmlHttpRequestUpload"] }
+wasm-bindgen = "0.2"
+gloo-timers = { version = "0.3", features = ["futures"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt"] }
+
+[features]
+default = ["web"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+mobile = ["dioxus/mobile"]
+
+[profile.wasm-dev]
+inherits = "dev"
+opt-level = 1
+
+[profile.server-dev]
+inherits = "dev"
+
+[profile.android-dev]
+inherits = "dev"
+
+# 웹(wasm) 배포 전용. 내려받을 크기를 줄인다. 데스크톱·모바일 배포는 기본 release를 쓴다.
+# panic = "abort"는 넣지 않는다: 웹에서는 원래 그렇게 동작하고, 앱에서는 패닉 하나로 앱 전체가 꺼진다.
+# strip도 하지 않는다: 오류 위치에 함수 이름이 남아야 배포판 오류를 찾을 수 있다.
+[profile.web-release]
+inherits = "release"
+opt-level = "s"
+lto = true
+codegen-units = 1

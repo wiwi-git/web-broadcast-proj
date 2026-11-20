@@ -24,7 +24,10 @@ import org.springframework.security.web.context.SecurityContextRepository;
 
 import com.webbroadcast.web.auth.AuthController;
 import com.webbroadcast.web.broadcast.MediaServerAuthController;
+import com.webbroadcast.web.donation.CheckoutController;
 import com.webbroadcast.web.donation.DonationController;
+import com.webbroadcast.web.simulcast.SimulcastController;
+import com.webbroadcast.web.simulcast.SimulcastRelayController;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -60,15 +63,23 @@ class SecurityConfig {
 	SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository securityContextRepository)
 			throws Exception {
 		http
-			// 웹은 XSRF-TOKEN 쿠키 값을 X-XSRF-TOKEN 헤더로 돌려보낸다. MediaMTX 인증 훅은 쿠키를 쓰지 않는다
-			.csrf(csrf -> csrf.spa().ignoringRequestMatchers(MediaServerAuthController.PATH))
+			// 웹은 XSRF-TOKEN 쿠키 값을 X-XSRF-TOKEN 헤더로 돌려보낸다. MediaMTX 인증 훅·중계 API와 결제 토큰 결제(ADR-0005)는
+			// 쿠키로 인증하지 않으므로 CSRF 대상이 아니다
+			.csrf(csrf -> csrf.spa().ignoringRequestMatchers(MediaServerAuthController.PATH,
+					SimulcastRelayController.PATH + "/**", CheckoutController.CHECKOUT_PATH))
 			.securityContext(context -> context.securityContextRepository(securityContextRepository))
 			.authorizeHttpRequests(requests -> requests
 				// 후원 내역은 본인 것만 보므로 조회도 로그인이 필요하다
 				.requestMatchers(HttpMethod.GET, DonationController.DONATIONS_PATH).authenticated()
+				// YouTube Key는 본인 것만 다룬다
+				.requestMatchers(SimulcastController.PATH, SimulcastController.PATH + "/**").authenticated()
+				// 중계 비밀 값이 인증 수단이다. 컨트롤러가 확인한다 (ADR-0007)
+				.requestMatchers(SimulcastRelayController.PATH + "/**").permitAll()
 				.requestMatchers(HttpMethod.GET, "/api/**", "/media/**").permitAll()
 				.requestMatchers(HttpMethod.POST, AuthController.SIGN_UP_PATH, AuthController.LOGIN_PATH,
 						MediaServerAuthController.PATH).permitAll()
+				// 결제 토큰이 인증 수단이다. 서비스가 토큰으로 Donation 하나만 찾아 처리한다
+				.requestMatchers(CheckoutController.CHECKOUT_PATH).permitAll()
 				.requestMatchers("/error", "/actuator/health/**").permitAll()
 				.anyRequest().authenticated())
 			.exceptionHandling(exceptions -> exceptions

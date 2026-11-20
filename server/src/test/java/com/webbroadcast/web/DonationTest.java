@@ -324,9 +324,108 @@ class DonationTest {
 		mvc.perform(get("/api/payments/config")).andExpect(jsonPath("$.clientKey").value(startsWith("test_ck_")));
 	}
 
+	// 앱의 브라우저 결제 (ADR-0005)
+
+	@Test
+	void checkoutTokenLetsTheAppDonorPayWithoutBrowserLogin() throws Exception {
+		Cookie broadcaster = signUp();
+		String broadcastId = liveBroadcast(broadcaster);
+		Cookie donor = signUp();
+		approvePayments();
+		String orderId = startDonation(broadcastId, donor, 3000);
+		String token = issueCheckoutToken(donor, orderId);
+
+		// 브라우저는 로그인하지 않았어도 토큰으로 결제 화면을 연다. 새로고침해도 다시 열린다
+		for (int i = 0; i < 2; i++) {
+			mvc.perform(get("/api/checkout/{token}", token))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.orderId").value(orderId))
+				.andExpect(jsonPath("$.donation.amount").value(3000))
+				.andExpect(jsonPath("$.orderName").value(nickname(broadcaster) + "님에게 후원"))
+				.andExpect(jsonPath("$.clientKey").value(startsWith("test_ck_")));
+		}
+
+		// 다른 계정으로 로그인한 브라우저여도 Donor는 토큰을 받은 앱의 User다. CSRF 토큰도 필요 없다
+		Cookie someoneElse = signUp();
+		mvc.perform(checkoutApprove(token, "pay-token", 3000).cookie(someoneElse))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("DONE"));
+		verify(gateway).approve("pay-token", orderId, 3000);
+		mvc.perform(get("/api/donations/sent").cookie(donor)).andExpect(jsonPath("$[0].status").value("DONE"));
+		mvc.perform(get("/api/donations/sent").cookie(someoneElse)).andExpect(jsonPath("$.length()").value(0));
+
+		// 결과가 정해지면 결제 화면은 열리지 않고, 승인을 다시 보내도 결과를 그대로 준다
+		mvc.perform(get("/api/checkout/{token}", token))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.status").value("DONE"));
+		mvc.perform(checkoutApprove(token, "pay-token", 3000)).andExpect(jsonPath("$.status").value("DONE"));
+		verify(gateway, times(1)).approve(anyString(), anyString(), anyLong());
+	}
+
+	@Test
+	void onlyTheDonorGetsACheckoutTokenWhilePending() throws Exception {
+		String broadcastId = liveBroadcast(signUp());
+		Cookie donor = signUp();
+		String orderId = startDonation(broadcastId, donor, 1000);
+
+		mvc.perform(post("/api/donations/{id}/checkout-token", orderId).with(csrf()))
+			.andExpect(status().isUnauthorized());
+		mvc.perform(post("/api/donations/{id}/checkout-token", orderId).cookie(signUp()).with(csrf()))
+			.andExpect(status().isForbidden());
+		mvc.perform(post("/api/donations/{id}/checkout-token", UUID.randomUUID()).cookie(donor).with(csrf()))
+			.andExpect(status().isNotFound());
+
+		String token = issueCheckoutToken(donor, orderId);
+		mvc.perform(post("/api/checkout/{token}/abandon", token).contentType(MediaType.APPLICATION_JSON)
+				.content("{\"code\":\"PAY_PROCESS_CANCELED\",\"message\":\"취소\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("CANCELED"));
+		mvc.perform(post("/api/donations/{id}/checkout-token", orderId).cookie(donor).with(csrf()))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.status").value("CANCELED"));
+	}
+
+	@Test
+	void checkoutTokenExpiresForOpeningAndIsReplacedWhenReissued() throws Exception {
+		String broadcastId = liveBroadcast(signUp());
+		Cookie donor = signUp();
+		approvePayments();
+		String orderId = startDonation(broadcastId, donor, 2000);
+
+		mvc.perform(get("/api/checkout/{token}", "no-such-token")).andExpect(status().isNotFound());
+
+		String first = issueCheckoutToken(donor, orderId);
+		String second = issueCheckoutToken(donor, orderId);
+		mvc.perform(get("/api/checkout/{token}", first)).andExpect(status().isNotFound());
+		mvc.perform(checkoutApprove(first, "pay-old", 2000)).andExpect(status().isNotFound());
+		mvc.perform(get("/api/checkout/{token}", second)).andExpect(status().isOk());
+
+		// 결제 화면을 여는 시간이 지나도, 결제창에서 시간이 걸린 승인은 결제 대기인 동안 받는다
+		jdbc.update("update donation set checkout_token_expires_at = now() - interval '1 minute' where id = ?",
+				UUID.fromString(orderId));
+		mvc.perform(get("/api/checkout/{token}", second)).andExpect(status().isNotFound());
+		mvc.perform(checkoutApprove(second, "pay-late", 2000))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("DONE"));
+	}
+
 	// 도우미
 
 	private final Map<Cookie, String> nicknames = new HashMap<>();
+
+	private String issueCheckoutToken(Cookie donor, String orderId) throws Exception {
+		MvcResult result = mvc.perform(post("/api/donations/{id}/checkout-token", orderId).cookie(donor).with(csrf()))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.expiresAt").isNotEmpty())
+			.andReturn();
+		return read(result, "$.token");
+	}
+
+	/** 브라우저 결제 화면의 승인 요청. 로그인 쿠키도 CSRF 토큰도 없이 보낸다 */
+	private static MockHttpServletRequestBuilder checkoutApprove(String token, String paymentKey, long amount) {
+		return post("/api/checkout/{token}/approve", token).contentType(MediaType.APPLICATION_JSON)
+			.content("{\"paymentKey\":\"%s\",\"amount\":%d}".formatted(paymentKey, amount));
+	}
 
 	/** 이미 예외를 던지도록 정해 둔 경우에도 바꿀 수 있게 given(...) 대신 willReturn(...).given(...)을 쓴다 */
 	private void approvePayments() {

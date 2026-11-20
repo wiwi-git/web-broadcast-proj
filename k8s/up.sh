@@ -26,6 +26,7 @@ kubectl apply -k k8s/metrics-server
 echo "▶ 앱 적용"
 kubectl apply -f k8s/app/namespace.yaml
 kubectl -n "$NAMESPACE" create configmap mediamtx-config --from-file=mediamtx/mediamtx.yml \
+  --from-file=mediamtx/simulcast.sh \
   --dry-run=client -o yaml | kubectl apply -f -
 kubectl apply -k k8s/app
 
@@ -46,5 +47,5 @@ kubectl -n kube-system rollout status deployment/metrics-server --timeout=180s
 
 kubectl -n "$NAMESPACE" get hpa,deploy,svc
 echo
-echo "API: http://localhost:8080   (웹: cd web && npm run dev → http://localhost:5173)"
+echo "API: http://localhost:8180   (웹: cd web && npm run dev → http://localhost:5173)"
 echo "스케일 관찰: k8s/watch-scale.sh   부하: load-test/run.sh"

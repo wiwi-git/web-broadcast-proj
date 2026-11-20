@@ -1,0 +1,12 @@
+[Unit]
+Description=Cap outbound bandwidth to stay inside OCI free egress
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/egress-cap.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

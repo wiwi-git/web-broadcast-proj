@@ -8,10 +8,22 @@
       "port": 5173
     },
     {
+      "name": "web-lan",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web", "run", "dev", "--", "--host", "0.0.0.0"],
+      "port": 5173
+    },
+    {
       "name": "server",
       "runtimeExecutable": "bash",
       "runtimeArgs": ["-c", "cd server && ./gradlew bootRun --console=plain"],
-      "port": 8080
+      "port": 8180
+    },
+    {
+      "name": "app-web",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd app && dx serve --platform web --port 8090 --open false"],
+      "port": 8090
     }
   ]
 }

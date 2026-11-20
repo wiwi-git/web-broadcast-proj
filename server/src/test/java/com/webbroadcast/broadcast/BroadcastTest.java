@@ -15,7 +15,7 @@ class BroadcastTest {
 
 	private final User owner = User.signedUp(UUID.randomUUID(), "owner1", "hash", "방송자", T0);
 	private final String key = StreamKey.generate();
-	private final Broadcast broadcast = Broadcast.pending(UUID.randomUUID(), owner, "첫 방송", StreamKey.hash(key), T0);
+	private final Broadcast broadcast = Broadcast.pending(UUID.randomUUID(), owner, "첫 방송", StreamKey.hash(key), false, T0);
 
 	@Test
 	void pendingGoesLiveWhenMediaArrives() {
@@ -96,5 +96,36 @@ class BroadcastTest {
 		assertThat(MediaPath.parse("live/not-a-uuid")).isEmpty();
 		assertThat(MediaPath.parse("other/" + id)).isEmpty();
 		assertThat(MediaPath.parse(null)).isEmpty();
+	}
+
+	// 유튜브 동시 송출 (ADR-0007)
+
+	@Test
+	void aSimulcastBroadcastStartsConnectingAndKeepsTheRelayedStatus() {
+		Broadcast simulcast = Broadcast.pending(UUID.randomUUID(), owner, "동시 송출", StreamKey.hash(key), true, T0);
+		assertThat(simulcast.getSimulcastStatus()).isEqualTo(SimulcastStatus.CONNECTING);
+		assertThat(simulcast.wantsSimulcast()).isTrue();
+
+		assertThat(simulcast.reportSimulcast(SimulcastStatus.LIVE)).isTrue();
+		assertThat(simulcast.reportSimulcast(SimulcastStatus.LIVE)).isFalse();
+		assertThat(simulcast.getSimulcastStatus()).isEqualTo(SimulcastStatus.LIVE);
+	}
+
+	@Test
+	void anEndedBroadcastIsNotRelayedAndKeepsItsLastSimulcastStatus() {
+		Broadcast simulcast = Broadcast.pending(UUID.randomUUID(), owner, "동시 송출", StreamKey.hash(key), true, T0);
+		simulcast.reportSimulcast(SimulcastStatus.LIVE);
+		simulcast.end(T0.plusSeconds(60));
+
+		assertThat(simulcast.wantsSimulcast()).isFalse();
+		assertThat(simulcast.reportSimulcast(SimulcastStatus.FAILED)).isFalse();
+		assertThat(simulcast.getSimulcastStatus()).isEqualTo(SimulcastStatus.LIVE);
+	}
+
+	@Test
+	void aBroadcastWithoutSimulcastIgnoresRelayReports() {
+		assertThat(broadcast.wantsSimulcast()).isFalse();
+		assertThat(broadcast.reportSimulcast(SimulcastStatus.LIVE)).isFalse();
+		assertThat(broadcast.getSimulcastStatus()).isNull();
 	}
 }

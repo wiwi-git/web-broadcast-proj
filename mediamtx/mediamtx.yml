@@ -4,7 +4,7 @@ logLevel: info
 
 # 송출·시청 허가는 Spring에 묻는다 (Stream Key 확인)
 authMethod: http
-authHTTPAddress: http://host.docker.internal:8080/api/media-server/auth
+authHTTPAddress: http://host.docker.internal:8180/api/media-server/auth
 authHTTPExclude:
   - action: api
   - action: metrics
@@ -28,11 +28,19 @@ hlsAddress: :8888
 hlsVariant: lowLatency
 hlsAlwaysRemux: true
 
+# 유튜브 동시 송출(ADR-0007)의 ffmpeg가 방송을 읽는 곳. 컨테이너 안(127.0.0.1)에서만 열고 밖으로 내보내지 않는다
+rtsp: true
+rtspAddress: 127.0.0.1:8554
+rtspTransports: [tcp]
+
 # 지금은 쓰지 않는 송출 방식
-rtsp: false
 rtmp: false
 srt: false
 moq: false
 
 paths:
   all_others:
+    # 방송 영상이 들어오면 유튜브 동시 송출 중계를 띄우고, 끊기면 MediaMTX가 끈다 (mediamtx/simulcast.sh).
+    # 동시 송출을 켜지 않은 방송이면 스크립트가 바로 끝난다
+    runOnAvailable: /simulcast.sh
+    runOnAvailableRestart: no

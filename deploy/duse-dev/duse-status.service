@@ -1,0 +1,7 @@
+[Unit]
+Description=Write duse.dev service status for the landing page
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/duse-status-json

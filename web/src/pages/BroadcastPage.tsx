@@ -4,12 +4,16 @@ import { ApiError, BROADCAST_TITLE_MAX_LENGTH, endBroadcast, startBroadcast, typ
 import { publish, type WhipSession } from '../live/whip.ts'
 import ConfirmButton from '../components/ConfirmButton.tsx'
 import DonationAlert from '../components/DonationAlert.tsx'
+import LiveComments from '../components/LiveComments.tsx'
+import SimulcastPicker, { SimulcastStatusLine } from '../components/SimulcastPicker.tsx'
 import { useBroadcast } from '../live/useBroadcast.ts'
 import { useBroadcastDonations } from '../live/useBroadcastDonations.ts'
 import { useElapsed } from '../live/useElapsed.ts'
 import { useWakeLock } from '../live/useWakeLock.ts'
 
 type Facing = 'user' | 'environment'
+/** 송출할 대상. 화면 공유는 지원하는 기기(데스크톱)에서만 고를 수 있다 */
+type Source = 'camera' | 'screen'
 
 /**
  * - preview: 카메라 미리보기, 제목 입력
@@ -24,6 +28,7 @@ type Phase =
   | { kind: 'ended' }
 
 const secureContext = window.isSecureContext && !!navigator.mediaDevices?.getUserMedia
+const canShareScreen = secureContext && !!navigator.mediaDevices?.getDisplayMedia
 
 function cameraErrorMessage(error: unknown): string {
   const name = (error as DOMException)?.name
@@ -31,6 +36,22 @@ function cameraErrorMessage(error: unknown): string {
   if (name === 'NotFoundError') return '사용할 수 있는 카메라나 마이크가 없습니다.'
   if (name === 'NotReadableError') return '다른 앱이 카메라를 사용 중입니다.'
   return '카메라를 열 수 없습니다.'
+}
+
+function screenErrorMessage(error: unknown): string {
+  const name = (error as DOMException)?.name
+  if (name === 'NotAllowedError') return '화면 공유를 취소했거나 권한이 없습니다. 다시 골라 주세요.'
+  return '화면을 공유할 수 없습니다.'
+}
+
+/** 화면을 고른다. 소리는 마이크로 보내고, 마이크를 못 열면 화면 소리를 보낸다 */
+async function openScreen(): Promise<MediaStream> {
+  const screen = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30 } }, audio: true })
+  const mic = await navigator.mediaDevices
+    .getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
+    .catch(() => null)
+  if (mic) screen.getAudioTracks().forEach((track) => track.stop())
+  return new MediaStream([...screen.getVideoTracks(), ...(mic ?? screen).getAudioTracks()])
 }
 
 function stopTracks(stream: MediaStream) {
@@ -41,9 +62,12 @@ export default function BroadcastPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const sessionRef = useRef<WhipSession | null>(null)
   const [facing, setFacing] = useState<Facing>('user')
+  const [source, setSource] = useState<Source>('camera')
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
   const [title, setTitle] = useState('')
+  /** 유튜브에도 송출할지 (ADR-0007). 방송 중에는 바꾸지 않는다 */
+  const [simulcast, setSimulcast] = useState(false)
   const [phase, setPhase] = useState<Phase>({ kind: 'preview' })
   const [error, setError] = useState<string | null>(null)
   /** 이미 진행 중인 내 방송이 있어 시작하지 못했을 때 그 방송 */
@@ -56,21 +80,24 @@ export default function BroadcastPage() {
   const elapsed = useElapsed(isLive ? broadcast!.startedAt : null)
   const transmitting = (phase.kind === 'starting' || phase.kind === 'on-air') && !droppedByServer
   // 방송자도 휴대폰 화면에서 바로 후원을 볼 수 있게 미리보기 위에 띄운다
-  const { alert, dismissAlert } = useBroadcastDonations(phase.kind === 'on-air' ? phase.id : null, isLive)
+  const { donations, alert, dismissAlert } = useBroadcastDonations(phase.kind === 'on-air' ? phase.id : null, isLive)
   const cameraWanted = secureContext && phase.kind !== 'ended' && !droppedByServer
 
   useWakeLock(transmitting)
 
-  // 카메라 열기. 전환하면 기존 트랙을 닫고 새로 연다
+  // 카메라나 화면 열기. 전환하면 기존 트랙을 닫고 새로 연다
   useEffect(() => {
     if (!cameraWanted) return
     let cancelled = false
     let acquired: MediaStream | null = null
-    navigator.mediaDevices
-      .getUserMedia({
-        video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-        audio: { echoCancellation: true, noiseSuppression: true },
-      })
+    const opening =
+      source === 'screen'
+        ? openScreen()
+        : navigator.mediaDevices.getUserMedia({
+            video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+            audio: { echoCancellation: true, noiseSuppression: true },
+          })
+    opening
       .then((opened) => {
         if (cancelled) return stopTracks(opened)
         acquired = opened
@@ -78,14 +105,14 @@ export default function BroadcastPage() {
         setCameraError(null)
       })
       .catch((e) => {
-        if (!cancelled) setCameraError(cameraErrorMessage(e))
+        if (!cancelled) setCameraError(source === 'screen' ? screenErrorMessage(e) : cameraErrorMessage(e))
       })
     return () => {
       cancelled = true
       if (acquired) stopTracks(acquired)
       setStream(null)
     }
-  }, [facing, cameraWanted])
+  }, [facing, source, cameraWanted])
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.srcObject = stream
@@ -116,12 +143,14 @@ export default function BroadcastPage() {
     setPhase({ kind: 'starting' })
     let started: StartedBroadcast | null = null
     try {
-      started = await startBroadcast(title.trim())
+      started = await startBroadcast(title.trim(), simulcast)
       const session = await publish(`${started.whipUrl}?key=${encodeURIComponent(started.streamKey)}`, stream)
       sessionRef.current = session
       session.connection.addEventListener('connectionstatechange', () => {
         if (session.connection.connectionState === 'failed') setError('송출 연결이 끊겼습니다.')
       })
+      // 공유하던 화면을 브라우저·시스템에서 멈추면 더 보낼 영상이 없다
+      stream.getVideoTracks()[0]?.addEventListener('ended', () => setError('화면 공유를 멈춰 영상이 나가지 않습니다.'))
       setPhase({ kind: 'on-air', id: started.broadcast.id })
     } catch (e) {
       // 만들어 둔 Broadcast는 바로 끝낸다. 실패해도 준비 시간이 지나면 서버가 종료한다
@@ -186,7 +215,13 @@ export default function BroadcastPage() {
   return (
     <div className="broadcaster">
       <div className="camera">
-        <video ref={videoRef} className={facing === 'user' ? 'mirrored' : undefined} autoPlay muted playsInline />
+        <video
+          ref={videoRef}
+          className={source === 'camera' && facing === 'user' ? 'mirrored' : undefined}
+          autoPlay
+          muted
+          playsInline
+        />
         {cameraError && <p className="camera-message error">{cameraError}</p>}
         {transmitting && (
           <span className={isLive ? 'badge live camera-badge' : 'badge camera-badge'}>
@@ -194,7 +229,7 @@ export default function BroadcastPage() {
           </span>
         )}
         {isLive && alert && <DonationAlert key={alert.id} donation={alert} onDone={dismissAlert} />}
-        {phase.kind === 'preview' && (
+        {phase.kind === 'preview' && source === 'camera' && (
           <button
             type="button"
             className="button camera-switch"
@@ -206,15 +241,36 @@ export default function BroadcastPage() {
       </div>
 
       {phase.kind === 'on-air' ? (
-        <div className="broadcaster-controls">
-          <p className="broadcaster-title">{title.trim()}</p>
-          {error && <p className="hint error">{error}</p>}
-          <ConfirmButton className="button danger" message="방송을 종료할까요?" confirmLabel="종료" onConfirm={handleEnd}>
-            방송 종료
-          </ConfirmButton>
-        </div>
+        <>
+          <div className="broadcaster-controls">
+            <p className="broadcaster-title">{title.trim()}</p>
+            {broadcast?.simulcastStatus && <SimulcastStatusLine status={broadcast.simulcastStatus} />}
+            {error && <p className="hint error">{error}</p>}
+            <ConfirmButton className="button danger" message="방송을 종료할까요?" confirmLabel="종료" onConfirm={handleEnd}>
+              방송 종료
+            </ConfirmButton>
+          </div>
+          {/* 방송하면서 시청자 댓글과 후원을 본다 */}
+          <LiveComments key={phase.id} broadcastId={phase.id} active donations={donations} />
+        </>
       ) : (
         <form className="broadcaster-controls" onSubmit={handleStart}>
+          {canShareScreen && (
+            <div className="source-switch" role="group" aria-label="송출할 대상">
+              {(['camera', 'screen'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  className={source === option ? 'button primary' : 'button'}
+                  aria-pressed={source === option}
+                  disabled={phase.kind === 'starting'}
+                  onClick={() => setSource(option)}
+                >
+                  {option === 'camera' ? '카메라' : '화면'}
+                </button>
+              ))}
+            </div>
+          )}
           <input
             type="text"
             className="text-input"
@@ -224,6 +280,7 @@ export default function BroadcastPage() {
             placeholder="방송 제목"
             onChange={(e) => setTitle(e.target.value)}
           />
+          <SimulcastPicker on={simulcast} onChange={setSimulcast} disabled={phase.kind === 'starting'} />
           {error && <p className="hint error">{error}</p>}
           {blockingId && (
             <ConfirmButton

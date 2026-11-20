@@ -1,0 +1,34 @@
+[application]
+name = "web-broadcast-app"
+
+[bundle]
+identifier = "com.webbroadcast.app"
+publisher = "Web Broadcast"
+# 웹 파비콘으로 만든 아이콘 (icons/make-icons.sh). 배포 패키지(dx bundle)에서 macOS는 .icns를, Windows는 .ico를 쓴다.
+# 개발 빌드(dx build)와 iOS·Android 빌드에는 dx(0.7)가 아이콘을 넣지 않는다.
+# 맥은 scripts/mac-app.sh, iOS는 scripts/ios-device.sh가 넣는다.
+icon = ["icons/macos.icns", "icons/icon.ico"]
+
+# iOS 홈 화면 아이콘 파일 이름. 파일은 scripts/ios-device.sh가 앱 번들에 복사한다
+[ios.plist]
+CFBundleIcons = { CFBundlePrimaryIcon = { CFBundleIconFiles = ["AppIcon60x60"] } }
+"CFBundleIcons~ipad" = { CFBundlePrimaryIcon = { CFBundleIconFiles = ["AppIcon60x60", "AppIcon76x76", "AppIcon83.5x83.5"] } }
+
+[web.app]
+title = "Web Broadcast"
+
+# `dx serve --platform web`일 때 API와 미디어 요청을 각 서버로 넘긴다 (web/vite.config.ts와 같은 역할)
+[[web.proxy]]
+backend = "http://localhost:8180/api/"
+
+[[web.proxy]]
+backend = "http://localhost:8180/media/"
+
+# 방송하기에서 카메라·마이크를 연다. iOS·macOS Info.plist의 사용 설명과 Android 매니페스트 권한으로 바뀐다
+[permissions]
+camera = { description = "방송 화면을 송출하려면 카메라가 필요합니다." }
+microphone = { description = "방송 소리를 송출하려면 마이크가 필요합니다." }
+
+# 브라우저에서 후원 결제를 마치면 webbroadcast://live/{방송 id} 로 후원한 방송 화면을 다시 연다
+[deep_links]
+schemes = ["webbroadcast"]

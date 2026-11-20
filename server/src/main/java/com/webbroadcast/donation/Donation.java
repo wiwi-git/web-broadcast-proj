@@ -71,6 +71,12 @@ public class Donation {
 	/** 결제 대기를 벗어난 시각 */
 	private Instant completedAt;
 
+	/** 앱이 브라우저 결제용으로 발급받은 결제 토큰의 해시 (ADR-0005). 발급한 적이 없으면 null */
+	private String checkoutTokenHash;
+
+	/** 이 시각까지 결제 토큰으로 결제 화면을 열 수 있다 */
+	private Instant checkoutTokenExpiresAt;
+
 	@Version
 	private long version;
 
@@ -97,6 +103,20 @@ public class Donation {
 
 	boolean isSentBy(UUID userId) {
 		return donor.is(userId);
+	}
+
+	/** 다시 발급하면 이전 토큰은 쓸 수 없다 */
+	void issueCheckoutToken(String tokenHash, Instant expiresAt) {
+		if (!isPending()) {
+			throw new IllegalStateException("결제 대기가 아닌 Donation: " + id + " " + status);
+		}
+		this.checkoutTokenHash = tokenHash;
+		this.checkoutTokenExpiresAt = expiresAt;
+	}
+
+	/** 결제 토큰으로 결제 화면을 열 수 있는 시간인지 */
+	boolean isCheckoutOpen(Instant now) {
+		return checkoutTokenExpiresAt != null && now.isBefore(checkoutTokenExpiresAt);
 	}
 
 	/** 승인을 요청하기 직전에 남긴다. 결과를 모르게 되면 이 값으로 다시 확인한다. */
