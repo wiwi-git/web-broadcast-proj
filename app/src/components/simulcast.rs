@@ -100,7 +100,7 @@ pub fn SimulcastPicker(on: Signal<bool>, disabled: bool) -> Element {
                         class: "button",
                         disabled: disabled || saving() || key().trim().is_empty(),
                         onclick: move |_| save(),
-                        if saving() { "저장 중…" } else { "키 저장" }
+                        if saving() { "등록 중…" } else { "키 등록" }
                     }
                     if editing() {
                         button {
