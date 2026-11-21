@@ -473,7 +473,7 @@ OCI 오버레이가 base와 다른 점:
    ```bash
    deploy/k3s/deploy.sh
    ```
-4. **(처음 한 번, 끝남) compose 데이터 옮기기** ([migrate-from-compose.sh](deploy/k3s/migrate-from-compose.sh)). compose 볼륨의 DB를 `pg_dump`해서 K3s DB에 복원하고, 미디어 파일을 `media-data` PVC 폴더로 복사한다. 2026-11-21에 실행했고 그 뒤 서버에서 Docker를 지워서 **다시 실행할 수 없다**(기록용). 옛 compose 볼륨 사본은 서버의 `/opt/docker-volumes-backup-2026-11-21.tar.gz`에 있다.
+4. **(처음 한 번, 끝남) compose 데이터 옮기기** ([migrate-from-compose.sh](deploy/k3s/migrate-from-compose.sh)). compose 볼륨의 DB를 `pg_dump`해서 K3s DB에 복원하고, 미디어 파일을 `media-data` PVC 폴더로 복사한다. 2026-11-21에 실행했고 그 뒤 서버에서 Docker를 지워서 **다시 실행할 수 없다**(기록용). 옛 compose 볼륨과 그 사본은 옮긴 것을 확인한 뒤 지웠다.
    ```bash
    ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 'bash -s' < deploy/k3s/migrate-from-compose.sh
    ```

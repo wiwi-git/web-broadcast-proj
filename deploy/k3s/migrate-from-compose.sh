@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # docker compose로 운영하던 데이터를 K3s로 옮긴다. VM에서 한 번만 실행한다.
 # ※ 2026-11-21에 실행을 마쳤고 그 뒤 서버에서 Docker를 지웠다. 다시 실행할 수 없다(기록용으로 남긴다).
-#   옛 compose 볼륨 사본은 서버의 /opt/docker-volumes-backup-2026-11-21.tar.gz에 있다.
+#   옛 compose 볼륨과 그 사본은 옮긴 것을 확인한 뒤 지웠다.
 #   ssh ubuntu@<VM> 'bash -s' < deploy/k3s/migrate-from-compose.sh
 #
 # 순서: deploy/k3s/install.sh → secrets.sh → deploy.sh(빈 DB로 한 번 뜬다) → 이 스크립트
