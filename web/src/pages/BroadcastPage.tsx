@@ -41,7 +41,12 @@ function cameraErrorMessage(error: unknown): string {
 function screenErrorMessage(error: unknown): string {
   const name = (error as DOMException)?.name
   if (name === 'NotAllowedError') return '화면 공유를 취소했거나 권한이 없습니다. 다시 골라 주세요.'
-  return '화면을 공유할 수 없습니다.'
+  // macOS에서 브라우저에 화면 기록 권한이 없으면 NotAllowedError가 아닌 오류로 오기도 한다
+  if (name === 'NotFoundError' || name === 'NotReadableError') {
+    return `화면을 공유할 수 없습니다. 시스템 설정에서 이 브라우저의 화면 기록 권한을 확인해 주세요. (${name})`
+  }
+  // 알 수 없는 오류는 원인을 찾을 수 있도록 이름을 함께 보여 준다
+  return `화면을 공유할 수 없습니다. (${name || (error as Error)?.message || '알 수 없는 오류'})`
 }
 
 /** 화면을 고른다. 소리는 마이크로 보내고, 마이크를 못 열면 화면 소리를 보낸다 */
@@ -138,8 +143,14 @@ export default function BroadcastPage() {
   async function handleStart(event: FormEvent) {
     event.preventDefault()
     if (!stream || !title.trim()) return
-    setError(null)
     setBlockingId(null)
+    // 개인정보 보호 확장이나 설정(Firefox의 media.peerconnection.enabled)으로 WebRTC를 끄면 RTCPeerConnection이 없다.
+    // 방송을 만들기 전에 알려서 쓸모없는 방송이 생기지 않게 한다
+    if (typeof RTCPeerConnection === 'undefined') {
+      setError('이 브라우저에서 WebRTC가 꺼져 있어 송출할 수 없습니다. 브라우저 설정이나 개인정보 보호 확장 프로그램에서 WebRTC를 켜 주세요.')
+      return
+    }
+    setError(null)
     setPhase({ kind: 'starting' })
     let started: StartedBroadcast | null = null
     try {

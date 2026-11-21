@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """duse.dev 첫 화면이 읽는 서비스 상태 파일(status.json)을 만든다.
 
-/etc/duse/services.json에 적힌 서비스마다 docker compose 컨테이너 상태와
-헬스 체크 주소를 확인해서 /var/www/duse.dev/status.json에 쓴다.
+/etc/duse/services.json에 적힌 서비스마다 실행 상태와 헬스 체크 주소를 확인해서
+/var/www/duse.dev/status.json에 쓴다. 실행 상태는 서비스가 도는 곳에 따라 다르게 읽는다.
+- "kind": "compose" (기본값): docker compose 컨테이너가 running인지
+- "kind": "k8s": K3s 네임스페이스의 Deployment가 원하는 Pod 수만큼 준비됐는지 (HPA로 Pod 수가 바뀌어도 된다)
 duse-status.timer가 1분마다 실행한다. 웹에는 상태만 보이고, 켜고 끄는 건 SSH로만 한다.
 """
 import json
@@ -39,6 +41,21 @@ def container_states(service):
     return [row.get("State", "") for row in rows]
 
 
+def deployment_states(service):
+    # root로 실행되므로 K3s의 kubeconfig(/etc/rancher/k3s/k3s.yaml)를 그대로 읽는다
+    command = ["kubectl", "-n", service["namespace"], "get", "deployments", "-o", "json"]
+    env = dict(os.environ, KUBECONFIG=service.get("kubeconfig", "/etc/rancher/k3s/k3s.yaml"))
+    result = subprocess.run(command, capture_output=True, text=True, timeout=20, env=env)
+    if result.returncode != 0:
+        return None
+    states = []
+    for item in json.loads(result.stdout).get("items", []):
+        wanted = item.get("spec", {}).get("replicas", 1)
+        ready = item.get("status", {}).get("readyReplicas", 0)
+        states.append("running" if wanted > 0 and ready >= wanted else "not-ready")
+    return states
+
+
 def healthy(url):
     if not url:
         return True
@@ -50,7 +67,10 @@ def healthy(url):
 
 
 def status_of(service):
-    states = container_states(service)
+    if service.get("kind", "compose") == "k8s":
+        states = deployment_states(service)
+    else:
+        states = container_states(service)
     if states is None:
         return "unknown", 0, 0
     total = len(states)

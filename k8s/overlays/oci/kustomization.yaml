@@ -1,0 +1,41 @@
+# OCI VM 한 대(VM.Standard.A1.Flex, 2 OCPU·12GB, arm64)의 단일 노드 K3s용.
+# deploy/k3s/deploy.sh가 이미지 import와 MediaMTX ConfigMap 생성 뒤에 적용한다.
+#
+# base와 다른 점:
+# - server HPA는 base 그대로(2~4개, CPU 60%) 쓰고 behavior를 주지 않아 축소 안정화가 기본값 5분이다.
+# - 변환 워커는 HPA 없이 1개로 고정한다. 워커가 2개가 되면 CPU 요청량(500m)이 더 필요해서
+#   server를 4개까지 띄울 수 없다(README "OCI 운영 (K3s)"의 최대 Pod 수 산정).
+# - postgres, mediamtx에 CPU 요청량을 줘서 스케줄러가 실제 사용분을 계산하게 한다.
+# - MediaMTX의 WebRTC(8189 TCP·UDP)는 Pod의 hostPort로 VM에 직접 열고, 공인 IP를 ICE 후보로 알린다.
+# - DB 계정(db-credentials)과 선택 비밀 값(toss-keys, simulcast)은 VM에서 deploy/k3s/secrets.sh로 만든다.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: webbroadcast
+
+resources:
+  - ../../base
+
+patches:
+  - path: worker-fixed.yaml
+  - path: postgres-resources.yaml
+  - path: mediamtx-public.yaml
+  # hostPort와 Service의 8189가 같은 포트를 두고 다투지 않게 Service에서 뺀다 (인덱스 3: TCP, 2: UDP)
+  - target:
+      kind: Service
+      name: mediamtx
+    patch: |-
+      - op: remove
+        path: /spec/ports/3
+      - op: remove
+        path: /spec/ports/2
+  # WebRTC 미디어 포트를 VM에 직접 연다 (컨테이너 포트 인덱스 2: UDP 8189, 3: TCP 8189)
+  - target:
+      kind: Deployment
+      name: mediamtx
+    patch: |-
+      - op: add
+        path: /spec/template/spec/containers/0/ports/2/hostPort
+        value: 8189
+      - op: add
+        path: /spec/template/spec/containers/0/ports/3/hostPort
+        value: 8189

@@ -1,0 +1,279 @@
+
+         /\      Grafana   /‾‾/  
+    /\  /  \     |\  __   /  /   
+   /  \/    \    | |/ /  /   ‾‾\ 
+  /          \   |   (  |  (‾)  |
+ / __________ \  |_|\_\  \_____/ 
+
+     execution: local
+        script: /scripts/load.js
+        output: -
+
+     scenarios: (100.00%) 1 scenario, 20 max VUs, 4m20s max duration (incl. graceful stop):
+              * default: Up to 20 looping VUs for 3m50s over 3 stages (gracefulRampDown: 30s, gracefulStop: 30s)
+
+
+Run       [ 100% ] setup()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+     ✓ 로그인 유지
+     ✓ 방송 유지
+     ✓ 댓글 유지
+
+     █ setup
+
+       ✓ signup 201
+       ✓ broadcast 201
+       ✓ comment 201
+
+     checks.........................: 100.00% 5799 out of 5799
+     ✓ { kind:state }...............: 100.00% 5796 out of 5796
+     data_received..................: 8.9 MB  39 kB/s
+     data_sent......................: 980 kB  4.2 kB/s
+     http_req_blocked...............: avg=155.95µs min=166ns    med=917ns    max=120.5ms  p(90)=1.75µs   p(95)=1.95µs  
+     http_req_connecting............: avg=72.87µs  min=0s       med=0s       max=68.98ms  p(90)=0s       p(95)=0s      
+     http_req_duration..............: avg=232.72ms min=37.61ms  med=101.03ms max=2.89s    p(90)=572.05ms p(95)=1.09s   
+       { expected_response:true }...: avg=232.72ms min=37.61ms  med=101.03ms max=2.89s    p(90)=572.05ms p(95)=1.09s   
+   ✓ http_req_failed................: 0.00%   0 out of 13528
+     http_req_receiving.............: avg=238.74µs min=20.25µs  med=121.89µs max=283.21ms p(90)=251.24µs p(95)=362.27µs
+     http_req_sending...............: avg=168.18µs min=24.29µs  med=148.37µs max=5.96ms   p(90)=270.54µs p(95)=316.74µs
+     http_req_tls_handshaking.......: avg=81.08µs  min=0s       med=0s       max=76.41ms  p(90)=0s       p(95)=0s      
+     http_req_waiting...............: avg=232.31ms min=37.3ms   med=100.61ms max=2.89s    p(90)=571.75ms p(95)=1.09s   
+     http_reqs......................: 13528   58.413873/s
+     iteration_duration.............: avg=2.13s    min=922.04ms med=1.92s    max=4.29s    p(90)=3.4s     p(95)=3.71s   
+     iterations.....................: 1932    8.342372/s
+     vus............................: 1       min=0            max=20
+     vus_max........................: 20      min=20           max=20
+
+
+default ✓ [ 100% ] 00/20 VUs  3m50s
+k6 exit 0

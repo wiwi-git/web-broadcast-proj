@@ -9,12 +9,15 @@ import { check, sleep } from 'k6';
 
 const BASE = __ENV.BASE_URL || 'http://localhost:8180';
 const PASSWORD = 'password1';
+// 가상 사용자 수와 유지 시간. 로컬(CPU 10개)은 30명, OCI VM(2 OCPU)은 20명으로 돌렸다
+const VUS = Number(__ENV.VUS || 30);
+const HOLD = __ENV.HOLD || '3m';
 
 export const options = {
   stages: [
-    { duration: '30s', target: 30 }, // 부하 올리기
-    { duration: '3m', target: 30 },  // 유지: 서버 Pod가 늘어난다
-    { duration: '20s', target: 0 },  // 멈추기: 1분쯤 뒤부터 Pod가 줄어든다
+    { duration: '30s', target: VUS }, // 부하 올리기
+    { duration: HOLD, target: VUS },  // 유지: 서버 Pod가 늘어난다
+    { duration: '20s', target: 0 },   // 멈추기: 축소 안정화 시간(로컬 1분, OCI 5분)이 지나면 Pod가 줄어든다
   ],
   thresholds: {
     // 스케일이 바뀌는 동안에도 상태 확인은 모두 통과해야 한다

@@ -1,0 +1,14 @@
+# DB도 CPU 요청량을 가져야 HPA가 server를 늘릴 때 스케줄러가 남은 CPU를 바르게 계산한다
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  template:
+    spec:
+      containers:
+        - name: postgres
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi

@@ -1,0 +1,27 @@
+# API 서버의 Pod 수를 CPU 사용률에 따라 자동으로 조절한다 (autoscaling/v2).
+# 사용률은 server Deployment의 resources.requests.cpu(250m) 대비 비율이다.
+# CPU 지표는 Metrics Server가 모은다: 로컬은 k8s/metrics-server로 설치하고, K3s는 기본으로 들어 있다.
+#
+# 최대 4개의 근거는 환경마다 다르다.
+# - 로컬(Docker Desktop, CPU 10개·메모리 8GB): 서버 4개 × 768Mi + 워커 2개 × 2Gi + DB·MediaMTX·쿠버네티스 ≈ 8GB.
+# - OCI(2 OCPU·12GB): CPU 요청량 합이 2000m을 넘지 않게 정했다. README "OCI 운영 (K3s)" 참고.
+# 축소 속도(behavior)는 오버레이가 정한다: 로컬은 관찰하기 쉽게 60초, OCI는 기본값 5분.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: server
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: server
+  # 한 Pod가 죽거나 교체되는 동안에도 요청을 받도록 최소 2개
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 60

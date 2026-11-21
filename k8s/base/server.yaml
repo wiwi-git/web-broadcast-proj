@@ -1,4 +1,4 @@
-# API 서버. Pod 수는 HPA(autoscaling.yaml)가 2~5개 사이에서 정한다. 그래서 replicas를 적지 않는다.
+# API 서버. Pod 수는 HPA(autoscaling.yaml)가 2~4개 사이에서 정한다. 그래서 replicas를 적지 않는다.
 # Pod는 상태를 갖지 않는다: 세션·데이터는 PostgreSQL, 파일은 media-data 볼륨에 있다.
 apiVersion: apps/v1
 kind: Deployment
@@ -21,7 +21,8 @@ spec:
       containers:
         - name: server
           image: web-broadcast-server:local
-          # k8s/up.sh가 로컬에서 빌드한 이미지를 그대로 쓴다
+          # 레지스트리 없이 노드에 넣어 둔 이미지를 쓴다.
+          # 로컬은 k8s/up.sh가 빌드하고, OCI는 deploy/k3s/deploy.sh가 맥에서 빌드해 K3s에 import한다
           imagePullPolicy: Never
           envFrom:
             - configMapRef: { name: app-config }
@@ -64,7 +65,9 @@ spec:
           persistentVolumeClaim:
             claimName: media-data
 ---
-# 여러 서버 Pod 앞에서 요청을 나눠 받는다. Docker Desktop은 LoadBalancer를 localhost:8180에 연다
+# 여러 서버 Pod 앞에서 준비된(readinessProbe 통과) Pod에만 요청을 나눠 준다.
+# LoadBalancer는 노드의 8180 포트에 열린다: Docker Desktop은 localhost:8180,
+# K3s는 내장 ServiceLB가 VM의 8180에 연다. OCI에서는 호스트의 Caddy가 이 포트로 넘긴다(외부에는 보안 목록이 막는다)
 apiVersion: v1
 kind: Service
 metadata:

@@ -1,0 +1,21 @@
+# 브라우저·앱이 WebRTC로 붙을 주소. MediaMTX가 ICE 후보로 VM의 공인 IP를 알린다
+# (live.duse.dev의 A 레코드와 같은 주소. VM을 다시 만들면 바꾼다)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mediamtx
+spec:
+  # hostPort는 노드 하나에 한 Pod만 쓸 수 있다. 업데이트할 때 새 Pod가 포트를 기다리지 않게 먼저 내린다
+  strategy:
+    type: Recreate
+  template:
+    spec:
+      containers:
+        - name: mediamtx
+          env:
+            - name: MTX_WEBRTCADDITIONALHOSTS
+              value: 161.33.218.209
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi

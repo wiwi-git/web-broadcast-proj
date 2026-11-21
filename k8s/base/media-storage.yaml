@@ -1,6 +1,7 @@
 # 공용 저장소 ②: 업로드한 Original과 변환된 HLS 파일.
 # 서버 Pod는 업로드를 여기에 쓰고 HLS를 여기서 읽어 주며, 워커 Pod는 여기서 읽어 변환 결과를 쓴다.
-# Docker Desktop은 노드가 하나라서 ReadWriteOnce 볼륨도 모든 Pod가 함께 마운트할 수 있다.
+# 노드가 하나(Docker Desktop, OCI VM의 K3s)라서 ReadWriteOnce 볼륨도 모든 Pod가 함께 마운트할 수 있다.
+# K3s는 기본 StorageClass local-path가 VM 디스크(/var/lib/rancher/k3s/storage)에 만든다. Pod가 바뀌어도 남는다.
 # 노드가 여러 대인 클러스터라면 ReadWriteMany(NFS 등)나 S3 같은 오브젝트 스토리지로 바꿔야 한다 (ADR-0004).
 apiVersion: v1
 kind: PersistentVolumeClaim

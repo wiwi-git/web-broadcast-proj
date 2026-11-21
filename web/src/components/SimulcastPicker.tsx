@@ -91,7 +91,7 @@ export default function SimulcastPicker({
         {error && <p className="hint error">{error}</p>}
         <div className="simulcast-actions">
           <button type="button" className="button" disabled={disabled || saving || !key.trim()} onClick={handleSave}>
-            {saving ? '저장 중…' : '키 저장'}
+            {saving ? '등록 중…' : '키 등록'}
           </button>
           {editing && (
             <button type="button" className="button" disabled={saving} onClick={() => setEditing(false)}>

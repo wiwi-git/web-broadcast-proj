@@ -1,0 +1,92 @@
+===== 부하 전 (2026-11-21T04:00:41Z)
+NAME          STATUS   ROLES           AGE     VERSION
+duse-server   Ready    control-plane   6m49s   v1.37.2+k3s1
+
+NAME     REFERENCE           TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+server   Deployment/server   cpu: 4%/60%   2         4         2          3m57s
+
+NAME                        CPU(cores)   MEMORY(bytes)   
+mediamtx-7df6945fd4-5qvsx   1m           12Mi            
+postgres-74bfbfd468-7tjnd   11m          95Mi            
+server-7c6db9b4cc-ccz8m     11m          314Mi           
+server-7c6db9b4cc-s8blt     12m          317Mi           
+worker-668cd56494-bj7nn     3m           302Mi           
+
+NAME                        READY   STATUS    RESTARTS   AGE
+mediamtx-7df6945fd4-5qvsx   1/1     Running   0          3m57s
+postgres-74bfbfd468-7tjnd   1/1     Running   0          3m57s
+server-7c6db9b4cc-ccz8m     1/1     Running   0          93s
+server-7c6db9b4cc-s8blt     1/1     Running   0          93s
+worker-668cd56494-bj7nn     1/1     Running   0          92s
+
+===== 부하 중 (시작 2분 30초) (2026-11-21T04:03:32Z)
+NAME          STATUS   ROLES           AGE     VERSION
+duse-server   Ready    control-plane   9m41s   v1.37.2+k3s1
+
+NAME     REFERENCE           TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+server   Deployment/server   cpu: 159%/60%   2         4         4          6m49s
+
+NAME                        CPU(cores)   MEMORY(bytes)   
+mediamtx-7df6945fd4-5qvsx   2m           13Mi            
+postgres-74bfbfd468-7tjnd   89m          155Mi           
+server-7c6db9b4cc-ccz8m     471m         376Mi           
+server-7c6db9b4cc-pwnwc     350m         343Mi           
+server-7c6db9b4cc-s8blt     318m         379Mi           
+server-7c6db9b4cc-xs929     455m         338Mi           
+worker-668cd56494-bj7nn     4m           302Mi           
+
+NAME                        READY   STATUS    RESTARTS   AGE
+mediamtx-7df6945fd4-5qvsx   1/1     Running   0          6m49s
+postgres-74bfbfd468-7tjnd   1/1     Running   0          6m49s
+server-7c6db9b4cc-ccz8m     1/1     Running   0          4m25s
+server-7c6db9b4cc-pwnwc     1/1     Running   0          2m3s
+server-7c6db9b4cc-s8blt     1/1     Running   0          4m25s
+server-7c6db9b4cc-xs929     1/1     Running   0          2m3s
+worker-668cd56494-bj7nn     1/1     Running   0          4m24s
+
+===== 부하 직후 (2026-11-21T04:04:55Z)
+NAME          STATUS   ROLES           AGE   VERSION
+duse-server   Ready    control-plane   11m   v1.37.2+k3s1
+
+NAME     REFERENCE           TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+server   Deployment/server   cpu: 152%/60%   2         4         4          8m11s
+
+NAME                        CPU(cores)   MEMORY(bytes)   
+mediamtx-7df6945fd4-5qvsx   1m           13Mi            
+postgres-74bfbfd468-7tjnd   85m          159Mi           
+server-7c6db9b4cc-ccz8m     621m         378Mi           
+server-7c6db9b4cc-pwnwc     237m         359Mi           
+server-7c6db9b4cc-s8blt     192m         380Mi           
+server-7c6db9b4cc-xs929     473m         351Mi           
+worker-668cd56494-bj7nn     2m           302Mi           
+
+NAME                        READY   STATUS    RESTARTS   AGE
+mediamtx-7df6945fd4-5qvsx   1/1     Running   0          8m11s
+postgres-74bfbfd468-7tjnd   1/1     Running   0          8m11s
+server-7c6db9b4cc-ccz8m     1/1     Running   0          5m47s
+server-7c6db9b4cc-pwnwc     1/1     Running   0          3m25s
+server-7c6db9b4cc-s8blt     1/1     Running   0          5m47s
+server-7c6db9b4cc-xs929     1/1     Running   0          3m25s
+worker-668cd56494-bj7nn     1/1     Running   0          5m46s
+
+===== 부하 끝나고 7분 뒤 (2026-11-21T04:11:56Z)
+NAME          STATUS   ROLES           AGE   VERSION
+duse-server   Ready    control-plane   18m   v1.37.2+k3s1
+
+NAME     REFERENCE           TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+server   Deployment/server   cpu: 1%/60%   2         4         2          15m
+
+NAME                        CPU(cores)   MEMORY(bytes)   
+mediamtx-7df6945fd4-5qvsx   1m           14Mi            
+postgres-74bfbfd468-7tjnd   9m           115Mi           
+server-7c6db9b4cc-ccz8m     4m           382Mi           
+server-7c6db9b4cc-s8blt     3m           383Mi           
+worker-668cd56494-bj7nn     2m           303Mi           
+
+NAME                        READY   STATUS    RESTARTS   AGE
+mediamtx-7df6945fd4-5qvsx   1/1     Running   0          15m
+postgres-74bfbfd468-7tjnd   1/1     Running   0          15m
+server-7c6db9b4cc-ccz8m     1/1     Running   0          12m
+server-7c6db9b4cc-s8blt     1/1     Running   0          12m
+worker-668cd56494-bj7nn     1/1     Running   0          12m
+
