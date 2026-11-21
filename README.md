@@ -356,15 +356,16 @@ Cloudflare 대시보드 → `duse.dev` → **DNS → Records**에 두 줄을 넣
 
 ### 이 사양을 고른 이유
 
-- Always Free의 Arm 기반 A1은 계정 전체에 **월 3,000 OCPU 시간·18,000 GB 시간**(상시 4 OCPU·24GB에 해당)까지 무료다. Always Free는 홈 리전에서만 만들 수 있다. 이 계정에는 다른 A1 인스턴스가 없어 한도를 모두 쓸 수 있었다.
+- Always Free의 Arm 기반 A1은 계정 전체에 **월 1,500 OCPU 시간·9,000 GB 시간**(상시 2 OCPU·12GB에 해당)까지 무료다([OCI Always Free Resources](https://docs.oracle.com/en-us/iaas/Content/FreeTier/resourceref.htm), 2026-11-21 확인). 예전에는 월 3,000 OCPU 시간·18,000 GB 시간(4 OCPU·24GB)이었는데, 2026년 6월쯤 문서가 절반으로 바뀌었다. Oracle은 이 변경을 따로 공지하지 않았다. Always Free는 홈 리전에서만 만들 수 있다. 이 계정에는 다른 A1 인스턴스가 없어 한도를 모두 쓸 수 있었다.
 - 과제 기준은 2 OCPU·12GB지만, 도쿄 리전에 A1 재고가 없어 생성이 **"Out of capacity"**로 실패했다(2026-11-19). 1 OCPU·6GB로 줄여도 처음에는 같은 오류가 났고, 다시 시도해서 만들어졌다. 홈 리전은 바꿀 수 없어 다른 리전으로 옮기는 대안은 없었다.
 - 다른 무료 대안인 `VM.Standard.E2.1.Micro`(AMD, 1/8 OCPU·1GB)는 Spring 서버, PostgreSQL, MediaMTX, ffmpeg 변환 워커를 함께 돌리기에 메모리가 부족하다. 그래서 작더라도 A1을 골랐다.
-- 1 OCPU·6GB에서 방송 서비스 전체가 약 1.3GB를 썼다. 재고가 생긴 뒤 같은 인스턴스를 2 OCPU·12GB로 늘렸다(Edit → Shape, 재시작 필요). 2 OCPU·12GB도 무료 한도 안이다: 한 달 약 1,440 OCPU 시간·8,640 GB 시간.
+- 1 OCPU·6GB에서 방송 서비스 전체가 약 1.3GB를 썼다. 재고가 생긴 뒤 같은 인스턴스를 2 OCPU·12GB로 늘렸다(Edit → Shape, 재시작 필요). 2 OCPU·12GB는 지금 무료 한도와 꼭 같다: 31일인 달에 1,488 OCPU 시간·8,928 GB 시간으로 한도(1,500·9,000) 안이다. 그래서 이 VM을 더 키우거나 같은 계정에 A1을 하나 더 만들면 넘는 만큼 요금이 나온다.
 - ARM이라서 Docker 이미지가 `linux/arm64`를 지원해야 한다. 이 프로젝트의 이미지(Temurin JDK, PostgreSQL, MediaMTX)는 모두 지원한다.
 
 ### 무료 범위를 넘지 않게 막은 것
 
-- 계정은 Pay As You Go다(2026-11-04 전환). 그래서 **할당량 정책 `free-tier-only`**로 A1(4 OCPU·24GB)과 E2 Micro, 블록 스토리지 200GB 말고는 만들 수 없게 막았다.
+- 계정은 Pay As You Go다(2026-11-04 전환). 그래서 **할당량 정책 `free-tier-only`**로 A1(2 OCPU·12GB)과 E2 Micro, 블록 스토리지 200GB 말고는 만들 수 없게 막았다. 처음에는 A1 상한이 예전 무료 한도인 4 OCPU·24GB였고, 무료 한도가 줄어든 것을 알고 2 OCPU·12GB로 낮췄다(2026-11-21).
+  - Pay As You Go 계정에도 2 OCPU·12GB가 적용되는지는 공식 문서에 따로 나와 있지 않다. 이 VM은 2 OCPU·12GB라 어느 쪽이든 무료 범위 안이다.
 - 예산 $1에 실제 지출 1%·99% 알림을 걸었다.
 - 무료 송신 한도(월 10TB)를 넘지 않게 [deploy/egress-cap.sh](deploy/egress-cap.sh)가 서버 송신을 29 Mbit/s로 묶는다.
 
@@ -443,7 +444,7 @@ OCI 오버레이가 base와 다른 점:
 - HPA는 **같은 VM 안에서만** Pod를 늘린다. Pod 하나가 죽으면 Service가 남은 Pod로 보내고 Deployment가 새로 띄우지만, VM 자체가 멈추면 server·worker·DB·MediaMTX·Caddy(그리고 같은 VM의 short-url)가 **모두 함께 멈춘다**. 노드가 1대라서 다른 곳으로 옮겨 갈 수 없다.
 - VM이 재부팅되면 K3s(systemd)가 시작되고 Deployment들이 다시 뜬다. 데이터는 VM 디스크(local-path PVC)에 있어서 남는다. 다시 뜨는 몇 분 동안은 서비스가 끊기고, 진행 중이던 라이브 방송과 WebRTC 연결은 끊긴다.
 - 부트 볼륨이 손상되거나 VM을 지우면 DB와 영상 파일이 함께 사라진다. 지금은 자동 백업이 없다.
-- 스케일 아웃의 한계도 VM 하나다. CPU 2개를 다 쓰면 HPA가 최대 4개까지 늘려도 처리량은 더 늘지 않는다. 더 늘리려면 VM Shape를 키우거나 노드를 추가해야 하고, 노드가 늘면 `ReadWriteOnce` 볼륨 대신 공유 스토리지가 필요하다.
+- 스케일 아웃의 한계도 VM 하나다. CPU 2개를 다 쓰면 HPA가 최대 4개까지 늘려도 처리량은 더 늘지 않는다. 더 늘리려면 VM Shape를 키우거나 노드를 추가해야 하고(둘 다 무료 한도 2 OCPU·12GB를 넘어 요금이 나온다), 노드가 늘면 `ReadWriteOnce` 볼륨 대신 공유 스토리지가 필요하다.
 
 ### 파드가 바뀌어도 남는 것
 
@@ -498,7 +499,7 @@ OCI 오버레이가 base와 다른 점:
 | `deploy/duse-dev/` | `/var/www/duse.dev/`, `/etc/duse/services.json`, `/usr/local/bin/duse-status-json`, systemd | `duse.dev` 첫 화면. 타이머가 1분마다 서비스 상태와 헬스 체크를 `status.json`에 쓴다. 서비스마다 K3s 네임스페이스의 Deployment가 원하는 수만큼 준비됐는지 본다(방송 서비스 `webbroadcast`, short-url `short-url`) |
 | `deploy/egress-cap.sh`, `.service` | `/usr/local/sbin/`, `/etc/systemd/system/` | 나가는 트래픽을 29 Mbit/s로 묶어 OCI 무료 송신 한도(월 10 TB)를 넘지 않게 한다. 동시 시청은 10명 남짓이 한계다 |
 
-방화벽은 두 겹이다. OCI 보안 목록(`Default Security List for duse-vcn`)과 서버 iptables(`/etc/iptables/rules.v4`) 모두에서 22, 80, 443/TCP와 8189/TCP·UDP만 연다. iptables에는 K3s Pod 대역 허용 규칙이 더해져 있다. 비용은 OCI 할당량 정책 `free-tier-only`(무료 A1·E2 Micro와 디스크 200GB만 허용)와 $1 예산의 1% 지출 알림으로 막는다. K3s의 `LoadBalancer`는 VM 안의 ServiceLB가 처리하므로 OCI 유료 Load Balancer는 생기지 않는다.
+방화벽은 두 겹이다. OCI 보안 목록(`Default Security List for duse-vcn`)과 서버 iptables(`/etc/iptables/rules.v4`) 모두에서 22, 80, 443/TCP와 8189/TCP·UDP만 연다. iptables에는 K3s Pod 대역 허용 규칙이 더해져 있다. 비용은 OCI 할당량 정책 `free-tier-only`(A1 2 OCPU·12GB, E2 Micro, 디스크 200GB만 허용)와 $1 예산의 1%·99% 지출 알림으로 막는다. K3s의 `LoadBalancer`는 VM 안의 ServiceLB가 처리하므로 OCI 유료 Load Balancer는 생기지 않는다.
 
 ### 확인 절차
 
