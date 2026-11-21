@@ -2,9 +2,9 @@
 """duse.dev 첫 화면이 읽는 서비스 상태 파일(status.json)을 만든다.
 
 /etc/duse/services.json에 적힌 서비스마다 실행 상태와 헬스 체크 주소를 확인해서
-/var/www/duse.dev/status.json에 쓴다. 실행 상태는 서비스가 도는 곳에 따라 다르게 읽는다.
-- "kind": "compose" (기본값): docker compose 컨테이너가 running인지
-- "kind": "k8s": K3s 네임스페이스의 Deployment가 원하는 Pod 수만큼 준비됐는지 (HPA로 Pod 수가 바뀌어도 된다)
+/var/www/duse.dev/status.json에 쓴다. 실행 상태는 서비스의 K3s 네임스페이스("namespace")에 있는
+Deployment가 원하는 Pod 수만큼 준비됐는지로 본다(HPA로 Pod 수가 바뀌어도 된다).
+서버에 Docker가 없으므로(2026-11-21에 지움) "kind"는 "k8s"만 받는다. 다른 값이면 상태를 unknown으로 둔다.
 duse-status.timer가 1분마다 실행한다. 웹에는 상태만 보이고, 켜고 끄는 건 SSH로만 한다.
 """
 import json
@@ -16,29 +16,6 @@ from datetime import datetime, timezone
 
 SERVICES_FILE = "/etc/duse/services.json"
 OUTPUT_FILE = "/var/www/duse.dev/status.json"
-
-
-def container_states(service):
-    command = ["docker", "compose"]
-    for name in service.get("compose_files", []):
-        command += ["-f", name]
-    for profile in service.get("profiles", []):
-        command += ["--profile", profile]
-    command += ["ps", "-a", "--format", "json"]
-    result = subprocess.run(
-        command, cwd=service["compose_dir"], capture_output=True, text=True, timeout=20
-    )
-    if result.returncode != 0:
-        return None
-    text = result.stdout.strip()
-    if not text:
-        return []
-    # compose는 버전에 따라 한 줄에 하나씩(NDJSON) 또는 배열 하나로 출력한다
-    if text.startswith("["):
-        rows = json.loads(text)
-    else:
-        rows = [json.loads(line) for line in text.splitlines() if line.strip()]
-    return [row.get("State", "") for row in rows]
 
 
 def deployment_states(service):
@@ -67,10 +44,10 @@ def healthy(url):
 
 
 def status_of(service):
-    if service.get("kind", "compose") == "k8s":
+    if service.get("kind", "k8s") == "k8s" and service.get("namespace"):
         states = deployment_states(service)
     else:
-        states = container_states(service)
+        states = None
     if states is None:
         return "unknown", 0, 0
     total = len(states)

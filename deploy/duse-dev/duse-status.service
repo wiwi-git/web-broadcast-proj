@@ -1,6 +1,6 @@
 [Unit]
 Description=Write duse.dev service status for the landing page
-After=docker.service
+After=k3s.service
 
 [Service]
 Type=oneshot

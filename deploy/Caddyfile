@@ -10,7 +10,7 @@ www.duse.dev {
 	redir https://duse.dev{uri} permanent
 }
 
-# 방송 프로젝트 (/opt/web-broadcast, docker compose)
+# 방송 프로젝트 (K3s 네임스페이스 webbroadcast)
 live.duse.dev {
 	encode gzip
 
@@ -64,6 +64,12 @@ live.duse.dev {
 		try_files {path} /index.html
 		file_server
 	}
+}
+
+# short-url (K3s 네임스페이스 short-url, hostNetwork로 127.0.0.1:8190)
+s.duse.dev {
+	encode gzip
+	reverse_proxy 127.0.0.1:8190
 }
 
 # 새 서비스는 위처럼 블록을 추가한다

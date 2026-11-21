@@ -13,9 +13,8 @@
     "name": "Short URL",
     "description": "긴 주소를 짧은 번호 주소로 줄여 주는 서비스",
     "url": "https://s.duse.dev",
-    "compose_dir": "/opt/short-url",
-    "compose_files": ["compose.yaml"],
-    "profiles": [],
+    "kind": "k8s",
+    "namespace": "short-url",
     "health_url": "http://127.0.0.1:8190/api/stats"
   }
 ]
