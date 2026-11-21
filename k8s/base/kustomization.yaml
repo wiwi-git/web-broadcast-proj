@@ -1,0 +1,16 @@
+# Web Broadcast 서비스의 공통 리소스. 직접 적용하지 않고 오버레이로 적용한다.
+#   로컬(Docker Desktop):  k8s/up.sh            → k8s/overlays/local
+#   OCI VM 한 대(K3s):     deploy/k3s/deploy.sh → k8s/overlays/oci
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: webbroadcast
+
+resources:
+  - namespace.yaml
+  - config.yaml
+  - postgres.yaml
+  - media-storage.yaml
+  - mediamtx.yaml
+  - server.yaml
+  - worker.yaml
+  - autoscaling.yaml

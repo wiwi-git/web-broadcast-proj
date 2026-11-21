@@ -117,17 +117,17 @@ API 서버는 업로드를 받아 처리 중 상태로 남기기만 한다. 변�
 
 ## 로컬 오토스케일 (쿠버네티스)
 
-서버를 로컬 쿠버네티스에서 여러 Pod로 띄우고, CPU 사용률에 따라 Pod 수가 자동으로 늘고 줄게 한다.
+서버를 로컬 쿠버네티스에서 여러 Pod로 띄우고, CPU 사용률에 따라 Pod 수가 자동으로 늘고 줄게 한다. 같은 매니페스트를 OCI VM 한 대의 K3s에 올린 운영 구성은 아래 ["OCI 운영 (K3s)"](#oci-운영-k3s)에 있다.
 
 ### 구현 범위
 
 | 요구 | 구현 |
 | --- | --- |
 | 컨테이너 이미지 | [server/Dockerfile](server/Dockerfile). API 서버와 변환 워커가 같은 이미지를 쓴다 |
-| 여러 인스턴스 실행 | Docker Desktop Kubernetes의 Deployment: [server](k8s/app/server.yaml), [worker](k8s/app/worker.yaml) |
-| 지표 기반 자동 조절 | [HPA](k8s/app/autoscaling.yaml). API 서버는 CPU 60% 기준 **2~4개**, 변환 워커는 CPU 70% 기준 **1~2개**. 최대값은 Docker Desktop 자원(CPU 10개, 메모리 8GB) 안에 들어오게 정했다. CPU 지표는 [metrics-server](k8s/metrics-server/kustomization.yaml)가 모은다 |
+| 여러 인스턴스 실행 | Docker Desktop Kubernetes의 Deployment: [server](k8s/base/server.yaml), [worker](k8s/base/worker.yaml). 공통 매니페스트는 [k8s/base](k8s/base), 로컬 전용 설정은 [k8s/overlays/local](k8s/overlays/local)에 있다 |
+| 지표 기반 자동 조절 | [HPA](k8s/base/autoscaling.yaml)(워커는 [worker-hpa.yaml](k8s/overlays/local/worker-hpa.yaml)). API 서버는 CPU 60% 기준 **2~4개**, 변환 워커는 CPU 70% 기준 **1~2개**. 최대값은 Docker Desktop 자원(CPU 10개, 메모리 8GB) 안에 들어오게 정했다. CPU 지표는 [metrics-server](k8s/metrics-server/kustomization.yaml)가 모은다 |
 | 요청 분산 | `server` Service(LoadBalancer)가 준비된 서버 Pod들에 요청을 나눈다. Docker Desktop은 이것을 `localhost:8180`에 연다. Pod는 `/actuator/health/readiness`가 통과해야 요청을 받는다 |
-| 상태를 인스턴스 밖에 | 로그인 세션(Spring Session JDBC), Broadcast(라이브 상태)·Video·Comment·Donation, 변환 대기열은 모두 [PostgreSQL](k8s/app/postgres.yaml)에 있다. 업로드한 영상과 HLS 파일은 모든 Pod가 함께 마운트하는 [media-data 볼륨](k8s/app/media-storage.yaml)에 있다. 서버 Pod는 메모리에 상태를 두지 않는다 |
+| 상태를 인스턴스 밖에 | 로그인 세션(Spring Session JDBC), Broadcast(라이브 상태)·Video·Comment·Donation, 변환 대기열은 모두 [PostgreSQL](k8s/base/postgres.yaml)에 있다. 업로드한 영상과 HLS 파일은 모든 Pod가 함께 마운트하는 [media-data 볼륨](k8s/base/media-storage.yaml)에 있다. 서버 Pod는 메모리에 상태를 두지 않는다 |
 | 부하 발생 | [load-test/load.js](load-test/load.js) (k6, Docker로 실행) |
 
 함께 고려한 것:
@@ -153,7 +153,7 @@ cd web && npm run dev               # 웹은 그대로 http://localhost:5173 (AP
 
 ### 환경변수
 
-서버와 워커는 [k8s/app/config.yaml](k8s/app/config.yaml)의 ConfigMap과 Secret에서 값을 받는다. 아래 DB 계정은 로컬 개발용 예시 값이다.
+서버와 워커는 [k8s/base/config.yaml](k8s/base/config.yaml)의 ConfigMap과 [k8s/overlays/local/db-credentials.yaml](k8s/overlays/local/db-credentials.yaml)의 Secret에서 값을 받는다. 아래 DB 계정은 로컬 개발용 예시 값이다.
 
 | 이름 | 예시 | 설명 |
 | --- | --- | --- |
@@ -347,18 +347,19 @@ Cloudflare 대시보드 → `duse.dev` → **DNS → Records**에 두 줄을 넣
 | --- | --- |
 | 리전 | 도쿄 `ap-tokyo-1` (계정의 홈 리전) |
 | Shape | `VM.Standard.A1.Flex` (Ampere ARM64) |
-| OCPU / 메모리 | **1 OCPU / 6GB** |
+| OCPU / 메모리 | **2 OCPU / 12GB** (만들 때는 1 OCPU·6GB, 재고가 생긴 뒤 늘림. 2026-11-21 확인) |
 | OS | Ubuntu 24.04 (aarch64) |
 | 부트 볼륨 | 약 45GB |
 | 네트워크 | VCN `duse-vcn`의 공개 서브넷, 공인 IP `161.33.218.209` |
 | 열린 포트 | 22, 80, 443/TCP, 8189/TCP·UDP (OCI 보안 목록과 서버 iptables 두 곳) |
+| 실행 환경 | K3s v1.37.2+k3s1 단일 노드(방송 서비스), Docker(같은 VM의 다른 서비스 short-url), Caddy(HTTPS) |
 
 ### 이 사양을 고른 이유
 
 - Always Free의 Arm 기반 A1은 계정 전체에 **월 3,000 OCPU 시간·18,000 GB 시간**(상시 4 OCPU·24GB에 해당)까지 무료다. Always Free는 홈 리전에서만 만들 수 있다. 이 계정에는 다른 A1 인스턴스가 없어 한도를 모두 쓸 수 있었다.
 - 과제 기준은 2 OCPU·12GB지만, 도쿄 리전에 A1 재고가 없어 생성이 **"Out of capacity"**로 실패했다(2026-11-19). 1 OCPU·6GB로 줄여도 처음에는 같은 오류가 났고, 다시 시도해서 만들어졌다. 홈 리전은 바꿀 수 없어 다른 리전으로 옮기는 대안은 없었다.
 - 다른 무료 대안인 `VM.Standard.E2.1.Micro`(AMD, 1/8 OCPU·1GB)는 Spring 서버, PostgreSQL, MediaMTX, ffmpeg 변환 워커를 함께 돌리기에 메모리가 부족하다. 그래서 작더라도 A1을 골랐다.
-- 1 OCPU·6GB에서 방송 서비스 전체가 약 1.3GB를 쓴다. 남은 무료 한도(3 OCPU·18GB)로 재고가 생기면 같은 인스턴스를 늘릴 수 있다(Edit → Shape, 재시작 필요).
+- 1 OCPU·6GB에서 방송 서비스 전체가 약 1.3GB를 썼다. 재고가 생긴 뒤 같은 인스턴스를 2 OCPU·12GB로 늘렸다(Edit → Shape, 재시작 필요). 2 OCPU·12GB도 무료 한도 안이다: 한 달 약 1,440 OCPU 시간·8,640 GB 시간.
 - ARM이라서 Docker 이미지가 `linux/arm64`를 지원해야 한다. 이 프로젝트의 이미지(Temurin JDK, PostgreSQL, MediaMTX)는 모두 지원한다.
 
 ### 무료 범위를 넘지 않게 막은 것
@@ -372,60 +373,199 @@ Cloudflare 대시보드 → `duse.dev` → **DNS → Records**에 두 줄을 넣
 1. OCI 콘솔 → Compute → Instances → Create. 이미지 Ubuntu 24.04, Shape `VM.Standard.A1.Flex`(Ampere), OCPU·메모리 지정, 공개 서브넷, 공인 IP 할당, SSH 공개 키 등록.
 2. 네트워킹 → VCN → Security Lists → `Default Security List`의 수신 규칙에 80, 443/TCP와 8189/TCP·UDP를 더한다.
 3. 서버에 접속해 iptables에서 같은 포트를 연다(Ubuntu 이미지는 22만 열려 있다). `sudo netfilter-persistent save`로 저장한다.
-4. Docker(compose 플러그인 포함)와 Caddy를 설치하고, `ubuntu` 사용자를 `docker` 그룹에 넣는다.
+4. Caddy를 설치한다. 같은 VM의 다른 compose 서비스용으로 Docker(compose 플러그인 포함)도 설치하고 `ubuntu` 사용자를 `docker` 그룹에 넣는다.
 5. DNS A 레코드를 새 공인 IP로 바꾼다(위 "DNS 구성").
-6. 아래 "운영 서버 배포"대로 코드를 보내고, `/opt/web-broadcast/.env`를 [deploy/env.example](deploy/env.example) 보고 만든다.
-7. Caddyfile과 다운로드 페이지를 올린다(위 "HTTPS 구성", 아래 "데스크톱 앱 배포").
+6. `/opt/web-broadcast/.env`를 [deploy/env.example](deploy/env.example) 보고 만들고, 아래 "OCI 운영 (K3s)"의 설치·배포 순서를 따른다.
+7. Caddyfile과 다운로드 페이지를 올린다(위 "HTTPS 구성", 아래 "데스크톱 앱").
 
-## 운영 서버 배포 (OCI, https://live.duse.dev)
+## OCI 운영 (K3s)
 
-OCI 도쿄 리전의 무료 Ampere A1 VM(Ubuntu 24.04, ARM) 한 대에 올린다. 도메인 `duse.dev`는 Cloudflare에서 관리하며, `@`와 `*` A 레코드가 서버 공인 IP를 가리킨다(프록시 끔, DNS only). 앞단의 Caddy가 HTTPS 인증서를 자동으로 받고 경로별로 나눠 넘긴다.
+https://live.duse.dev 는 OCI VM **한 대**의 단일 노드 K3s에서 돈다. [로컬 오토스케일](#로컬-오토스케일-쿠버네티스)과 같은 매니페스트([k8s/base](k8s/base))에 OCI용 설정([k8s/overlays/oci](k8s/overlays/oci/kustomization.yaml))을 얹었다. API 서버 Pod 수는 HPA가 CPU 사용률에 따라 2~4개로 조절하고, 공개 도메인과 Windows·macOS 앱은 같은 주소를 계속 쓴다.
 
 ```
-https://live.duse.dev ─ Caddy ─┬─ /                → React 빌드 (/var/www/live.duse.dev)
-                               ├─ /api, /media     → server 컨테이너 (127.0.0.1:8180)
-                               ├─ /hls             → MediaMTX 8888 (접두사 떼고, Location에 다시 붙임)
-                               ├─ /whip            → MediaMTX 8889 (접두사 떼고)
-                               └─ /api/internal    → 404
-UDP/TCP 8189 (WebRTC 미디어)   → MediaMTX 직접
+https://live.duse.dev ─ Caddy(호스트) ─┬─ /                → React 빌드 (/var/www/live.duse.dev)
+                                      ├─ /api, /media     → 127.0.0.1:8180 → Service server(LoadBalancer, K3s ServiceLB)
+                                      │                                      → 준비된 server Pod 2~4개 (HPA)
+                                      ├─ /hls             → 127.0.0.1:8888 → Service mediamtx (접두사 떼고, Location에 다시 붙임)
+                                      ├─ /whip            → 127.0.0.1:8889 → Service mediamtx (접두사 떼고)
+                                      └─ /api/internal    → 404
+UDP/TCP 8189 (WebRTC 미디어)          → MediaMTX Pod의 hostPort
+
+VM (2 OCPU·12GB, arm64)
+├─ Caddy, duse-status 타이머 (호스트 프로그램)
+├─ Docker ─ short-url (다른 서비스, compose)
+└─ K3s ─ webbroadcast 네임스페이스: server ×2~4 (HPA) · worker ×1 · postgres ×1 · mediamtx ×1
+         kube-system: coredns · metrics-server · local-path-provisioner · svclb
 ```
+
+### 구현 범위
+
+| 요구 | 구현 |
+| --- | --- |
+| 단일 노드 K3s | [deploy/k3s/install.sh](deploy/k3s/install.sh). K3s stable(v1.37.2+k3s1)을 설치하고 Traefik은 끈다(HTTPS는 기존 Caddy가 맡아서 80/443을 두고 다투지 않게) |
+| VM 아키텍처(arm64)에 맞는 이미지 | [deploy/k3s/deploy.sh](deploy/k3s/deploy.sh)가 `docker build --platform linux/arm64`로 빌드한다. Apple Silicon 맥은 그대로 arm64이고, x86 PC는 Docker buildx(QEMU)로 빌드된다. 의존 이미지 `eclipse-temurin:25`, `postgres:18`, `bluenviron/mediamtx:1.21.3-ffmpeg`는 모두 `linux/arm64`를 제공한다 |
+| 이미지 전달 | 레지스트리 없이 `docker save \| ssh … sudo k3s ctr images import -`로 K3s의 containerd에 넣는다. K3s는 Docker와 이미지 저장소가 따로라서 import가 필요하다. Deployment는 `imagePullPolicy: Never` |
+| Deployment·Service | [server](k8s/base/server.yaml): CPU 요청량 `250m`, `readinessProbe`(`/actuator/health/readiness`). Service `server`(LoadBalancer 8180)가 준비된 Pod에만 요청을 나눈다. 워커·DB·MediaMTX도 각각 Deployment |
+| 공개 도메인 HTTPS | 기존 [Caddyfile](deploy/Caddyfile)을 바꾸지 않았다. Caddy가 넘기던 `127.0.0.1:8180/8888/8889`를 이제 K3s ServiceLB가 받는다. ServiceLB는 VM의 모든 주소에 열리지만 OCI 보안 목록과 iptables가 22·80·443·8189만 허용해서 밖에서는 닿지 않는다 |
+| 지표 수집 | K3s에 들어 있는 Metrics Server를 쓴다 (로컬과 달리 따로 설치하지 않는다) |
+| HPA | [autoscaling/v2 HPA](k8s/base/autoscaling.yaml): 대상 `Deployment/server`, **최소 2 · 최대 4**, CPU 평균 사용률 **60%**. OCI는 behavior를 주지 않아 축소 안정화가 기본값 **5분**이다 |
+| 파드 교체 시 상태 유지 | 아래 "파드가 바뀌어도 남는 것" |
+| 부하 | [load-test/load.js](load-test/load.js) (k6, Docker로 실행). `BASE_URL=https://live.duse.dev VUS=20 HOLD=3m load-test/run.sh` |
+
+OCI 오버레이가 base와 다른 점:
+
+- 변환 워커는 HPA 없이 **1개로 고정**한다. 2개가 되면 CPU 요청량 500m이 더 필요해서 server를 4개까지 띄울 수 없다(아래 산정).
+- postgres(100m)와 mediamtx(100m)에도 CPU 요청량을 줘서 스케줄러가 남은 CPU를 바르게 계산하게 했다.
+- MediaMTX는 WebRTC 8189 TCP·UDP를 Pod의 `hostPort`로 VM에 직접 열고, 공인 IP를 ICE 후보로 알린다(`MTX_WEBRTCADDITIONALHOSTS`). hostPort는 노드 하나에 한 Pod만 쓸 수 있어서 업데이트 방식은 `Recreate`다.
+- DB 계정과 선택 비밀 값은 저장소에 없다. VM의 `/opt/web-broadcast/.env`에서 [deploy/k3s/secrets.sh](deploy/k3s/secrets.sh)가 Secret으로 만든다.
+
+### 최대 Pod 수 산정
+
+스케줄러는 Pod의 **요청량 합**이 노드의 할당 가능 자원(Allocatable)을 넘으면 Pod를 띄우지 않는다(Pending). 그래서 HPA 최대값은 실제 사용량이 아니라 요청량 합으로 정했다. `kubectl describe node`의 Allocatable은 **CPU 2 (2000m), 메모리 11.6GiB**였다.
+
+| 구성요소 | CPU 요청 | 메모리 (요청 / 한도) |
+| --- | --- | --- |
+| K3s 시스템 (coredns 100m, metrics-server 100m, local-path, svclb) | 200m | 약 1GB (K3s 프로세스 포함) |
+| postgres ×1 | 100m | 256Mi / 없음 |
+| mediamtx ×1 | 100m | 128Mi / 없음 |
+| worker ×1 (고정) | 500m | 1Gi / 2Gi |
+| **server 남은 몫** | **2000 − 900 = 1100m** | |
+| server 250m × **4** | 1000m | 512Mi × 4 / 768Mi × 4 = 3Gi |
+
+- CPU: server 5개(1250m)는 1100m을 넘으므로 **최대 4개**. 4개일 때 요청량 합은 1900m이다. 부하 중 server가 4개일 때 `kubectl describe node`의 Allocated resources가 실제로 `cpu 1900m (95%)`, `memory 3596Mi (30%)`였다.
+- 메모리: 모든 Pod가 한도까지 써도 server 3Gi + worker 2Gi + DB·MediaMTX·K3s 약 1.5GB ≈ 6.5GB로 12GB 안이다. 같은 VM의 short-url, Caddy, OS를 더해도 여유가 있다. 그래서 CPU가 상한을 정한다.
+- 최소 2개: Pod 하나가 교체되거나 죽는 동안에도 다른 Pod가 요청을 받게 한다.
+
+### 단일 VM 장애의 영향
+
+- HPA는 **같은 VM 안에서만** Pod를 늘린다. Pod 하나가 죽으면 Service가 남은 Pod로 보내고 Deployment가 새로 띄우지만, VM 자체가 멈추면 server·worker·DB·MediaMTX·Caddy가 **모두 함께 멈춘다**. 노드가 1대라서 다른 곳으로 옮겨 갈 수 없다.
+- VM이 재부팅되면 K3s(systemd)가 시작되고 Deployment들이 다시 뜬다. 데이터는 VM 디스크(local-path PVC)에 있어서 남는다. 다시 뜨는 몇 분 동안은 서비스가 끊기고, 진행 중이던 라이브 방송과 WebRTC 연결은 끊긴다.
+- 부트 볼륨이 손상되거나 VM을 지우면 DB와 영상 파일이 함께 사라진다. 지금은 자동 백업이 없다.
+- 스케일 아웃의 한계도 VM 하나다. CPU 2개를 다 쓰면 HPA가 최대 4개까지 늘려도 처리량은 더 늘지 않는다. 더 늘리려면 VM Shape를 키우거나 노드를 추가해야 하고, 노드가 늘면 `ReadWriteOnce` 볼륨 대신 공유 스토리지가 필요하다.
+
+### 파드가 바뀌어도 남는 것
+
+| 상태 | 어디에 두는가 |
+| --- | --- |
+| 로그인 세션 | Spring Session JDBC → PostgreSQL `spring_session` 테이블. 어느 server Pod로 가도 같은 세션이다 |
+| 방송 상태(Broadcast), 동영상 정보(Video), 댓글, 후원 | PostgreSQL |
+| 업로드 원본, 변환된 HLS, 썸네일 | `media-data` PVC (`/data`). 모든 server·worker Pod가 함께 마운트한다 |
+| PostgreSQL 데이터 파일 | `postgres-data` PVC |
+| 두 PVC의 실제 위치 | K3s 기본 StorageClass `local-path` → VM 디스크 `/var/lib/rancher/k3s/storage/` |
+| 서명 키·비밀 값 | 세션은 서명 키 없이 DB에 있다. 동시 송출 암호화 키·중계 비밀 값, 토스 키, DB 비밀번호는 Secret에 있고 모든 Pod가 같은 값을 읽는다 |
+
+### 설치와 배포 순서
+
+필요한 것: 맥(또는 PC)에 Docker와 kubectl, VM에 ssh 키. 아래 명령의 `ubuntu@161.33.218.209`, `~/.ssh/oci_duse`는 이 VM의 값이다(`OCI_HOST`, `OCI_KEY` 환경변수로 바꿀 수 있다).
+
+1. **VM에 K3s 설치** ([install.sh](deploy/k3s/install.sh)). OCI Ubuntu 이미지의 iptables는 INPUT·FORWARD 끝에 REJECT가 있어서 Pod 네트워크(10.42.0.0/16)를 막는다. 스크립트가 그 앞에 허용 규칙을 넣고 `/etc/iptables/rules.v4`에도 저장한다. 그다음 K3s를 설치하고 `ubuntu` 사용자가 `kubectl`을 쓰게 한다.
+   ```bash
+   scp -i ~/.ssh/oci_duse deploy/k3s/install.sh ubuntu@161.33.218.209:/tmp/
+   ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 'bash /tmp/install.sh'
+   ```
+2. **비밀 값**. VM의 `/opt/web-broadcast/.env`([deploy/env.example](deploy/env.example))로 Secret을 만든다.
+   ```bash
+   ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 'bash -s' < deploy/k3s/secrets.sh
+   ```
+3. **배포** ([deploy.sh](deploy/k3s/deploy.sh)). 맥에서 arm64 이미지를 빌드해 VM의 K3s에 넣고, MediaMTX 설정 ConfigMap과 `k8s/overlays/oci`를 적용한 뒤 준비될 때까지 기다린다. 코드를 바꿀 때마다 이것만 다시 실행한다.
+   ```bash
+   deploy/k3s/deploy.sh
+   ```
+4. **(처음 한 번) compose 데이터 옮기기** ([migrate-from-compose.sh](deploy/k3s/migrate-from-compose.sh)). compose 볼륨의 DB를 `pg_dump`해서 K3s DB에 복원하고, 미디어 파일을 `media-data` PVC 폴더로 복사한다. compose 볼륨은 되돌릴 때를 위해 남긴다.
+   ```bash
+   ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 'bash -s' < deploy/k3s/migrate-from-compose.sh
+   ```
+5. **웹 빌드 올리기**, Caddyfile과 다운로드 페이지 (바꿨을 때만)
+   ```bash
+   (cd web && npm run build)
+   rsync -az --delete -e "ssh -i ~/.ssh/oci_duse" web/dist/ ubuntu@161.33.218.209:/var/www/live.duse.dev/
+
+   rsync -az -e "ssh -i ~/.ssh/oci_duse" deploy/Caddyfile deploy/download/index.html ubuntu@161.33.218.209:/tmp/
+   ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 'sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak \
+     && sudo install -m 644 /tmp/Caddyfile /etc/caddy/Caddyfile \
+     && sudo install -D -m 644 /tmp/index.html /var/www/live-download/index.html \
+     && sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && sudo systemctl reload caddy'
+   ```
+
+2026-11-21에 이 순서로 compose 운영에서 옮겼다. 옮긴 뒤 같은 주소에서 회원 1명, 방송 6개, 동영상 1개(재생 목록 `master.m3u8`과 썸네일 200)가 그대로 보였다.
 
 | 파일 | 서버 위치 | 내용 |
 | --- | --- | --- |
-| `compose.prod.yaml` | `/opt/web-broadcast/` | 운영용 덮어쓰기. DB를 밖에 열지 않고 내부 포트는 127.0.0.1에만 묶는다. MediaMTX가 서버를 컨테이너 이름으로 부른다 |
-| `deploy/env.example` | `/opt/web-broadcast/.env` | 공인 IP와 비밀값(DB 비밀번호, 동시 송출 비밀값, 토스 테스트 키). 서버에서 만들고 git에 올리지 않는다 |
+| `deploy/env.example` | `/opt/web-broadcast/.env` | 공인 IP와 비밀 값(DB 비밀번호, 동시 송출 비밀 값, 토스 테스트 키). 서버에서 만들고 git에 올리지 않는다 |
 | `deploy/Caddyfile` | `/etc/caddy/Caddyfile` | `duse.dev` 메인 페이지와 `live.duse.dev` 경로 분배 |
-| `deploy/duse-dev/` | `/var/www/duse.dev/`, `/etc/duse/services.json`, `/usr/local/bin/duse-status-json`, systemd | `duse.dev` 첫 화면. 서비스 목록과 켜짐/꺼짐을 카드로 보여 준다. 타이머가 1분마다 컨테이너 상태와 헬스 체크를 `status.json`에 쓰고 페이지가 읽는다 |
+| `deploy/duse-dev/` | `/var/www/duse.dev/`, `/etc/duse/services.json`, `/usr/local/bin/duse-status-json`, systemd | `duse.dev` 첫 화면. 타이머가 1분마다 서비스 상태와 헬스 체크를 `status.json`에 쓴다. 방송 서비스는 `"kind": "k8s"`라서 Deployment가 원하는 수만큼 준비됐는지 보고, short-url은 compose 컨테이너 상태를 본다 |
 | `deploy/egress-cap.sh`, `.service` | `/usr/local/sbin/`, `/etc/systemd/system/` | 나가는 트래픽을 29 Mbit/s로 묶어 OCI 무료 송신 한도(월 10 TB)를 넘지 않게 한다. 동시 시청은 10명 남짓이 한계다 |
 
-코드는 git이 아니라 PC에서 rsync로 보낸다. 서버 이미지는 서버에서 빌드하고, 웹은 PC에서 빌드해 올린다.
+방화벽은 두 겹이다. OCI 보안 목록(`Default Security List for duse-vcn`)과 서버 iptables(`/etc/iptables/rules.v4`) 모두에서 22, 80, 443/TCP와 8189/TCP·UDP만 연다. iptables에는 K3s Pod 대역 허용 규칙이 더해져 있다. 비용은 OCI 할당량 정책 `free-tier-only`(무료 A1·E2 Micro와 디스크 200GB만 허용)와 $1 예산의 1% 지출 알림으로 막는다. K3s의 `LoadBalancer`는 VM 안의 ServiceLB가 처리하므로 OCI 유료 Load Balancer는 생기지 않는다.
+
+### 확인 절차
 
 ```bash
-# 서버 코드와 설정 보내고 컨테이너 다시 띄우기
-rsync -az --delete -e "ssh -i ~/.ssh/oci_duse" \
-  --exclude .gradle/ --exclude build/ --exclude data/ --exclude config/local.properties \
-  compose.yaml compose.prod.yaml mediamtx server ubuntu@161.33.218.209:/opt/web-broadcast/
+ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209
+kubectl get nodes                                   # 작업 전후 모두 노드 1대
+kubectl -n webbroadcast top pods                    # Metrics Server가 CPU·메모리를 모으는지
+kubectl -n webbroadcast get hpa -w                  # 터미널 1: CPU 사용률과 REPLICAS
+kubectl -n webbroadcast get pods -l app=server -w   # 터미널 2: server Pod 생성·종료
+```
+
+맥에서 부하를 건다. 가상 사용자 20명이 로그인(bcrypt라 CPU를 많이 씀)과 방송·동영상 목록 조회를 반복하고, 동시에 처음 만든 회원의 세션 하나로 로그인 상태·방송·댓글을 조회해서 Pod가 바뀌는 동안 상태가 유지되는지 본다.
+
+```bash
+BASE_URL=https://live.duse.dev VUS=20 HOLD=3m load-test/run.sh
+```
+
+부하가 끝나면 5분(축소 안정화 기본값) 뒤부터 Pod가 줄어든다. 측정이 끝나면 테스트 회원을 지운다.
+
+```bash
 ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 \
-  'cd /opt/web-broadcast && docker compose -f compose.yaml -f compose.prod.yaml --profile app up -d --build'
-
-# 웹 빌드해서 올리기
-(cd web && npm run build)
-rsync -az --delete -e "ssh -i ~/.ssh/oci_duse" web/dist/ ubuntu@161.33.218.209:/var/www/live.duse.dev/
+  'kubectl -n webbroadcast exec -i deploy/postgres -- psql -U webbroadcast -d webbroadcast' < load-test/cleanup.sql
 ```
 
-Caddyfile과 다운로드 페이지를 바꿨으면 함께 올린다.
+### 확인한 결과 (2026-11-21, OCI A1 2 OCPU·12GB · K3s v1.37.2+k3s1 · 노드 1대)
 
-```bash
-rsync -az -e "ssh -i ~/.ssh/oci_duse" deploy/Caddyfile deploy/download/index.html ubuntu@161.33.218.209:/tmp/
-ssh -i ~/.ssh/oci_duse ubuntu@161.33.218.209 'sudo cp /etc/caddy/Caddyfile /etc/caddy/Caddyfile.bak \
-  && sudo install -m 644 /tmp/Caddyfile /etc/caddy/Caddyfile \
-  && sudo install -D -m 644 /tmp/index.html /var/www/live-download/index.html \
-  && sudo caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile && sudo systemctl reload caddy'
+**부하 조건**: 맥에서 `BASE_URL=https://live.duse.dev VUS=20 HOLD=3m load-test/run.sh`. 30초 동안 가상 사용자를 20명까지 올리고, 3분 동안 유지한 뒤 20초 동안 내렸다(총 3분 50초). 요청은 공개 HTTPS 주소 → Caddy → K3s Service로 들어갔다. 원본 기록은 [load-test/results/](load-test/results)에 있다.
+
+- [oci-snapshots.txt](load-test/results/oci-snapshots.txt): 부하 전·중·직후·7분 뒤의 `kubectl get nodes`, `get hpa`, `top pods`, `get pods`
+- [oci-server-scale.txt](load-test/results/oci-server-scale.txt): `k8s/watch-scale.sh`의 5초 간격 기록
+- [oci-hpa-watch.txt](load-test/results/oci-hpa-watch.txt), [oci-pods-watch.txt](load-test/results/oci-pods-watch.txt): `kubectl get hpa -w`, `kubectl get pods -l app=server -w`
+- [oci-k6.txt](load-test/results/oci-k6.txt): k6 요약
+
+**노드**: 작업 전(설치 직후)과 측정 전·중·후 모두 `kubectl get nodes`가 `duse-server` **1대**(Ready)였다.
+
+**지표 수집**: `kubectl top pods`가 부하 전부터 Pod별 CPU·메모리를 보여 줬다(K3s 내장 Metrics Server).
+
+**전·중·후** (`kubectl get hpa -w`, 값이 바뀐 줄만):
+
+```
+시각(UTC)  CPU/목표     server Pod
+04:00:43   4%/60%      2개      ← 부하 전, 최소 2개
+04:01:31   98%/60%     2개      ← 부하 시작, 목표 초과 → 2개 추가 (Pending → ContainerCreating)
+04:01:46   231%/60%    4개      ← REPLICAS 4 (최대)
+04:02:37~40            4개 준비 ← 새 Pod 2개가 readinessProbe를 통과 (시작에 약 66초)
+04:03:32   159%/60%    4개      ← 부하 중: Pod별 318m~471m
+04:05:16   46%/60%     4개      ← 부하 끝
+04:05:31   1%/60%      4개      ← 축소 안정화 시간(기본 5분) 동안 유지
+04:10:16   2%/60%      2개      ← 부하가 끝난 지 약 5분 뒤 2개 종료, 최소 2개로 복귀
+04:11:56   1%/60%      2개      ← 부하 끝나고 7분 뒤
 ```
 
-배포 환경의 값은 모두 서버의 `/opt/web-broadcast/.env`([deploy/env.example](deploy/env.example))와 [compose.prod.yaml](compose.prod.yaml)의 환경변수로 넣는다. 서비스 주소(DB, MediaMTX, 서버 서로의 주소)는 compose 서비스 이름으로 정하고, 공개 주소는 Caddyfile이 정한다. 데스크톱 앱이 쓸 서버 주소는 빌드할 때 넣는다(아래).
+부하 중 상태 확인 결과 (k6). 요청이 어느 Pod로 가든, Pod가 2개에서 4개로 늘어나는 중에도 같은 세션으로 로그인 상태·방송·댓글이 그대로 조회됐다:
 
-방화벽은 두 겹이다. OCI 보안 목록(`Default Security List for duse-vcn`)과 서버 iptables(`/etc/iptables/rules.v4`) 모두에서 22, 80, 443/TCP와 8189/TCP·UDP만 연다. 비용은 OCI 할당량 정책 `free-tier-only`(무료 A1·E2 Micro와 디스크 200GB만 허용)와 $1 예산의 1% 지출 알림으로 막는다.
+```
+✓ 로그인 유지   ✓ 방송 유지   ✓ 댓글 유지
+✓ { kind:state }...: 100.00% 5796 out of 5796
+✓ http_req_failed..: 0.00%   0 out of 13528
+  http_req_duration: med=101ms  p(90)=572ms  p(95)=1.09s
+  data_received....: 8.9 MB (나가는 트래픽. 무료 송신 한도 10TB에 비해 무시할 양)
+```
+
+**같은 주소의 데이터**: 측정 전후 모두 `https://live.duse.dev/api/broadcasts`와 `/api/videos`가 옮겨 온 방송 6개와 동영상 1개를 돌려줬고, 동영상의 `master.m3u8`과 썸네일이 200이었다. 측정 뒤 [load-test/cleanup.sql](load-test/cleanup.sql)로 테스트 회원 1명과 그 방송·댓글, 로그인 세션 1,933개를 지웠다.
+
+관찰한 것:
+
+- 새 server Pod가 준비되기까지 약 66초 걸렸다. CPU 2개를 부하가 이미 다 쓰는 중에 JVM이 시작돼서다. 그동안은 기존 2개가 요청을 받았고 실패한 요청은 없었다.
+- 사용률이 4개로 늘어난 뒤에도 150~220%였다. 노드의 CPU가 2개뿐이라 Pod를 늘려도 전체 처리량에는 한계가 있다(위 "단일 VM 장애의 영향"). 그래도 최대값 4에서 멈춰서 다른 구성요소(DB, MediaMTX, 워커)가 쓸 CPU 요청량은 지켜졌다.
+- 줄어들 때 종료된 Pod 2개의 상태가 `Error`로 표시됐다. Java가 종료 신호(SIGTERM)를 받고 끝나면 종료 코드가 143이라서 쿠버네티스가 `Error`로 보여 준다. 부하가 끝난 뒤라 이때 처리 중인 요청은 없었다.
 
 ## 데스크톱 앱 (Windows·macOS)
 

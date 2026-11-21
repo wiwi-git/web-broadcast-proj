@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 5초마다 HPA가 본 CPU 사용률과 Pod 수를 한 줄씩 찍는다. 부하를 거는 동안 다른 터미널에서 켜 둔다.
-#   k8s/watch-scale.sh | tee scale-log.txt
+#   로컬: k8s/watch-scale.sh | tee scale-log.txt
+#   OCI:  ssh ubuntu@<VM> 'bash -s' < k8s/watch-scale.sh | tee scale-log.txt
 set -euo pipefail
 NAMESPACE=webbroadcast
 
@@ -13,7 +14,12 @@ while true; do
     target=$(kubectl -n "$NAMESPACE" get hpa "$name" \
       -o jsonpath='{.spec.metrics[0].resource.target.averageUtilization}' 2>/dev/null || true)
     replicas=$(kubectl -n "$NAMESPACE" get deploy "$name" -o jsonpath='{.status.readyReplicas}' 2>/dev/null || true)
-    line+=$(printf '  %-22s' "${cpu:-?}%/${target}%, ${replicas:-0}개")
+    if [[ -z "$target" ]]; then
+      # OCI는 워커 HPA가 없다 (1개 고정)
+      line+=$(printf '  %-22s' "HPA 없음, ${replicas:-0}개")
+    else
+      line+=$(printf '  %-22s' "${cpu:-?}%/${target}%, ${replicas:-0}개")
+    fi
   done
   echo "$line"
   sleep 5

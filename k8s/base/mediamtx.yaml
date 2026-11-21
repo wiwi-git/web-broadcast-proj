@@ -1,6 +1,6 @@
 # 라이브 미디어 서버 (ADR-0002). WebRTC 연결을 직접 들고 있어서 늘리지 않고 한 대로 둔다.
 # 설정은 mediamtx/mediamtx.yml과 동시 송출 중계 스크립트 mediamtx/simulcast.sh를 그대로 쓴다.
-# k8s/up.sh가 두 파일로 ConfigMap mediamtx-config를 만든다.
+# k8s/up.sh(로컬)와 deploy/k3s/deploy.sh(OCI)가 두 파일로 ConfigMap mediamtx-config를 만든다.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -51,7 +51,8 @@ spec:
             # simulcast.sh를 실행할 수 있게 한다
             defaultMode: 0755
 ---
-# 브라우저가 닿는 포트. Docker Desktop은 LoadBalancer를 localhost에 연다
+# 브라우저가 닿는 포트. Docker Desktop은 LoadBalancer를 localhost에 연다.
+# OCI 오버레이는 WebRTC(8189)를 Service에서 빼고 Pod의 hostPort로 직접 연다
 apiVersion: v1
 kind: Service
 metadata:

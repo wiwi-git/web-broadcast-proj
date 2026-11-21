@@ -4,9 +4,18 @@
     "name": "Web Broadcast",
     "description": "휴대폰 카메라로 라이브 방송하고, 녹화한 동영상을 올려 보는 서비스",
     "url": "https://live.duse.dev",
-    "compose_dir": "/opt/web-broadcast",
-    "compose_files": ["compose.yaml", "compose.prod.yaml"],
-    "profiles": ["app"],
+    "kind": "k8s",
+    "namespace": "webbroadcast",
     "health_url": "http://127.0.0.1:8180/actuator/health"
+  },
+  {
+    "id": "short-url",
+    "name": "Short URL",
+    "description": "긴 주소를 짧은 번호 주소로 줄여 주는 서비스",
+    "url": "https://s.duse.dev",
+    "compose_dir": "/opt/short-url",
+    "compose_files": ["compose.yaml"],
+    "profiles": [],
+    "health_url": "http://127.0.0.1:8190/api/stats"
   }
 ]

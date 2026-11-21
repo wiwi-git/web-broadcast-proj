@@ -24,11 +24,11 @@ echo "▶ metrics-server 설치"
 kubectl apply -k k8s/metrics-server
 
 echo "▶ 앱 적용"
-kubectl apply -f k8s/app/namespace.yaml
+kubectl apply -f k8s/base/namespace.yaml
 kubectl -n "$NAMESPACE" create configmap mediamtx-config --from-file=mediamtx/mediamtx.yml \
   --from-file=mediamtx/simulcast.sh \
   --dry-run=client -o yaml | kubectl apply -f -
-kubectl apply -k k8s/app
+kubectl apply -k k8s/overlays/local
 
 # 휴대폰에서 송출하려면 .env의 LAN_IP를 WebRTC 후보로 알린다 (compose와 같은 방식)
 if [[ -f .env ]] && grep -q '^LAN_IP=.\+' .env; then

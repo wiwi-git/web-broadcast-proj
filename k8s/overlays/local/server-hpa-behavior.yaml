@@ -1,0 +1,20 @@
+# server HPA를 빨리 늘리고, 부하가 끝나면 1분 뒤부터 줄여서 관찰하기 쉽게 한다 (로컬 전용 패치)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: server
+spec:
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Pods
+          value: 2
+          periodSeconds: 15
+    # 기본값(5분)보다 짧게 잡아 부하가 끝나면 1분 뒤부터 줄어드는 것을 볼 수 있게 한다
+    scaleDown:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 30

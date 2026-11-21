@@ -1,0 +1,7 @@
+# 변환 워커는 1개로 고정한다 (HPA 없음). 이유는 kustomization.yaml 참고
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1

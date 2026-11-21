@@ -1,5 +1,6 @@
 # 서버와 워커가 함께 쓰는 설정.
-# DB 계정은 로컬 개발용 예시 값이다(compose.yaml과 같음). 실제 비밀 값은 저장소에 넣지 않는다.
+# DB 계정(Secret db-credentials)은 환경마다 다르다: 로컬은 overlays/local에 예시 값이 있고,
+# OCI는 VM에서 deploy/k3s/secrets.sh로 만든다. 실제 비밀 값은 저장소에 넣지 않는다.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -10,12 +11,3 @@ data:
   MEDIA_STORAGE_ROOT: /data
   # 컨테이너 메모리 한도 안에서 JVM 힙을 잡는다
   JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: db-credentials
-type: Opaque
-stringData:
-  DB_USERNAME: webbroadcast
-  DB_PASSWORD: webbroadcast
