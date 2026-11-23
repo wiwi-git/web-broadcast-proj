@@ -1,0 +1,17 @@
+# 용량이 큰 결과물과 생성물
+*.mp4
+video/assets/audio/
+video/assets/screens/
+video/assets/media/
+video/renders/
+video/snapshots/
+# 로컬 데모 계정 (테스트 값)
+tools/demo-accounts.local.json
+tools/node_modules/
+video/.hyperframes/
+tools/capture/state.local.json
+video/assets/fonts/
+render.log
+
+# 데모 방송·VOD용으로 만든 영상
+demo-media/

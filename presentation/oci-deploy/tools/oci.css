@@ -1,0 +1,88 @@
+/* 도메인·OCI 배포 영상 전용 (공용 composition.css 위에 얹는다) */
+
+/* 캡처 이미지 액자: 이미지 전체를 비율대로 보여 준다 */
+.frame { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+.frame .bar { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #1a1b1e; border-bottom: 1px solid var(--border); }
+.frame .bar i { width: 11px; height: 11px; border-radius: 50%; background: #3a3c41; }
+.frame .bar i:nth-child(1) { background: #ff5f57; } .frame .bar i:nth-child(2) { background: #febc2e; } .frame .bar i:nth-child(3) { background: #28c840; }
+.frame .bar span { margin-left: 12px; height: 26px; border-radius: 7px; background: #26282c; color: var(--muted); font-size: 15px; line-height: 26px; padding: 0 14px; font-family: var(--mono); }
+.frame .bar em { margin-left: auto; font-style: normal; font-size: 15px; color: var(--muted); }
+.frame .pic { position: relative; }
+.frame .pic img, .frame .pic video { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+.frame .pic img.layer { z-index: 1; }
+
+/* 터미널 */
+.term { position: absolute; background: #0c0d0f; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.term .bar { height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #18191c; border-bottom: 1px solid var(--border); }
+.term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #3a3c41; }
+.term .body { padding: 16px 22px; font-family: var(--mono); font-size: 21px; line-height: 1.55; white-space: pre; }
+.term .cmd { color: #e8eaed; }
+.term .cmd::before { content: '$ '; color: var(--accent); }
+.term .out { color: var(--muted); margin-bottom: 8px; }
+.term .out.ok { color: var(--accent); }
+.term .out.bad { color: #ff8a97; }
+
+/* 왼쪽 설명 열 */
+.col { position: absolute; display: flex; flex-direction: column; gap: 20px; }
+.card b.big { font-size: 30px; display: block; margin-bottom: 4px; }
+.card ul { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.card li::before { content: '· '; color: var(--accent); font-weight: 800; }
+.kv { display: grid; grid-template-columns: 120px 1fr; gap: 10px 18px; align-items: center; font-size: 24px; }
+.kv code { justify-self: start; }
+.arrowline { color: var(--accent); font-weight: 800; }
+
+/* OCI 자원 상자(겹친 구조) */
+.nest { position: absolute; border: 2px solid var(--border); border-radius: 18px; padding: 44px 18px 18px; }
+.nest > .lb { position: absolute; left: 18px; top: 10px; font-size: 21px; font-weight: 700; color: var(--muted); }
+.nest > .lb b { color: var(--text); margin-left: 8px; }
+.nest.region { border-color: rgba(77,163,255,.55); } .nest.region > .lb { color: var(--blue); }
+.nest.ad { border-color: rgba(77,163,255,.35); border-style: dashed; }
+.nest.comp { border-color: #55575d; }
+.nest.vcn { border-color: rgba(0,214,143,.55); } .nest.vcn > .lb { color: var(--accent); }
+.nest.subnet { border-color: rgba(0,214,143,.35); border-style: dashed; }
+.inst { position: absolute; background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 14px 18px; }
+.inst b { font-size: 26px; display: block; } .inst small { font-size: 18px; color: var(--muted); font-family: var(--mono); }
+.igw { position: absolute; background: var(--surface); border: 2px solid var(--border); border-radius: 12px; padding: 10px 16px; font-size: 20px; font-weight: 700; }
+.err { position: absolute; font-family: var(--mono); font-size: 19px; color: #ff8a97; background: rgba(229,36,59,.10); border: 1px solid rgba(229,36,59,.45); border-radius: 10px; padding: 10px 16px; }
+
+/* 방화벽 두 겹 */
+.wall { position: absolute; width: 230px; border-radius: 16px; padding: 18px; text-align: center; border: 2px solid var(--border); background: var(--surface); }
+.wall b { display: block; font-size: 25px; } .wall small { font-size: 18px; color: var(--muted); }
+.wall.out { border-color: rgba(77,163,255,.6); } .wall.in { border-color: rgba(255,200,61,.6); }
+.ports { position: absolute; display: flex; gap: 12px; flex-wrap: wrap; }
+.port { font-family: var(--mono); font-size: 22px; font-weight: 700; padding: 8px 16px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.port.open { border-color: rgba(0,214,143,.6); color: var(--accent); }
+
+/* 비용 안전장치 */
+.guards { position: absolute; left: 100px; top: 300px; width: 1720px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.guard { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 40px 40px; min-height: 380px; }
+.guard span { font-family: var(--mono); color: var(--accent); font-size: 56px; font-weight: 800; }
+.guard b { display: block; font-size: 42px; margin: 18px 0 14px; }
+.guard small { font-size: 28px; color: var(--muted); line-height: 1.5; display: block; }
+
+/* 경로 표 */
+.routes { position: absolute; display: flex; flex-direction: column; gap: 12px; }
+.route { display: grid; grid-template-columns: 210px 40px 1fr; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; font-size: 22px; }
+.route code { font-size: 21px; color: var(--accent); }
+.route i { color: var(--muted); font-style: normal; font-weight: 800; }
+.route small { display: block; color: var(--muted); font-size: 17px; }
+.route.block code { color: #ff8a97; }
+
+/* 코드 카드 강조 띠 */
+.code { position: absolute; }
+.code .mark { position: absolute; left: 0; right: 0; background: rgba(0,214,143,.12); box-shadow: inset 4px 0 0 var(--accent); }
+.code pre { position: relative; z-index: 1; }
+
+/* 요약 흐름 */
+.sumflow { position: absolute; left: 100px; top: 230px; width: 1720px; display: flex; align-items: stretch; gap: 16px; }
+.sumflow .step { flex: 1; padding: 26px; }
+.sumflow .step b { font-size: 32px; }
+.sumflow .step small { font-size: 20px; }
+.sumflow .step-arrow { align-self: center; }
+.checks { position: absolute; left: 100px; top: 520px; width: 1720px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.checks .card { font-size: 23px; }
+
+/* 노트(화면 자막) */
+.note { position: absolute; z-index: 6; font-size: 22px; font-weight: 700; padding: 12px 18px; border-radius: 12px; background: rgba(255,200,61,.14); border: 1px solid rgba(255,200,61,.6); color: var(--donation); }
+.slot { position: absolute; border: 2px dashed #55575d; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); text-align: center; background: rgba(31,32,35,.6); }
+.slot b { font-size: 30px; color: var(--text); } .slot small { font-size: 20px; }

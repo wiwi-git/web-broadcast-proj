@@ -1,0 +1,42 @@
+[
+ {
+  "scene": 1,
+  "cmd": "dig +short duse.dev",
+  "out": "<서버 IP>"
+ },
+ {
+  "scene": 1,
+  "cmd": "dig +short live.duse.dev",
+  "out": "<서버 IP>"
+ },
+ {
+  "scene": 1,
+  "cmd": "dig +short anything.duse.dev",
+  "out": "<서버 IP>"
+ },
+ {
+  "scene": 4,
+  "cmd": "openssl s_client -connect duse.dev:443 | openssl x509 -noout -issuer -enddate",
+  "out": "issuer=C=US, O=Let's Encrypt, CN=YE2\nnotAfter=Feb 17 07:46:09 2027 GMT"
+ },
+ {
+  "scene": 4,
+  "cmd": "curl -sI http://duse.dev",
+  "out": "HTTP/1.1 308 Permanent Redirect\nLocation: https://duse.dev/"
+ },
+ {
+  "scene": 4,
+  "cmd": "curl -sI https://www.duse.dev",
+  "out": "HTTP/2 301 \nlocation: https://duse.dev/"
+ },
+ {
+  "scene": 4,
+  "cmd": "curl -s -o /dev/null -w '%{http_code}' https://live.duse.dev/api/internal/simulcast",
+  "out": "404"
+ },
+ {
+  "scene": 2,
+  "cmd": "nc -z live.duse.dev 5432 8180 8888 8889 9997",
+  "out": "5432: 닫힘\n8180: 닫힘\n8888: 닫힘\n8889: 닫힘\n9997: 닫힘"
+ }
+]

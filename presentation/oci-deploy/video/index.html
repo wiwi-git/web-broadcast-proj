@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="ko" data-resolution="landscape">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1920, height=1080">
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+<style>
+@font-face { font-family: 'Apple SD Gothic Neo'; src: local('Apple SD Gothic Neo'), local('AppleSDGothicNeo-Regular'); font-weight: 400; }
+@font-face { font-family: 'Apple SD Gothic Neo'; src: local('AppleSDGothicNeo-SemiBold'); font-weight: 600; }
+@font-face { font-family: 'Apple SD Gothic Neo'; src: local('AppleSDGothicNeo-Bold'); font-weight: 700; }
+@font-face { font-family: 'Apple SD Gothic Neo'; src: local('AppleSDGothicNeo-ExtraBold'); font-weight: 800; }
+@font-face { font-family: 'JetBrainsMonoNL Nerd Font'; src: url('assets/fonts/JetBrainsMonoNLNerdFont-Regular.ttf'); font-weight: 400; }
+@font-face { font-family: 'JetBrainsMonoNL Nerd Font'; src: url('assets/fonts/JetBrainsMonoNLNerdFont-Bold.ttf'); font-weight: 700; }
+:root {
+  --bg: #141517;
+  --surface: #1f2023;
+  --surface-2: #26282c;
+  --border: #33353a;
+  --text: #f1f2f4;
+  --muted: #9a9ca3;
+  --accent: #00d68f;
+  --live: #e5243b;
+  --donation: #ffc83d;
+  --danger: #ff6b6b;
+  --blue: #4da3ff;
+  --font: 'Apple SD Gothic Neo', sans-serif;
+  --mono: 'JetBrainsMonoNL Nerd Font', 'JetBrains Mono', 'SF Mono', Menlo, monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+#root {
+  position: relative; width: 1920px; height: 1080px; overflow: hidden;
+  font-family: var(--font); color: var(--text);
+  background:
+    radial-gradient(1200px 700px at 85% -10%, rgba(0, 214, 143, 0.08), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(229, 36, 59, 0.06), transparent 60%),
+    var(--bg);
+}
+.scene { position: absolute; inset: 0; }
+code, pre { font-family: var(--mono); }
+
+/* 머리 */
+.head { position: absolute; left: 100px; top: 52px; }
+.part { display: inline-flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 700; color: var(--muted); letter-spacing: 0.02em; }
+.part b { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.title { font-size: 50px; font-weight: 800; letter-spacing: -0.02em; margin-top: 6px; }
+.title span { color: var(--accent); font-family: var(--mono); font-weight: 700; font-size: 34px; margin-right: 18px; vertical-align: 6px; }
+
+/* 기기 프레임 */
+.browser { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+.browser .bar { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 16px; background: #1a1b1e; border-bottom: 1px solid var(--border); }
+.browser .bar i { width: 12px; height: 12px; border-radius: 50%; background: #3a3c41; }
+.browser .bar i:nth-child(1) { background: #ff5f57; } .browser .bar i:nth-child(2) { background: #febc2e; } .browser .bar i:nth-child(3) { background: #28c840; }
+.browser .bar span { margin-left: 14px; flex: 1; max-width: 520px; height: 28px; border-radius: 8px; background: #26282c; color: var(--muted); font-size: 16px; line-height: 28px; padding: 0 14px; font-family: var(--mono); }
+.shot { position: relative; overflow: hidden; background: #000; }
+.shot img { width: 100%; display: block; transform-origin: 50% 0; }
+.shot .over { position: absolute; background: #000; }
+.phone { padding: 12px; background: #0b0c0d; border: 2px solid #3a3c41; border-radius: 52px; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+.phone .shot { border-radius: 40px; }
+
+.left-frame { position: absolute; left: 100px; top: 196px; }
+.left-frame.swap > .swap-in { position: absolute; left: 0; top: 0; }
+.phone-frame { position: absolute; left: 190px; top: 160px; }
+.phone-frame.small { left: 210px; top: 180px; }
+
+/* 오른쪽 설명 */
+.side { position: absolute; left: 1160px; top: 196px; width: 660px; display: flex; flex-direction: column; gap: 22px; }
+.side.wide { left: 660px; width: 1160px; }
+.row { display: flex; gap: 22px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px 24px; font-size: 24px; line-height: 1.5; }
+.card-h { font-size: 18px; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; margin-bottom: 10px; }
+.card code { font-size: 20px; color: var(--accent); background: rgba(0,214,143,.08); padding: 2px 8px; border-radius: 6px; }
+.card .muted, .muted { color: var(--muted); font-size: 20px; }
+.card.warn { border-color: rgba(255,107,107,.45); }
+.card.warn .card-h { color: var(--danger); }
+.accent-card { border-color: rgba(0,214,143,.45); }
+.accent-card .card-h { color: var(--accent); }
+.donation-card { border-color: rgba(255,200,61,.5); }
+.donation-card .card-h { color: var(--donation); }
+.json { font-size: 20px; line-height: 1.5; color: var(--text); }
+.json .s { color: #ffd479; }
+
+.api-row { padding: 10px 0; border-top: 1px solid var(--border); }
+.api-row:first-of-type { border-top: 0; padding-top: 0; }
+.api { display: flex; align-items: center; gap: 14px; }
+.api code { font-size: 23px; color: var(--text); background: none; padding: 0; }
+.api-desc { color: var(--muted); font-size: 19px; margin: 4px 0 0 96px; }
+.m { width: 82px; text-align: center; font-family: var(--mono); font-weight: 700; font-size: 17px; padding: 4px 0; border-radius: 6px; }
+.m.get { background: rgba(0,214,143,.15); color: var(--accent); }
+.m.post { background: rgba(77,163,255,.15); color: var(--blue); }
+.m.patch { background: rgba(255,200,61,.15); color: var(--donation); }
+.m.del { background: rgba(255,107,107,.15); color: var(--danger); }
+.api-inline { display: flex; gap: 28px; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 22px; align-self: flex-start; }
+.api-inline.center { position: absolute; left: 50%; top: 880px; transform: translateX(-50%); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 12px; }
+.chip { display: inline-block; font-size: 21px; font-weight: 600; padding: 8px 18px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); }
+.chip-line { position: absolute; left: 50%; top: 940px; transform: translateX(-50%); color: var(--muted); font-size: 21px; display: none; }
+
+/* 코드 */
+.code { background: #0f1012; border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.code-h { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; background: #18191c; border-bottom: 1px solid var(--border); }
+.code-h i { width: 11px; height: 11px; border-radius: 50%; background: #3a3c41; }
+.code-h span { margin-left: 10px; font-family: var(--mono); font-size: 16px; color: var(--muted); }
+.code pre { padding: 16px 0; line-height: 1.55; color: #d7d9de; white-space: pre; }
+.code .ln { padding: 0 22px; }
+.code .ln.hl { background: rgba(0,214,143,.10); box-shadow: inset 4px 0 0 var(--accent); }
+.code .k { color: #ff7ab2; } .code .s { color: #ffd479; } .code .a { color: #ffa14f; }
+.code .c { color: #7d8590; font-style: italic; } .code .n { color: #d0a8ff; } .code .t { color: #5dd8ff; }
+
+/* 흐름 · 상태 */
+.flow, .states, .pipe, .seq { display: flex; align-items: center; gap: 14px; }
+.step, .lane, .pnode { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 18px; display: flex; flex-direction: column; gap: 4px; }
+.step b, .lane b, .pnode b { font-size: 23px; }
+.step small, .lane small, .pnode small { font-size: 17px; color: var(--muted); font-family: var(--mono); }
+.step-arrow, .st-arrow { color: var(--muted); font-size: 22px; font-weight: 700; white-space: nowrap; }
+.lane.accent, .pnode.accent { border-color: rgba(0,214,143,.5); }
+.lane.donation { border-color: rgba(255,200,61,.55); }
+.state { border-radius: 14px; padding: 16px 22px; border: 2px solid var(--border); background: var(--surface); text-align: center; min-width: 170px; }
+.state b { display: block; font-size: 26px; }
+.state small { font-family: var(--mono); font-size: 16px; color: var(--muted); }
+.state.pending { border-color: #6b6e75; }
+.state.live { border-color: var(--live); } .state.live b { color: var(--live); }
+.state.ended { border-color: #55575d; }
+.state.done { border-color: var(--accent); } .state.done b { color: var(--accent); }
+.state.failed { border-color: var(--danger); } .state.failed b { color: var(--danger); }
+.state.canceled, .state.expired { border-color: #55575d; }
+.states.vertical { align-items: center; gap: 22px; }
+.branches { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.branches .state { padding: 10px 14px; min-width: 0; }
+.branches .state b { font-size: 21px; }
+.renditions { display: flex; flex-direction: column; gap: 8px; }
+.rend { font-family: var(--mono); font-size: 19px; font-weight: 700; padding: 6px 14px; border-radius: 8px; background: rgba(0,214,143,.12); color: var(--accent); }
+.pipe .pnode { padding: 12px 14px; }
+
+.cursor { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.cursor .pg { padding: 8px 14px; background: var(--surface-2); border-radius: 8px; font-size: 19px; }
+.cursor .cur { font-family: var(--mono); font-size: 15px; color: var(--accent); }
+
+.versus { display: flex; align-items: center; gap: 18px; font-size: 26px; font-weight: 700; }
+.versus .no { color: var(--muted); text-decoration: line-through; padding: 10px 18px; border: 1px dashed var(--border); border-radius: 12px; }
+.versus .arrow { color: var(--muted); }
+.versus .yes { color: var(--accent); padding: 10px 18px; border: 2px solid rgba(0,214,143,.5); border-radius: 12px; }
+.versus .yes small { display: block; font-size: 17px; color: var(--muted); font-weight: 500; }
+
+/* 아키텍처 */
+.diagram { position: absolute; transform: scale(0.82); transform-origin: 50% 0; }
+.diagram svg { position: absolute; inset: 0; overflow: visible; }
+.diagram svg text { fill: var(--muted); font-size: 20px; font-family: var(--font); font-weight: 600; }
+.node { position: absolute; background: var(--surface); border: 2px solid var(--border); border-radius: 18px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; }
+.node b { font-size: 30px; } .node small { font-size: 19px; color: var(--muted); }
+.node.accent { border-color: var(--accent); } .node.accent b { color: var(--accent); }
+.node.live { border-color: rgba(229,36,59,.7); }
+.node.donation { border-color: rgba(255,200,61,.6); }
+.callout { position: absolute; font-size: 26px; font-weight: 700; color: var(--text); background: rgba(229,36,59,.12); border: 1px solid rgba(229,36,59,.5); padding: 14px 22px; border-radius: 14px; width: 420px; }
+
+/* 타이틀 */
+.title-hero { position: absolute; left: 130px; top: 330px; width: 820px; }
+.eyebrow { font-family: var(--mono); color: var(--accent); font-size: 22px; letter-spacing: 0.2em; }
+.logo { font-size: 110px; font-weight: 800; letter-spacing: -0.04em; color: var(--accent); line-height: 1.1; margin: 10px 0 18px; }
+.tagline { font-size: 34px; color: var(--text); font-weight: 600; }
+.hero-row { display: flex; gap: 12px; margin-top: 40px; flex-wrap: wrap; }
+.hero-shot.left { position: absolute; left: 980px; top: 210px; }
+.hero-shot.right { position: absolute; left: 1590px; top: 410px; }
+
+/* 결제 승인 */
+.pay-grid { position: absolute; left: 100px; top: 190px; right: 100px; display: flex; gap: 40px; }
+.pay-left { width: 780px; display: flex; flex-direction: column; gap: 22px; }
+
+/* 분할 */
+.split { position: absolute; left: 100px; right: 100px; top: 180px; display: flex; align-items: center; justify-content: space-between; }
+
+/* 마무리 */
+.decisions { position: absolute; left: 100px; top: 200px; width: 1720px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.decision { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 28px 32px; display: grid; grid-template-columns: 70px 1fr; row-gap: 6px; }
+.decision span { grid-row: span 2; font-family: var(--mono); font-size: 44px; font-weight: 800; color: var(--accent); }
+.decision b { font-size: 32px; } .decision small { font-size: 23px; color: var(--muted); }
+.tests { position: absolute; left: 100px; top: 690px; width: 1720px; display: flex; flex-wrap: wrap; gap: 12px; }
+.outro { position: absolute; inset: 0; background: var(--bg); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.outro p { font-size: 40px; font-weight: 700; }
+
+/* 화질 메뉴 */
+.qmenu { position: absolute; }
+.qmenu ul { list-style: none; background: #2b2d31; border: 1px solid #44464c; border-radius: 10px; padding: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+.qmenu li { font-size: 17px; padding: 6px 18px; border-radius: 6px; color: var(--text); font-family: var(--mono); }
+.qmenu li.on { background: var(--accent); color: #0b1a14; font-weight: 700; }
+
+/* 자막 */
+.subs { position: absolute; left: 0; right: 0; bottom: 34px; height: 80px; pointer-events: none; }
+.sub { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: center; }
+.sub span { font-size: 38px; font-weight: 700; line-height: 1.3; padding: 12px 30px; border-radius: 12px; background: rgba(8, 9, 10, 0.82); color: #fff; letter-spacing: -0.01em; white-space: nowrap; }
+
+/* v2: 라벨, 레이어, 분기 */
+.shot img.layer { position: absolute; left: 0; top: 0; }
+.tag { position: absolute; z-index: 5; font-size: 22px; font-weight: 700; padding: 8px 16px; border-radius: 10px; background: rgba(20,21,23,.92); border: 1px solid var(--border); color: var(--text); white-space: nowrap; }
+.tag.accent { border-color: var(--accent); color: var(--accent); }
+.tag.live { border-color: var(--live); color: #ff8a97; }
+.tag.donation { border-color: var(--donation); color: var(--donation); }
+.chip-row { display: flex; gap: 12px; }
+.small-note { font-size: 18px; }
+.fork { display: flex; flex-direction: column; gap: 8px; }
+.fork div { display: flex; gap: 14px; font-size: 22px; }
+.fork b { min-width: 150px; }
+.fork span { color: var(--muted); }
+.scenario-card { position: absolute; left: 100px; top: 780px; width: 1720px; }
+.scenario { display: flex; align-items: center; gap: 14px; font-size: 24px; font-weight: 700; }
+.scenario span { padding: 8px 16px; border-radius: 10px; background: var(--surface-2); }
+.scenario span.ok { background: rgba(0,214,143,.15); color: var(--accent); }
+.scenario i { color: var(--muted); font-style: normal; }
+/* 도메인·OCI 배포 영상 전용 (공용 composition.css 위에 얹는다) */
+
+/* 캡처 이미지 액자: 이미지 전체를 비율대로 보여 준다 */
+.frame { position: absolute; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,.55); }
+.frame .bar { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #1a1b1e; border-bottom: 1px solid var(--border); }
+.frame .bar i { width: 11px; height: 11px; border-radius: 50%; background: #3a3c41; }
+.frame .bar i:nth-child(1) { background: #ff5f57; } .frame .bar i:nth-child(2) { background: #febc2e; } .frame .bar i:nth-child(3) { background: #28c840; }
+.frame .bar span { margin-left: 12px; height: 26px; border-radius: 7px; background: #26282c; color: var(--muted); font-size: 15px; line-height: 26px; padding: 0 14px; font-family: var(--mono); }
+.frame .bar em { margin-left: auto; font-style: normal; font-size: 15px; color: var(--muted); }
+.frame .pic { position: relative; }
+.frame .pic img, .frame .pic video { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+.frame .pic img.layer { z-index: 1; }
+
+/* 터미널 */
+.term { position: absolute; background: #0c0d0f; border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.5); }
+.term .bar { height: 36px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #18191c; border-bottom: 1px solid var(--border); }
+.term .bar i { width: 10px; height: 10px; border-radius: 50%; background: #3a3c41; }
+.term .body { padding: 16px 22px; font-family: var(--mono); font-size: 21px; line-height: 1.55; white-space: pre; }
+.term .cmd { color: #e8eaed; }
+.term .cmd::before { content: '$ '; color: var(--accent); }
+.term .out { color: var(--muted); margin-bottom: 8px; }
+.term .out.ok { color: var(--accent); }
+.term .out.bad { color: #ff8a97; }
+
+/* 왼쪽 설명 열 */
+.col { position: absolute; display: flex; flex-direction: column; gap: 20px; }
+.card b.big { font-size: 30px; display: block; margin-bottom: 4px; }
+.card ul { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.card li::before { content: '· '; color: var(--accent); font-weight: 800; }
+.kv { display: grid; grid-template-columns: 120px 1fr; gap: 10px 18px; align-items: center; font-size: 24px; }
+.kv code { justify-self: start; }
+.arrowline { color: var(--accent); font-weight: 800; }
+
+/* OCI 자원 상자(겹친 구조) */
+.nest { position: absolute; border: 2px solid var(--border); border-radius: 18px; padding: 44px 18px 18px; }
+.nest > .lb { position: absolute; left: 18px; top: 10px; font-size: 21px; font-weight: 700; color: var(--muted); }
+.nest > .lb b { color: var(--text); margin-left: 8px; }
+.nest.region { border-color: rgba(77,163,255,.55); } .nest.region > .lb { color: var(--blue); }
+.nest.ad { border-color: rgba(77,163,255,.35); border-style: dashed; }
+.nest.comp { border-color: #55575d; }
+.nest.vcn { border-color: rgba(0,214,143,.55); } .nest.vcn > .lb { color: var(--accent); }
+.nest.subnet { border-color: rgba(0,214,143,.35); border-style: dashed; }
+.inst { position: absolute; background: var(--surface); border: 2px solid var(--accent); border-radius: 14px; padding: 14px 18px; }
+.inst b { font-size: 26px; display: block; } .inst small { font-size: 18px; color: var(--muted); font-family: var(--mono); }
+.igw { position: absolute; background: var(--surface); border: 2px solid var(--border); border-radius: 12px; padding: 10px 16px; font-size: 20px; font-weight: 700; }
+.err { position: absolute; font-family: var(--mono); font-size: 19px; color: #ff8a97; background: rgba(229,36,59,.10); border: 1px solid rgba(229,36,59,.45); border-radius: 10px; padding: 10px 16px; }
+
+/* 방화벽 두 겹 */
+.wall { position: absolute; width: 230px; border-radius: 16px; padding: 18px; text-align: center; border: 2px solid var(--border); background: var(--surface); }
+.wall b { display: block; font-size: 25px; } .wall small { font-size: 18px; color: var(--muted); }
+.wall.out { border-color: rgba(77,163,255,.6); } .wall.in { border-color: rgba(255,200,61,.6); }
+.ports { position: absolute; display: flex; gap: 12px; flex-wrap: wrap; }
+.port { font-family: var(--mono); font-size: 22px; font-weight: 700; padding: 8px 16px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+.port.open { border-color: rgba(0,214,143,.6); color: var(--accent); }
+
+/* 비용 안전장치 */
+.guards { position: absolute; left: 100px; top: 300px; width: 1720px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+.guard { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 40px 40px; min-height: 380px; }
+.guard span { font-family: var(--mono); color: var(--accent); font-size: 56px; font-weight: 800; }
+.guard b { display: block; font-size: 42px; margin: 18px 0 14px; }
+.guard small { font-size: 28px; color: var(--muted); line-height: 1.5; display: block; }
+
+/* 경로 표 */
+.routes { position: absolute; display: flex; flex-direction: column; gap: 12px; }
+.route { display: grid; grid-template-columns: 210px 40px 1fr; align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 18px; font-size: 22px; }
+.route code { font-size: 21px; color: var(--accent); }
+.route i { color: var(--muted); font-style: normal; font-weight: 800; }
+.route small { display: block; color: var(--muted); font-size: 17px; }
+.route.block code { color: #ff8a97; }
+
+/* 코드 카드 강조 띠 */
+.code { position: absolute; }
+.code .mark { position: absolute; left: 0; right: 0; background: rgba(0,214,143,.12); box-shadow: inset 4px 0 0 var(--accent); }
+.code pre { position: relative; z-index: 1; }
+
+/* 요약 흐름 */
+.sumflow { position: absolute; left: 100px; top: 230px; width: 1720px; display: flex; align-items: stretch; gap: 16px; }
+.sumflow .step { flex: 1; padding: 26px; }
+.sumflow .step b { font-size: 32px; }
+.sumflow .step small { font-size: 20px; }
+.sumflow .step-arrow { align-self: center; }
+.checks { position: absolute; left: 100px; top: 520px; width: 1720px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+.checks .card { font-size: 23px; }
+
+/* 노트(화면 자막) */
+.note { position: absolute; z-index: 6; font-size: 22px; font-weight: 700; padding: 12px 18px; border-radius: 12px; background: rgba(255,200,61,.14); border: 1px solid rgba(255,200,61,.6); color: var(--donation); }
+.slot { position: absolute; border: 2px dashed #55575d; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); text-align: center; background: rgba(31,32,35,.6); }
+.slot b { font-size: 30px; color: var(--text); } .slot small { font-size: 20px; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-duration="388.401" data-width="1920" data-height="1080">
+  <audio id="narration" class="clip" src="assets/audio/narration.wav" data-start="0" data-duration="388.401"></audio>
+  <div id="scene0" class="clip" data-composition-id="scene0" data-composition-src="compositions/scene0.html" data-start="0.000" data-duration="22.034"></div><div id="scene1" class="clip" data-composition-id="scene1" data-composition-src="compositions/scene1.html" data-start="22.034" data-duration="61.282"></div><div id="scene2" class="clip" data-composition-id="scene2" data-composition-src="compositions/scene2.html" data-start="83.316" data-duration="99.624"></div><div id="scene3" class="clip" data-composition-id="scene3" data-composition-src="compositions/scene3.html" data-start="182.940" data-duration="16.840"></div><div id="scene4" class="clip" data-composition-id="scene4" data-composition-src="compositions/scene4.html" data-start="199.780" data-duration="110.119"></div><div id="scene5" class="clip" data-composition-id="scene5" data-composition-src="compositions/scene5.html" data-start="309.899" data-duration="19.254"></div><div id="scene6" class="clip" data-composition-id="scene6" data-composition-src="compositions/scene6.html" data-start="329.153" data-duration="39.446"></div><div id="scene7" class="clip" data-composition-id="scene7" data-composition-src="compositions/scene7.html" data-start="368.599" data-duration="19.801"></div>
+  <div class="subs"><div id="sub0" class="clip sub" data-start="0.448" data-duration="3.547"><span>이번 과제는 도메인을 사서 오라클 클라우드에 서비스를</span></div><div id="sub1" class="clip sub" data-start="3.995" data-duration="3.286"><span>배포하고, 윈도우와 맥 앱까지 만드는 것입니다.</span></div><div id="sub2" class="clip sub" data-start="7.701" data-duration="3.227"><span>결과부터 보면, duse.dev라는 도메인 아래에서</span></div><div id="sub3" class="clip sub" data-start="10.928" data-duration="3.666"><span>라이브 방송 서비스가 HTTPS로 동작합니다.</span></div><div id="sub4" class="clip sub" data-start="15.024" data-duration="3.572"><span>도메인, 서버, 배포, 그리고 데스크톱 앱</span></div><div id="sub5" class="clip sub" data-start="18.596" data-duration="2.964"><span>순서로 어떻게 만들었는지 설명드리겠습니다.</span></div><div id="sub6" class="clip sub" data-start="22.882" data-duration="1.369"><span>먼저 도메인입니다.</span></div><div id="sub7" class="clip sub" data-start="24.674" data-duration="1.690"><span>Cloudflare Registrar에서</span></div><div id="sub8" class="clip sub" data-start="26.364" data-duration="1.774"><span>duse.dev를 샀습니다.</span></div><div id="sub9" class="clip sub" data-start="28.585" data-duration="2.095"><span>Cloudflare는 도메인을 원가에</span></div><div id="sub10" class="clip sub" data-start="30.680" data-duration="2.964"><span>팔고 DNS 관리도 무료라서 골랐습니다.</span></div><div id="sub11" class="clip sub" data-start="34.070" data-duration="4.143"><span>첫해만 싼 도메인이 많아서, 갱신 가격까지 보고 정했습니다.</span></div><div id="sub12" class="clip sub" data-start="38.645" data-duration="2.476"><span>.dev 도메인에는 특징이 하나 있습니다.</span></div><div id="sub13" class="clip sub" data-start="41.553" data-duration="3.595"><span>브라우저가 HTTPS로만 접속하도록 강제합니다.</span></div><div id="sub14" class="clip sub" data-start="45.582" data-duration="2.619"><span>그래서 인증서가 처음부터 필수였고,</span></div><div id="sub15" class="clip sub" data-start="48.201" data-duration="2.154"><span>이건 뒤에서 볼 Caddy로 해결합니다.</span></div><div id="sub16" class="clip sub" data-start="50.809" data-duration="2.928"><span>DNS에는 A 레코드를 두 개 넣었습니다.</span></div><div id="sub17" class="clip sub" data-start="54.161" data-duration="2.167"><span>@는 duse.dev 자체를,</span></div><div id="sub18" class="clip sub" data-start="56.328" data-duration="2.190"><span>*는 live.duse.dev 같은</span></div><div id="sub19" class="clip sub" data-start="58.518" data-duration="1.917"><span>모든 서브도메인을 가리킵니다.</span></div><div id="sub20" class="clip sub" data-start="60.863" data-duration="2.250"><span>* 와일드카드는 도메인 자체를</span></div><div id="sub21" class="clip sub" data-start="63.113" data-duration="2.465"><span>포함하지 않기 때문에 둘 다 필요합니다.</span></div><div id="sub22" class="clip sub" data-start="66.003" data-duration="2.631"><span>그리고 Cloudflare의 프록시는 껐습니다.</span></div><div id="sub23" class="clip sub" data-start="69.068" data-duration="2.036"><span>방송에 쓰는 WebRTC 미디어는</span></div><div id="sub24" class="clip sub" data-start="71.104" data-duration="2.607"><span>프록시를 통과할 수 없고, 엔터프라이즈가</span></div><div id="sub25" class="clip sub" data-start="73.711" data-duration="2.536"><span>아닌 요금제는 영상을 대량으로 전달하는</span></div><div id="sub26" class="clip sub" data-start="76.247" data-duration="2.333"><span>용도를 약관으로 제한하기 때문입니다.</span></div><div id="sub27" class="clip sub" data-start="78.998" data-duration="3.833"><span>이제 어떤 서브도메인을 조회해도 같은 서버 주소가 돌아옵니다.</span></div><div id="sub28" class="clip sub" data-start="84.364" data-duration="1.226"><span>다음은 서버입니다.</span></div><div id="sub29" class="clip sub" data-start="86.023" data-duration="4.369"><span>오라클 클라우드, 줄여서 OCI의 상시 무료 서버를 썼습니다.</span></div><div id="sub30" class="clip sub" data-start="90.822" data-duration="2.857"><span>OCI의 자원은 몇 겹으로 담겨 있습니다.</span></div><div id="sub31" class="clip sub" data-start="94.114" data-duration="3.309"><span>가장 바깥은 리전이고, 도쿄 리전을 골랐습니다.</span></div><div id="sub32" class="clip sub" data-start="97.862" data-duration="2.643"><span>리전 안의 데이터센터를 가용성 도메인이라고</span></div><div id="sub33" class="clip sub" data-start="100.505" data-duration="2.560"><span>하는데, 도쿄는 이것이 하나뿐입니다.</span></div><div id="sub34" class="clip sub" data-start="103.479" data-duration="3.286"><span>그래서 자리가 없으면 다른 곳으로 피할 수 없습니다.</span></div><div id="sub35" class="clip sub" data-start="107.208" data-duration="2.726"><span>자원은 컴파트먼트라는 폴더에 담깁니다.</span></div><div id="sub36" class="clip sub" data-start="110.360" data-duration="3.178"><span>이 프로젝트는 기본 컴파트먼트 하나만 씁니다.</span></div><div id="sub37" class="clip sub" data-start="113.956" data-duration="3.012"><span>서버가 사는 가상 네트워크는 VCN입니다.</span></div><div id="sub38" class="clip sub" data-start="117.395" data-duration="1.916"><span>그 안에 공인 서브넷을 두고,</span></div><div id="sub39" class="clip sub" data-start="119.311" data-duration="2.536"><span>인터넷 게이트웨이로 밖과 연결합니다.</span></div><div id="sub40" class="clip sub" data-start="122.266" data-duration="2.286"><span>인스턴스를 만드는 화면에서 네트워크를</span></div><div id="sub41" class="clip sub" data-start="124.552" data-duration="2.226"><span>함께 만들면 공인 IP 스위치가</span></div><div id="sub42" class="clip sub" data-start="126.778" data-duration="4.155"><span>잠겨 있어서, VCN 마법사로 네트워크를 먼저 만들었습니다.</span></div><div id="sub43" class="clip sub" data-start="131.359" data-duration="3.822"><span>서버 자체는 인스턴스이고, 사양은 셰이프로 정합니다.</span></div><div id="sub44" class="clip sub" data-start="135.616" data-duration="2.583"><span>무료로 쓸 수 있는 건 ARM 프로세서를</span></div><div id="sub45" class="clip sub" data-start="138.199" data-duration="2.262"><span>쓰는 A1.Flex 셰이프입니다.</span></div><div id="sub46" class="clip sub" data-start="140.878" data-duration="3.667"><span>처음에는 도쿄에 남은 자리가 없다는 오류가 계속 났고,</span></div><div id="sub47" class="clip sub" data-start="144.545" data-duration="1.785"><span>가장 작은 1 OCPU,</span></div><div id="sub48" class="clip sub" data-start="146.330" data-duration="3.000"><span>메모리 6GB로 겨우 만들 수 있었습니다.</span></div><div id="sub49" class="clip sub" data-start="149.758" data-duration="2.179"><span>ARM 서버라서 Docker 이미지도</span></div><div id="sub50" class="clip sub" data-start="151.937" data-duration="1.976"><span>arm64용이어야 합니다.</span></div><div id="sub51" class="clip sub" data-start="154.344" data-duration="3.750"><span>디스크는 부트 볼륨, 고정 주소는 공인 IP이고,</span></div><div id="sub52" class="clip sub" data-start="158.094" data-duration="3.286"><span>접속은 비밀번호 대신 SSH 키로 합니다.</span></div><div id="sub53" class="clip sub" data-start="161.804" data-duration="2.214"><span>마지막으로 방화벽이 두 겹입니다.</span></div><div id="sub54" class="clip sub" data-start="164.455" data-duration="2.786"><span>OCI의 보안 목록이 서버 바깥에서,</span></div><div id="sub55" class="clip sub" data-start="167.241" data-duration="3.023"><span>우분투의 iptables가 서버 안에서 막습니다.</span></div><div id="sub56" class="clip sub" data-start="170.682" data-duration="3.170"><span>우분투 이미지는 SSH용 22번 포트만</span></div><div id="sub57" class="clip sub" data-start="173.852" data-duration="2.264"><span>열어 두기 때문에, 80번,</span></div><div id="sub58" class="clip sub" data-start="176.116" data-duration="3.472"><span>443번, 그리고 방송용 8189번 포트를</span></div><div id="sub59" class="clip sub" data-start="179.588" data-duration="2.868"><span>두 곳 모두에서 열어야 접속됩니다.</span></div><div id="sub60" class="clip sub" data-start="183.388" data-duration="3.309"><span>비용이 나가지 않게 안전장치도 세 가지 걸었습니다.</span></div><div id="sub61" class="clip sub" data-start="187.140" data-duration="3.142"><span>무료 셰이프만 만들 수 있게 하는 할당량 정책,</span></div><div id="sub62" class="clip sub" data-start="190.282" data-duration="2.917"><span>1센트라도 청구되면 오는 예산 알림,</span></div><div id="sub63" class="clip sub" data-start="193.199" data-duration="2.333"><span>그리고 한 달 내내 보내도 무료 송신량을</span></div><div id="sub64" class="clip sub" data-start="195.532" data-duration="3.786"><span>넘지 않도록 묶은 초당 29Mbit 송신 상한입니다.</span></div><div id="sub65" class="clip sub" data-start="200.828" data-duration="1.202"><span>이제 배포입니다.</span></div><div id="sub66" class="clip sub" data-start="202.459" data-duration="3.107"><span>서버 맨 앞에는 Caddy라는 웹 서버를 두었습니다.</span></div><div id="sub67" class="clip sub" data-start="205.988" data-duration="1.893"><span>Caddy는 리버스 프록시입니다.</span></div><div id="sub68" class="clip sub" data-start="208.312" data-duration="3.052"><span>443번 포트 하나로 모든 요청을 받아서,</span></div><div id="sub69" class="clip sub" data-start="211.364" data-duration="4.115"><span>주소와 경로를 보고 안쪽의 알맞은 서비스로 넘겨 줍니다.</span></div><div id="sub70" class="clip sub" data-start="215.890" data-duration="3.488"><span>Caddy의 가장 큰 장점은 자동 HTTPS입니다.</span></div><div id="sub71" class="clip sub" data-start="219.814" data-duration="3.167"><span>설정 파일에 도메인만 적으면 Let&#x27;s Encrypt 같은</span></div><div id="sub72" class="clip sub" data-start="222.981" data-duration="2.655"><span>공개 인증 기관에서 인증서를 받아 오고,</span></div><div id="sub73" class="clip sub" data-start="225.636" data-duration="2.047"><span>만료되기 전에 알아서 갱신합니다.</span></div><div id="sub74" class="clip sub" data-start="228.121" data-duration="2.524"><span>실제 인증서를 확인해 보면 발급자가</span></div><div id="sub75" class="clip sub" data-start="230.645" data-duration="1.440"><span>Let&#x27;s Encrypt입니다.</span></div><div id="sub76" class="clip sub" data-start="232.524" data-duration="4.179"><span>HTTP로 들어오면 HTTPS로, www가</span></div><div id="sub77" class="clip sub" data-start="236.703" data-duration="3.071"><span>붙은 주소는 본래 주소로 자동으로 옮겨 줍니다.</span></div><div id="sub78" class="clip sub" data-start="240.195" data-duration="2.465"><span>방송 서비스인 live.duse.dev는</span></div><div id="sub79" class="clip sub" data-start="242.660" data-duration="2.047"><span>경로마다 가는 곳이 다릅니다.</span></div><div id="sub80" class="clip sub" data-start="245.147" data-duration="3.202"><span>API와 미디어 요청은 Spring 서버로 갑니다.</span></div><div id="sub81" class="clip sub" data-start="248.773" data-duration="4.666"><span>시청용 HLS는 앞의 접두사를 떼고 미디어 서버로 넘깁니다.</span></div><div id="sub82" class="clip sub" data-start="253.862" data-duration="2.226"><span>미디어 서버가 돌려주는 리다이렉트</span></div><div id="sub83" class="clip sub" data-start="256.088" data-duration="2.464"><span>주소에는 접두사를 다시 붙입니다.</span></div><div id="sub84" class="clip sub" data-start="258.974" data-duration="3.845"><span>방송 송출인 WHIP도 접두사를 떼고 미디어 서버로 갑니다.</span></div><div id="sub85" class="clip sub" data-start="263.267" data-duration="3.833"><span>미디어 서버만 쓰는 내부 API는 밖에서 부르면 404로</span></div><div id="sub86" class="clip sub" data-start="267.100" data-duration="3.238"><span>막고, 나머지 경로는 React 앱을 돌려줍니다.</span></div><div id="sub87" class="clip sub" data-start="270.759" data-duration="3.929"><span>저장소의 배포 안내는 원래 nginx 기준이었지만, 인증서를</span></div><div id="sub88" class="clip sub" data-start="274.688" data-duration="2.250"><span>따로 관리하지 않아도 되고 설정도</span></div><div id="sub89" class="clip sub" data-start="276.938" data-duration="1.786"><span>짧아서 Caddy를 골랐습니다.</span></div><div id="sub90" class="clip sub" data-start="279.147" data-duration="2.643"><span>서비스들은 docker compose로 띄웠습니다.</span></div><div id="sub91" class="clip sub" data-start="282.215" data-duration="3.500"><span>운영용 설정에서 데이터베이스는 밖으로 열지 않고,</span></div><div id="sub92" class="clip sub" data-start="285.715" data-duration="3.964"><span>나머지 내부 포트는 127.0.0.1에만 묶었습니다.</span></div><div id="sub93" class="clip sub" data-start="290.106" data-duration="1.560"><span>Docker가 연 포트는 서버의</span></div><div id="sub94" class="clip sub" data-start="291.666" data-duration="2.631"><span>iptables 규칙을 우회하기 때문에,</span></div><div id="sub95" class="clip sub" data-start="294.297" data-duration="2.976"><span>이렇게 묶어야 Caddy를 거쳐서만 들어올 수 있습니다.</span></div><div id="sub96" class="clip sub" data-start="297.695" data-duration="2.892"><span>데이터베이스 비밀번호 같은 비밀값은 저장소가</span></div><div id="sub97" class="clip sub" data-start="300.587" data-duration="2.500"><span>아니라 서버의 .env 파일에만 둡니다.</span></div><div id="sub98" class="clip sub" data-start="303.507" data-duration="2.786"><span>이렇게 배포한 사이트에서 데모 방송을 라이브로</span></div><div id="sub99" class="clip sub" data-start="306.293" data-duration="3.131"><span>보고, 업로드한 동영상도 재생할 수 있습니다.</span></div><div id="sub100" class="clip sub" data-start="310.347" data-duration="3.214"><span>도메인 하나에 서비스를 여러 개 붙일 수도 있습니다.</span></div><div id="sub101" class="clip sub" data-start="313.993" data-duration="3.381"><span>duse.dev 첫 화면에는 이 서버의 서비스와 상태가</span></div><div id="sub102" class="clip sub" data-start="317.374" data-duration="3.916"><span>카드로 보이고, 단축 주소 서비스는 다른 프로젝트입니다.</span></div><div id="sub103" class="clip sub" data-start="321.713" data-duration="3.416"><span>새 서비스는 서브도메인과 Caddy 설정 한 블록만 더하면</span></div><div id="sub104" class="clip sub" data-start="325.129" data-duration="3.548"><span>되고, 서비스를 켜고 끄는 명령도 만들어 두었습니다.</span></div><div id="sub105" class="clip sub" data-start="330.201" data-duration="1.881"><span>마지막은 데스크톱 앱입니다.</span></div><div id="sub106" class="clip sub" data-start="332.520" data-duration="2.393"><span>Rust의 Dioxus로 만든 코드 하나로</span></div><div id="sub107" class="clip sub" data-start="334.913" data-duration="2.226"><span>윈도우와 맥 앱을 함께 만듭니다.</span></div><div id="sub108" class="clip sub" data-start="337.562" data-duration="2.833"><span>화면은 각 운영체제의 웹뷰가 그리고,</span></div><div id="sub109" class="clip sub" data-start="340.395" data-duration="2.190"><span>웹과 같은 서버 API를 씁니다.</span></div><div id="sub110" class="clip sub" data-start="343.013" data-duration="2.262"><span>GitHub Actions가 버전 태그를 받으면</span></div><div id="sub111" class="clip sub" data-start="345.275" data-duration="4.464"><span>윈도우용 MSI와 맥용 DMG를 빌드해서 릴리스에 올립니다.</span></div><div id="sub112" class="clip sub" data-start="350.158" data-duration="2.596"><span>다운로드 페이지는 live.duse.dev에</span></div><div id="sub113" class="clip sub" data-start="352.754" data-duration="1.797"><span>두었고, 실제 파일은</span></div><div id="sub114" class="clip sub" data-start="354.551" data-duration="1.072"><span>GitHub Releases에서</span></div><div id="sub115" class="clip sub" data-start="355.623" data-duration="2.583"><span>받게 해서 서버 송신량을 쓰지 않습니다.</span></div><div id="sub116" class="clip sub" data-start="358.627" data-duration="2.155"><span>맥에서는 DMG로 설치한 앱으로</span></div><div id="sub117" class="clip sub" data-start="360.782" data-duration="2.607"><span>라이브 방송과 동영상을 볼 수 있습니다.</span></div><div id="sub118" class="clip sub" data-start="363.811" data-duration="2.071"><span>윈도우에서도 같은 앱으로 라이브</span></div><div id="sub119" class="clip sub" data-start="365.882" data-duration="2.250"><span>방송과 동영상을 볼 수 있습니다.</span></div><div id="sub120" class="clip sub" data-start="369.447" data-duration="3.488"><span>정리하면, 도메인을 사서 DNS를 연결하고,</span></div><div id="sub121" class="clip sub" data-start="372.935" data-duration="2.500"><span>OCI 무료 서버의 방화벽을 열고,</span></div><div id="sub122" class="clip sub" data-start="375.435" data-duration="2.167"><span>Caddy로 HTTPS와 경로를</span></div><div id="sub123" class="clip sub" data-start="377.602" data-duration="2.690"><span>나눠 docker compose 서비스를 배포했습니다.</span></div><div id="sub124" class="clip sub" data-start="380.714" data-duration="2.190"><span>그리고 같은 서버 API를 쓰는</span></div><div id="sub125" class="clip sub" data-start="382.904" data-duration="2.060"><span>윈도우와 맥 앱을 빌드했습니다.</span></div><div id="sub126" class="clip sub" data-start="385.387" data-duration="2.720"><span>감사합니다.</span></div></div>
+</div>
+<script>
+  const tl = gsap.timeline({ paused: true });
+  document.querySelectorAll('.sub').forEach((el) => {
+    tl.fromTo(el, { opacity: 0 }, { opacity: 1, duration: 0.12 }, +el.dataset.start);
+  });
+  window.__timelines = window.__timelines || {};
+  window.__timelines["main"] = tl;
+  tl.seek(0);
+</script>
+</body>
+</html>
