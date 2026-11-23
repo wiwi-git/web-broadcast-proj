@@ -21,8 +21,10 @@ webrtcLocalUDPAddress: :8189
 webrtcLocalTCPAddress: :8189
 # 송출이 붙으면 MediaMTX는 이 시간 동안 트랙의 첫 패킷을 기다리고, 그때까지 오지 않은 트랙은 버린다.
 # 기본값(2s)이면 Chrome(157, macOS)의 H.264 첫 영상 패킷이 늦어 소리만 남는다 (영상 없는 방송, 유튜브 송출 실패).
-# 모든 트랙이 오면 바로 시작하므로 길게 잡아도 정상 송출은 늦어지지 않는다
-webrtcTrackGatherTimeout: 10s
+# 모든 트랙이 오면 바로 시작하므로 길게 잡아도 정상 송출은 늦어지지 않는다.
+# Chrome을 새로 띄운 뒤 첫 방송은 진짜 카메라로도 첫 영상 패킷이 약 7초 뒤에 와서(2026-11-23 측정) 여유를 둔다.
+# 서버가 준비되지 않은 방송을 30초 뒤에 끝내므로(BroadcastSync) 그보다 짧게 둔다
+webrtcTrackGatherTimeout: 20s
 # 컨테이너 IP는 휴대폰에서 닿지 않으므로 PC의 LAN IP를 후보로 알린다 (MTX_WEBRTCADDITIONALHOSTS)
 webrtcAdditionalHosts: []
 
