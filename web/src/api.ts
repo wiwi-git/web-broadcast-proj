@@ -29,7 +29,7 @@ export interface VideoPage {
 // 서버(Video, VideoService)와 같은 제약
 export const TITLE_MAX_LENGTH = 100
 export const DESCRIPTION_MAX_LENGTH = 5000
-export const MAX_FILE_BYTES = 2 * 1024 ** 3
+export const MAX_FILE_BYTES = 500 * 1024 ** 2
 export const ALLOWED_EXTENSIONS = ['mp4', 'mov', 'mkv', 'webm', 'avi']
 
 export class ApiError extends Error {

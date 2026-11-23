@@ -15,7 +15,7 @@ function fileProblem(file: File): string | null {
   if (!ALLOWED_EXTENSIONS.includes(extension)) {
     return `지원하지 않는 형식입니다. (${ALLOWED_EXTENSIONS.join(', ')})`
   }
-  if (file.size > MAX_FILE_BYTES) return '파일은 2GB 이하여야 합니다.'
+  if (file.size > MAX_FILE_BYTES) return '파일은 500MB 이하여야 합니다.'
   return null
 }
 
@@ -58,7 +58,7 @@ export default function UploadPage() {
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
         />
         <span className={problem ? 'hint error' : 'hint'}>
-          {problem ?? (file ? formatBytes(file.size) : `${ALLOWED_EXTENSIONS.join(', ')} · 최대 2GB`)}
+          {problem ?? (file ? formatBytes(file.size) : `${ALLOWED_EXTENSIONS.join(', ')} · 최대 500MB`)}
         </span>
       </label>
 

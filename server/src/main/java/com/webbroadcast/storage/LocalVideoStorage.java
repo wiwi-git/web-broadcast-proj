@@ -104,6 +104,16 @@ public class LocalVideoStorage implements VideoStorage {
 		return published;
 	}
 
+	@Override
+	public long usableSpace() {
+		try {
+			return Files.getFileStore(originals).getUsableSpace();
+		}
+		catch (IOException e) {
+			throw new UncheckedIOException("저장소 디스크의 여유 공간을 읽을 수 없습니다: " + originals, e);
+		}
+	}
+
 	private static void deleteRecursively(Path dir) throws IOException {
 		if (!Files.exists(dir)) {
 			return;

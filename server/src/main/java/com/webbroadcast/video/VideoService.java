@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.webbroadcast.media.MediaInfo;
@@ -29,13 +30,15 @@ public class VideoService {
 	private final VideoStorage storage;
 	private final MediaInspector inspector;
 	private final UserService userService;
+	private final VideoUploadProperties limits;
 
 	VideoService(VideoRepository repository, VideoStorage storage, MediaInspector inspector,
-			UserService userService) {
+			UserService userService, VideoUploadProperties limits) {
 		this.repository = repository;
 		this.storage = storage;
 		this.inspector = inspector;
 		this.userService = userService;
+		this.limits = limits;
 	}
 
 	/**
@@ -52,6 +55,7 @@ public class VideoService {
 		if (!ALLOWED_EXTENSIONS.contains(extension)) {
 			throw new InvalidUploadException("지원하지 않는 파일 형식입니다. (" + String.join(", ", ALLOWED_EXTENSIONS) + ")");
 		}
+		checkLimits(ownerId, file.getSize());
 
 		UUID id = UUID.randomUUID();
 		Path original = storage.originalPath(id, extension);
@@ -78,6 +82,36 @@ public class VideoService {
 		Video video = repository.save(
 				Video.uploaded(id, owner, title, description, extension, file.getSize(), info.durationSeconds()));
 		return video;
+	}
+
+	/**
+	 * Original을 디스크에 쓰기 전에 업로드 제한을 확인한다 (VideoUploadProperties).
+	 * 동시에 올린 업로드끼리는 서로의 크기를 모르므로 총용량을 조금 넘을 수 있다.
+	 */
+	private void checkLimits(UUID ownerId, long size) {
+		if (size > limits.maxFileSize().toBytes()) {
+			throw new InvalidUploadException("파일은 " + readable(limits.maxFileSize()) + " 이하여야 합니다.");
+		}
+		long used = repository.totalSizeOfOwner(ownerId);
+		if (used + size > limits.quotaPerUser().toBytes()) {
+			throw new UploadQuotaExceededException("한 사람이 올릴 수 있는 동영상은 모두 합쳐 "
+					+ readable(limits.quotaPerUser()) + "까지입니다. 올린 동영상을 지우면 다시 올릴 수 있습니다.");
+		}
+		if (storage.usableSpace() - size < limits.minFreeDisk().toBytes()) {
+			throw new StorageFullException("서버 저장 공간이 부족해 지금은 동영상을 올릴 수 없습니다.");
+		}
+	}
+
+	/** 1024 단위로 나누어떨어지는 가장 큰 단위로 적는다 (500MB, 2GB). */
+	public static String readable(DataSize size) {
+		long bytes = size.toBytes();
+		String[] units = { "B", "KB", "MB", "GB", "TB" };
+		int unit = 0;
+		while (unit < units.length - 1 && bytes >= 1024 && bytes % 1024 == 0) {
+			bytes /= 1024;
+			unit++;
+		}
+		return bytes + units[unit];
 	}
 
 	public Video get(UUID id) {

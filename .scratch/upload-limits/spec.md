@@ -1,7 +1,6 @@
 # 업로드 용량 제한 (공개 운영 대비)
 
-Status: needs-triage
-Blocked by: 설명영상 ⑥ 제작(`.scratch/oci-video/`)이 끝난 뒤 시작한다 (사용자 지시, 2026-11-23)
+Status: resolved (2026-11-23)
 
 ## 왜
 
@@ -33,3 +32,11 @@ Blocked by: 설명영상 ⑥ 제작(`.scratch/oci-video/`)이 끝난 뒤 시작�
   - SSH 비밀번호 로그인은 꺼져 있다(`passwordauthentication no`). 하루 600건 넘는 봇 로그인 시도는 모두 키 인증에서 막힌다.
   - 토스 키 두 개는 모두 `test_` 키다.
 - 데모 계정과 콘텐츠는 나중에 모두 지우고 예시 영상만 남길 예정이라 이 작업 범위가 아니다.
+
+## 결정과 구현 (2026-11-23)
+
+- 파일 하나 500MB, User별 원본 합계 2GB, 업로드 뒤 디스크 여유 5GB 미만이면 거절(507). 값은 `VideoUploadProperties`(`video.upload.*`).
+- 제한은 Original을 디스크에 쓰기 전에 `VideoService.checkLimits`에서 확인한다. 동시에 올린 업로드끼리는 총용량을 조금 넘을 수 있다.
+- multipart 상한 500MB/510MB, Caddy `/api/*` 요청 본문 520MB.
+- 웹과 데스크톱 앱의 사전 검사·안내 문구를 500MB로 맞췄다. 데스크톱 앱은 다음 릴리스부터 반영된다.
+- 가입·업로드 빈도 제한은 하지 않았다(필요하면 새 이슈).

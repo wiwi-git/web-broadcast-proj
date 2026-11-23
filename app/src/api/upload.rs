@@ -12,7 +12,7 @@ use dioxus::html::FileData;
 use super::{ApiError, ApiResult, Video};
 
 // 서버(application.properties)와 같은 제약
-pub const MAX_FILE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
+pub const MAX_FILE_BYTES: u64 = 500 * 1024 * 1024;
 pub const ALLOWED_EXTENSIONS: [&str; 5] = ["mp4", "mov", "mkv", "webm", "avi"];
 
 /// 서버로 보내기 전에 막을 수 있는 문제를 먼저 걸러낸다
@@ -22,7 +22,7 @@ pub fn file_problem(name: &str, size: u64) -> Option<String> {
         return Some(format!("지원하지 않는 형식입니다. ({})", ALLOWED_EXTENSIONS.join(", ")));
     }
     if size > MAX_FILE_BYTES {
-        return Some("파일은 2GB 이하여야 합니다.".to_owned());
+        return Some("파일은 500MB 이하여야 합니다.".to_owned());
     }
     None
 }
@@ -136,6 +136,6 @@ mod tests {
         assert_eq!(file_problem("clip.MP4", 10), None);
         assert!(file_problem("notes.txt", 10).is_some());
         assert!(file_problem("noextension", 10).is_some());
-        assert_eq!(file_problem("big.mov", MAX_FILE_BYTES + 1).as_deref(), Some("파일은 2GB 이하여야 합니다."));
+        assert_eq!(file_problem("big.mov", MAX_FILE_BYTES + 1).as_deref(), Some("파일은 500MB 이하여야 합니다."));
     }
 }

@@ -28,4 +28,7 @@ public interface VideoStorage {
 
 	/** 공개 영역의 루트. 이 아래 {videoId}/ 디렉터리가 HTTP로 그대로 제공된다. */
 	Path publicRoot();
+
+	/** Original을 쓸 디스크에서 지금 쓸 수 있는 공간(바이트). */
+	long usableSpace();
 }

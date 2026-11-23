@@ -501,6 +501,8 @@ OCI 오버레이가 base와 다른 점:
 
 방화벽은 두 겹이다. OCI 보안 목록(`Default Security List for duse-vcn`)과 서버 iptables(`/etc/iptables/rules.v4`) 모두에서 22, 80, 443/TCP와 8189/TCP·UDP만 연다. iptables에는 K3s Pod 대역 허용 규칙이 더해져 있다. 비용은 OCI 할당량 정책 `free-tier-only`(A1 2 OCPU·12GB, E2 Micro, 디스크 200GB만 허용)와 $1 예산의 1%·99% 지출 알림으로 막는다. K3s의 `LoadBalancer`는 VM 안의 ServiceLB가 처리하므로 OCI 유료 Load Balancer는 생기지 않는다.
 
+누구나 가입해 동영상을 올릴 수 있으므로 업로드로 디스크(부트 볼륨 45GB)가 차지 않게 막는다. 파일 하나는 500MB, User 한 명이 올린 원본의 합계는 2GB까지이고, 받은 뒤 디스크 여유가 5GB보다 적어지는 업로드는 507로 거절한다([VideoUploadProperties](server/src/main/java/com/webbroadcast/video/VideoUploadProperties.java), 환경 변수 `VIDEO_UPLOAD_*`로 바꿀 수 있다). Caddy는 `/api/*` 요청 본문을 520MB에서 끊어 큰 요청이 Spring까지 가지 않게 한다.
+
 ### 확인 절차
 
 ```bash

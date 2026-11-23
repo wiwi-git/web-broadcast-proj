@@ -20,6 +20,10 @@ live.duse.dev {
 	}
 
 	handle /api/* {
+		# 동영상 업로드 상한(500MB, multipart 510MB)보다 큰 요청은 Spring까지 보내지 않는다
+		request_body {
+			max_size 520MB
+		}
 		reverse_proxy 127.0.0.1:8180
 	}
 

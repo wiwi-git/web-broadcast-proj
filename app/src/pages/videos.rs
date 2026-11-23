@@ -339,7 +339,7 @@ fn UploadForm() -> Element {
     let file_hint = match (&problem, file.read().as_ref()) {
         (Some(problem), _) => problem.clone(),
         (None, Some(f)) => format_bytes(f.size()),
-        (None, None) => format!("{} · 최대 2GB", api::ALLOWED_EXTENSIONS.join(", ")),
+        (None, None) => format!("{} · 최대 500MB", api::ALLOWED_EXTENSIONS.join(", ")),
     };
     let accept = api::ALLOWED_EXTENSIONS.iter().map(|ext| format!(".{ext}")).collect::<Vec<_>>().join(",");
 

@@ -26,7 +26,11 @@ import com.webbroadcast.user.DuplicateUserException;
 import com.webbroadcast.user.InvalidSignUpException;
 import com.webbroadcast.user.NotOwnerException;
 import com.webbroadcast.video.InvalidUploadException;
+import com.webbroadcast.video.StorageFullException;
+import com.webbroadcast.video.UploadQuotaExceededException;
 import com.webbroadcast.video.VideoNotFoundException;
+import com.webbroadcast.video.VideoService;
+import com.webbroadcast.video.VideoUploadProperties;
 import com.webbroadcast.web.donation.PaymentNotConfiguredException;
 
 /**
@@ -36,8 +40,15 @@ import com.webbroadcast.web.donation.PaymentNotConfiguredException;
 @RestControllerAdvice
 class ApiExceptionHandler {
 
-	@ExceptionHandler({ InvalidUploadException.class, InvalidBroadcastException.class, InvalidCommentException.class,
-			InvalidSignUpException.class, InvalidDonationException.class, InvalidYouTubeKeyException.class })
+	private final VideoUploadProperties uploadLimits;
+
+	ApiExceptionHandler(VideoUploadProperties uploadLimits) {
+		this.uploadLimits = uploadLimits;
+	}
+
+	@ExceptionHandler({ InvalidUploadException.class, UploadQuotaExceededException.class, InvalidBroadcastException.class,
+			InvalidCommentException.class, InvalidSignUpException.class, InvalidDonationException.class,
+			InvalidYouTubeKeyException.class })
 	ProblemDetail badRequest(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
 	}
@@ -96,7 +107,13 @@ class ApiExceptionHandler {
 
 	@ExceptionHandler(MaxUploadSizeExceededException.class)
 	ProblemDetail tooLarge(MaxUploadSizeExceededException e) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE, "파일은 2GB 이하여야 합니다.");
+		return ProblemDetail.forStatusAndDetail(HttpStatus.CONTENT_TOO_LARGE,
+				"파일은 " + VideoService.readable(uploadLimits.maxFileSize()) + " 이하여야 합니다.");
+	}
+
+	@ExceptionHandler(StorageFullException.class)
+	ProblemDetail storageFull(StorageFullException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.INSUFFICIENT_STORAGE, e.getMessage());
 	}
 
 	@ExceptionHandler(VideoNotFoundException.class)
