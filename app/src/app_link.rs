@@ -26,7 +26,7 @@ pub fn config() -> platform::Config {
     use platform::tao::event::Event;
     use platform::{Config, WindowBuilder};
 
-    Config::new().with_window(WindowBuilder::new().with_title("Web Broadcast")).with_custom_event_handler(
+    let config = Config::new().with_window(WindowBuilder::new().with_title("Web Broadcast")).with_custom_event_handler(
         |event, _| {
             if let Event::Opened { urls } = event {
                 if let Ok(mut opened) = OPENED.lock() {
@@ -34,7 +34,28 @@ pub fn config() -> platform::Config {
                 }
             }
         },
-    )
+    );
+    windows(config)
+}
+
+/// Windows(WebView2) 전용 설정.
+///
+/// - Dioxus 기본 메뉴(Window·Edit)는 Windows에서 창 안에 메뉴 막대로 보여 웹 화면과 어울리지 않아 뺀다.
+///   macOS는 이 메뉴가 Cmd+C·V 같은 편집 단축키를 맡으므로 그대로 둔다.
+/// - Dioxus 0.7은 Windows에서 화면을 `http://dioxus.index.html`에서 띄운다. http 주소는 보안 컨텍스트가 아니라서
+///   WebView2가 `navigator.mediaDevices`를 숨기고, 방송 화면이 카메라·화면 공유를 쓸 수 없다.
+///   이 주소 하나만 보안 출처로 다루게 한다. 브라우저 인자를 넘기면 wry 기본 인자가 빠지므로 함께 넣는다.
+#[cfg(all(feature = "desktop", target_os = "windows"))]
+fn windows(config: platform::Config) -> platform::Config {
+    const WRY_DEFAULT_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection \
+         --autoplay-policy=no-user-gesture-required";
+    const SECURE_APP_ORIGIN: &str = "--unsafely-treat-insecure-origin-as-secure=http://dioxus.index.html";
+    config.with_menu(None).with_windows_browser_args(format!("{WRY_DEFAULT_ARGS} {SECURE_APP_ORIGIN}"))
+}
+
+#[cfg(not(all(feature = "desktop", target_os = "windows")))]
+fn windows(config: platform::Config) -> platform::Config {
+    config
 }
 
 /// 쌓인 딥링크가 있으면 그 화면으로 이동한다. 라우터 안(Shell)에서 부른다.
