@@ -215,7 +215,7 @@ export default function BroadcastPage() {
           <button className="button primary" onClick={restart}>
             새 방송 시작
           </button>
-          <Link to="/" className="button">
+          <Link to="/live" className="button">
             라이브 목록
           </Link>
         </div>

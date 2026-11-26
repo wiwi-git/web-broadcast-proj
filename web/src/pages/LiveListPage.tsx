@@ -68,7 +68,7 @@ export default function LiveListPage() {
   )
 }
 
-function BroadcastCard({ broadcast }: { broadcast: Broadcast }) {
+export function BroadcastCard({ broadcast }: { broadcast: Broadcast }) {
   const live = broadcast.status === 'LIVE'
   return (
     <Link to={`/live/${broadcast.id}`} className={live ? 'video-card' : 'video-card ended'}>
