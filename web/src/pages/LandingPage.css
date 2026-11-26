@@ -1,0 +1,246 @@
+/* 랜딩 페이지 (/) 전용. 색과 버튼은 index.css의 변수와 .button을 그대로 쓴다 */
+
+.landing {
+  display: flex;
+  flex-direction: column;
+  gap: 72px;
+  padding-bottom: 24px;
+}
+
+.landing h2 {
+  margin: 0;
+  font-size: 1.375rem;
+}
+
+/* 히어로 */
+
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 56px 0 8px;
+}
+
+.live-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 1.5em;
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.live-count.on-air {
+  color: var(--text);
+}
+
+.live-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--live);
+  border-radius: 50%;
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.landing-title {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  word-break: keep-all;
+}
+
+.landing-lead {
+  max-width: 560px;
+  margin: 0;
+  font-size: 1.0625rem;
+  color: var(--text-muted);
+  word-break: keep-all;
+}
+
+.landing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.landing-cta {
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  font-size: 1rem;
+}
+
+.landing-cta svg {
+  width: 20px;
+  height: 20px;
+}
+
+.landing-note {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+}
+
+/* 섹션 공통 */
+
+.landing-section {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.landing-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.landing-more {
+  font-size: 0.9375rem;
+  color: var(--accent);
+}
+
+.landing-more:hover,
+.landing-empty a:hover,
+.landing-footer a:hover {
+  text-decoration: underline;
+}
+
+.landing-empty {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.landing-empty a {
+  color: var(--accent);
+}
+
+/* 기능 소개 */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.feature-card h3 {
+  margin: 8px 0 0;
+  font-size: 1.0625rem;
+}
+
+.feature-card p {
+  margin: 0;
+  color: var(--text-muted);
+  word-break: keep-all;
+}
+
+.feature-card .feature-note {
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 0.875rem;
+  color: var(--donation);
+}
+
+.feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--accent);
+  background: rgb(0 214 143 / 0.12);
+  border-radius: var(--radius);
+}
+
+.feature-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* 데스크톱 앱 */
+
+.landing-app {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 28px;
+  background: linear-gradient(135deg, #1d3b33, var(--surface) 70%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.landing-app p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+/* 푸터 */
+
+.landing-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 24px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border);
+}
+
+/* 키보드로 이동할 때 어디에 있는지 보이게 한다 */
+.landing a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (max-width: 640px) {
+  .landing {
+    gap: 56px;
+  }
+
+  .landing-hero {
+    padding-top: 24px;
+  }
+
+  .landing-actions,
+  .landing-actions .landing-cta {
+    width: 100%;
+  }
+
+  .landing-app {
+    padding: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot {
+    animation: none;
+  }
+}

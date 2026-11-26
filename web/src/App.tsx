@@ -3,6 +3,7 @@ import { Link, NavLink, Route, Routes, useLocation } from 'react-router'
 import VideoListPage from './pages/VideoListPage.tsx'
 import UploadPage from './pages/UploadPage.tsx'
 import VideoDetailPage from './pages/VideoDetailPage.tsx'
+import LandingPage from './pages/LandingPage.tsx'
 import LiveListPage from './pages/LiveListPage.tsx'
 import LiveWatchPage from './pages/LiveWatchPage.tsx'
 import BroadcastPage from './pages/BroadcastPage.tsx'
@@ -38,7 +39,7 @@ export default function App() {
           <Link to="/" className="logo">
             Web Broadcast
           </Link>
-          <NavLink to="/" end className="nav-link" title="라이브">
+          <NavLink to="/live" className="nav-link" title="라이브">
             <LiveIcon />
             <span className="nav-label">라이브</span>
           </NavLink>
@@ -51,7 +52,8 @@ export default function App() {
       </header>
       <main className="app-main">
         <Routes>
-          <Route path="/" element={<LiveListPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/live" element={<LiveListPage />} />
           <Route path="/live/:id" element={<LiveWatchPage />} />
           <Route
             path="/live/:id/donate"
