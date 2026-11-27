@@ -39,11 +39,22 @@ public class User {
 	/** 정지되지 않았으면 null */
 	private Instant suspendedAt;
 
+	/** 가입할 때 이용약관·개인정보처리방침에 동의한 시각. 이 기능 전에 가입했으면 null */
+	private Instant termsAgreedAt;
+
+	/** 동의한 문서의 버전(시행일) */
+	@Column(length = 20)
+	private String termsVersion;
+
 	protected User() {
 	}
 
-	public static User signedUp(UUID id, String username, String passwordHash, String nickname, Instant now) {
+	/** 이용약관·개인정보처리방침(termsVersion)에 동의하고 가입한다 */
+	public static User signedUp(UUID id, String username, String passwordHash, String nickname, String termsVersion,
+			Instant now) {
 		User user = new User();
+		user.termsAgreedAt = now;
+		user.termsVersion = termsVersion;
 		user.id = id;
 		user.username = username;
 		user.passwordHash = passwordHash;

@@ -29,6 +29,7 @@ load-test/  k6 부하 테스트
 - 한 회원이 동시에 진행할 수 있는 방송은 하나다.
 - 처리 중이거나 처리에 실패한 동영상은 목록에 나오지 않지만, 주소를 알면 상세 정보는 볼 수 있다. 준비 상태의 방송도 목록에는 나오지 않는다.
 - 회원의 아이디는 다른 사람에게 보이지 않고 닉네임만 보인다.
+- 만 14세 이상만 가입할 수 있다. 가입할 때 [이용약관](web/src/pages/TermsPage.tsx)(`/terms`)과 [개인정보처리방침](web/src/pages/PrivacyPage.tsx)(`/privacy`)에 동의해야 한다. 두 문서는 웹과 앱의 모든 화면 아래쪽에서 열 수 있고, 앱은 웹 화면을 기본 브라우저로 연다. 문서를 바꾸면 `web/src/legal.ts`의 시행일과 `UserService.TERMS_VERSION`을 같이 바꾼다. 문서에 적힌 저장 항목·외부 서비스가 바뀌면 개인정보처리방침도 고친다.
 - 운영자가 내린 방송·동영상·댓글은 지우지 않고 숨긴다. 소유자를 포함해 누구에게도 보이지 않으며(404), 방송은 진행 중이면 끝난다. 이미 열려 있는 화면에서도 댓글은 3초 안에 사라진다(라이브는 댓글 목록 갱신, 동영상은 숨긴 댓글 ID 확인). 동영상의 HLS 파일은 주소를 아는 사람에게는 계속 열린다.
 - 정지된 회원은 로그인할 수 없고, 정지하는 순간 로그인된 세션이 모두 끊기며 진행 중인 방송이 끝난다. 이미 올린 콘텐츠는 그대로 남는다.
 - 운영자는 DB에서 지정한다: `update app_user set role = 'ADMIN' where username = '아이디';`. 역할은 로그인할 때 세션에 담기므로 지정한 뒤 다시 로그인해야 한다.
@@ -244,7 +245,7 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 | 메서드 | 경로 | | 설명 |
 | --- | --- | --- | --- |
 | `GET` | `/api/auth/me` | 🔓 | `{user}`. 로그인하지 않았으면 `user`가 null. `user.admin`이 true면 운영자다. CSRF 토큰 쿠키도 이때 받는다 |
-| `POST` | `/api/auth/signup` | 🔓 | JSON `{username, password, nickname}`. 가입하면 바로 로그인된다 |
+| `POST` | `/api/auth/signup` | 🔓 | JSON `{username, password, nickname, agreeTerms}`. `agreeTerms`(만 14세 이상이며 이용약관·개인정보처리방침에 동의)가 true가 아니면 400. 동의 시각과 문서 버전(`UserService.TERMS_VERSION`)을 남긴다. 가입하면 바로 로그인된다 |
 | `POST` | `/api/auth/login` | 🔓 | JSON `{username, password}`. 정지된 회원이면 403 |
 | `POST` | `/api/auth/logout` | 🔑 | 204 |
 | `POST` | `/api/videos` | 🔑 | multipart: `file`, `title`, `description`. 201과 처리 중 상태의 Video |

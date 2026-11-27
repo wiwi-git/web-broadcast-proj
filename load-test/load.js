@@ -47,7 +47,7 @@ export function setup() {
 
   http.get(`${BASE}/api/auth/me`);
   const signup = http.post(`${BASE}/api/auth/signup`,
-    JSON.stringify({ username, password: PASSWORD, nickname }), json(null, xsrf(jar)));
+    JSON.stringify({ username, password: PASSWORD, nickname, agreeTerms: true }), json(null, xsrf(jar)));
   check(signup, { 'signup 201': (r) => r.status === 201 });
 
   const token = xsrf(jar);

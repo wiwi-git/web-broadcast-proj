@@ -107,7 +107,8 @@ export async function fetchMe(): Promise<Me | null> {
   return (await getJson<{ user: Me | null }>('/api/auth/me')).user
 }
 
-export async function signUp(input: { username: string; password: string; nickname: string }): Promise<Me> {
+/** agreeTerms: 만 14세 이상이며 이용약관·개인정보처리방침에 동의함. false면 서버가 거절한다 */
+export async function signUp(input: { username: string; password: string; nickname: string; agreeTerms: boolean }): Promise<Me> {
   return (await sendJson<{ user: Me }>('POST', '/api/auth/signup', input)).user
 }
 

@@ -23,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -34,6 +35,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import com.jayway.jsonpath.JsonPath;
+import com.webbroadcast.user.UserService;
 
 import jakarta.servlet.http.Cookie;
 
@@ -79,6 +81,9 @@ class AccessControlTest {
 	@Autowired
 	MockMvc mvc;
 
+	@Autowired
+	JdbcTemplate jdbc;
+
 	// 인증
 
 	@Test
@@ -97,7 +102,7 @@ class AccessControlTest {
 	void loginChecksThePassword() throws Exception {
 		String username = "login" + users.incrementAndGet();
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"로그인%s\"}".formatted(username, username)))
+				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"로그인%s\",\"agreeTerms\":true}".formatted(username, username)))
 			.andExpect(status().isCreated());
 
 		mvc.perform(json(post("/api/auth/login"), "{\"username\":\"%s\",\"password\":\"wrong-pass\"}".formatted(username)))
@@ -116,15 +121,31 @@ class AccessControlTest {
 		signUp("중복닉네임");
 
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"Upper\",\"password\":\"password1\",\"nickname\":\"새닉네임\"}"))
+				"{\"username\":\"Upper\",\"password\":\"password1\",\"nickname\":\"새닉네임\",\"agreeTerms\":true}"))
 			.andExpect(status().isBadRequest());
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"newuser1\",\"password\":\"short\",\"nickname\":\"새닉네임\"}"))
+				"{\"username\":\"newuser1\",\"password\":\"short\",\"nickname\":\"새닉네임\",\"agreeTerms\":true}"))
 			.andExpect(status().isBadRequest());
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"newuser2\",\"password\":\"password1\",\"nickname\":\"중복닉네임\"}"))
+				"{\"username\":\"newuser2\",\"password\":\"password1\",\"nickname\":\"중복닉네임\",\"agreeTerms\":true}"))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.detail").value("이미 사용 중인 닉네임입니다."));
+	}
+
+	@Test
+	void signUpNeedsTermsAgreementAndRecordsIt() throws Exception {
+		mvc.perform(json(post("/api/auth/signup"),
+				"{\"username\":\"noagree1\",\"password\":\"password1\",\"nickname\":\"미동의\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.detail").value("만 14세 이상이며 이용약관과 개인정보처리방침에 동의해야 가입할 수 있습니다."));
+		mvc.perform(json(post("/api/auth/signup"),
+				"{\"username\":\"noagree2\",\"password\":\"password1\",\"nickname\":\"미동의2\",\"agreeTerms\":false}"))
+			.andExpect(status().isBadRequest());
+
+		signUp("동의함");
+		assertThat(jdbc.queryForObject(
+				"select terms_version from app_user where nickname = '동의함' and terms_agreed_at is not null", String.class))
+			.isEqualTo(UserService.TERMS_VERSION);
 	}
 
 	@Test
@@ -316,7 +337,7 @@ class AccessControlTest {
 	private Cookie signUp(String nickname) throws Exception {
 		String username = "user" + users.incrementAndGet();
 		MvcResult result = mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\"}".formatted(username, nickname)))
+				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
 			.andExpect(status().isCreated())
 			.andReturn();
 		Cookie session = result.getResponse().getCookie("SESSION");

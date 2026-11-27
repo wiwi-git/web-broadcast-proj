@@ -193,7 +193,7 @@ class SimulcastTest {
 	private Cookie signUp(String nickname) throws Exception {
 		String username = "cast" + users.incrementAndGet();
 		MvcResult result = mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\"}".formatted(username, nickname)))
+				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
 			.andExpect(status().isCreated())
 			.andReturn();
 		return result.getResponse().getCookie("SESSION");

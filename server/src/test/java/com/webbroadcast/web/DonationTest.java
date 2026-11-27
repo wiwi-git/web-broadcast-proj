@@ -436,7 +436,7 @@ class DonationTest {
 		int n = users.incrementAndGet();
 		String nickname = "회원" + n;
 		MvcResult result = mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"donor%d\",\"password\":\"password1\",\"nickname\":\"%s\"}".formatted(n, nickname)))
+				"{\"username\":\"donor%d\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(n, nickname)))
 			.andExpect(status().isCreated())
 			.andReturn();
 		Cookie session = result.getResponse().getCookie("SESSION");

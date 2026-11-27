@@ -69,10 +69,13 @@ pub fn is_valid_username(username: &str) -> bool {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SignUpInput {
     pub username: String,
     pub password: String,
     pub nickname: String,
+    /// 만 14세 이상이며 이용약관·개인정보처리방침에 동의함. false면 서버가 거절한다
+    pub agree_terms: bool,
 }
 
 /// 로그인하지 않았으면 None. 이 요청으로 CSRF 토큰 쿠키도 받는다.
@@ -572,7 +575,7 @@ mod live_server_tests {
         // 첫 요청으로 XSRF-TOKEN 쿠키를 받는다
         assert_eq!(fetch_me().await.unwrap(), None);
 
-        let me = sign_up(&SignUpInput { username: username.clone(), password: password.clone(), nickname: format!("앱{}", suffix % 10_000) })
+        let me = sign_up(&SignUpInput { username: username.clone(), password: password.clone(), nickname: format!("앱{}", suffix % 10_000), agree_terms: true })
             .await
             .unwrap();
         assert_eq!(fetch_me().await.unwrap().as_ref(), Some(&me), "가입 뒤 세션 쿠키로 로그인 상태가 유지된다");
@@ -601,7 +604,7 @@ mod live_server_tests {
         let size = std::fs::metadata(&path).unwrap().len();
         let suffix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() % 1_000_000_000;
         fetch_me().await.unwrap();
-        sign_up(&SignUpInput { username: format!("up{suffix}"), password: format!("pw-{suffix}-check"), nickname: format!("업{}", suffix % 10_000) })
+        sign_up(&SignUpInput { username: format!("up{suffix}"), password: format!("pw-{suffix}-check"), nickname: format!("업{}", suffix % 10_000), agree_terms: true })
             .await
             .unwrap();
 

@@ -18,6 +18,7 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [nickname, setNickname] = useState('')
+  const [agreed, setAgreed] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -35,7 +36,15 @@ export default function SignUpPage() {
       ? `${NICKNAME_MIN_LENGTH}~${NICKNAME_MAX_LENGTH}자`
       : null
   const valid =
-    username && password && passwordConfirm && nickname && !usernameError && !passwordError && !confirmError && !nicknameError
+    username &&
+    password &&
+    passwordConfirm &&
+    nickname &&
+    agreed &&
+    !usernameError &&
+    !passwordError &&
+    !confirmError &&
+    !nicknameError
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -43,7 +52,7 @@ export default function SignUpPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await signUp({ username, password, nickname: nickname.trim() })
+      await signUp({ username, password, nickname: nickname.trim(), agreeTerms: agreed })
       navigate(next, { replace: true })
     } catch (e) {
       setError((e as Error).message)
@@ -104,6 +113,20 @@ export default function SignUpPage() {
         />
         <span className={nicknameError ? 'hint error' : 'hint'}>
           {nicknameError ?? '방송과 댓글에 보이는 이름입니다. 다른 회원과 겹칠 수 없습니다.'}
+        </span>
+      </label>
+      <label className="agree-check">
+        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+        <span>
+          만 14세 이상이며{' '}
+          <a href="/terms" target="_blank" rel="noreferrer">
+            이용약관
+          </a>
+          과{' '}
+          <a href="/privacy" target="_blank" rel="noreferrer">
+            개인정보처리방침
+          </a>
+          에 동의합니다. (필수)
         </span>
       </label>
       {error && <p className="hint error">{error}</p>}

@@ -63,7 +63,7 @@ class VideoWorkerTest {
 				"testsrc=size=320x240:rate=15", "-t", "1", "-pix_fmt", "yuv420p", sample.toString())
 			.inheritIO().start();
 		assertThat(ffmpeg.waitFor()).isZero();
-		var owner = userService.signUp("worker1", "password1", "워커");
+		var owner = userService.signUp("worker1", "password1", "워커", true);
 
 		Video video = videoService.upload(owner.getId(),
 				new MockMultipartFile("file", "sample.mp4", "video/mp4", Files.readAllBytes(sample)), "영상", null);

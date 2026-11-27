@@ -24,6 +24,12 @@ public class UserService implements UserDetailsService {
 	public static final int PASSWORD_MAX_LENGTH = 64;
 	public static final int NICKNAME_MIN_LENGTH = 2;
 	public static final int NICKNAME_MAX_LENGTH = 20;
+	/**
+	 * 지금 이용약관·개인정보처리방침의 버전(시행일). 문서를 바꾸면 웹·앱의 문서 날짜와 함께 바꾼다.
+	 * 가입할 때 이 값이 동의 기록으로 남는다.
+	 */
+	public static final String TERMS_VERSION = "2026-11-27";
+
 	/** 운영자 회원 목록 한 쪽 */
 	public static final int ADMIN_PAGE_SIZE = 20;
 
@@ -37,7 +43,8 @@ public class UserService implements UserDetailsService {
 		this.clock = clock;
 	}
 
-	public User signUp(String rawUsername, String password, String rawNickname) {
+	/** agreedToTerms: 만 14세 이상이며 이용약관과 개인정보처리방침에 동의했는지 */
+	public User signUp(String rawUsername, String password, String rawNickname, boolean agreedToTerms) {
 		String username = rawUsername == null ? "" : rawUsername.strip();
 		String nickname = rawNickname == null ? "" : rawNickname.strip();
 		if (!USERNAME.matcher(username).matches()) {
@@ -52,6 +59,9 @@ public class UserService implements UserDetailsService {
 			throw new InvalidSignUpException(
 					"닉네임은 " + NICKNAME_MIN_LENGTH + "~" + NICKNAME_MAX_LENGTH + "자여야 합니다.");
 		}
+		if (!agreedToTerms) {
+			throw new InvalidSignUpException("만 14세 이상이며 이용약관과 개인정보처리방침에 동의해야 가입할 수 있습니다.");
+		}
 		if (repository.existsByUsername(username)) {
 			throw new DuplicateUserException("이미 사용 중인 아이디입니다.");
 		}
@@ -60,7 +70,7 @@ public class UserService implements UserDetailsService {
 		}
 		try {
 			return repository.saveAndFlush(User.signedUp(UUID.randomUUID(), username,
-					passwordEncoder.encode(password), nickname, clock.instant()));
+					passwordEncoder.encode(password), nickname, TERMS_VERSION, clock.instant()));
 		}
 		catch (DataIntegrityViolationException e) {
 			// 동시에 같은 값으로 가입한 경우

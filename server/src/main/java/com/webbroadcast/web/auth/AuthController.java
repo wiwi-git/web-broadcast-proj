@@ -33,7 +33,8 @@ public class AuthController {
 	public static final String SIGN_UP_PATH = "/api/auth/signup";
 	public static final String LOGIN_PATH = "/api/auth/login";
 
-	record SignUpRequest(String username, String password, String nickname) {
+	/** agreeTerms: 만 14세 이상이며 이용약관과 개인정보처리방침에 동의함. true여야 가입된다 */
+	record SignUpRequest(String username, String password, String nickname, Boolean agreeTerms) {
 	}
 
 	record LoginRequest(String username, String password) {
@@ -63,7 +64,7 @@ public class AuthController {
 	@PostMapping("/signup")
 	@ResponseStatus(HttpStatus.CREATED)
 	MeResponse signUp(@RequestBody SignUpRequest body, HttpServletRequest request, HttpServletResponse response) {
-		userService.signUp(body.username(), body.password(), body.nickname());
+		userService.signUp(body.username(), body.password(), body.nickname(), Boolean.TRUE.equals(body.agreeTerms()));
 		return logIn(body.username().strip(), body.password(), request, response);
 	}
 

@@ -6,6 +6,7 @@ use super::icons::{
     CameraIcon, CloseIcon, DownloadIcon, HeartIcon, LiveIcon, LoginIcon, LogoutIcon, UploadIcon, UserIcon, VideoIcon,
 };
 use crate::auth::use_auth;
+use crate::config;
 use crate::route::Route;
 
 /// 데스크톱 앱 다운로드 페이지. 운영 서버의 Caddy가 내준다 (deploy/download/)
@@ -32,6 +33,22 @@ pub fn Shell() -> Element {
             HeaderActions {}
         }
         main { class: "app-main", Outlet::<Route> {} }
+        SiteFooter {}
+    }
+}
+
+/// 모든 화면 아래쪽. 이용약관·개인정보처리방침·문의 연락처 (web/src/components/SiteFooter.tsx와 같다).
+/// 문서는 웹 화면을 기본 브라우저로 연다
+#[component]
+fn SiteFooter() -> Element {
+    rsx! {
+        footer { class: "site-footer",
+            span { "© Web Broadcast" }
+            a { href: config::terms_url(), target: "_blank", "이용약관" }
+            // 개인정보처리방침은 눈에 띄게 둔다 (관례)
+            a { href: config::privacy_url(), target: "_blank", class: "footer-strong", "개인정보처리방침" }
+            a { href: "mailto:{config::CONTACT_EMAIL}", "문의 {config::CONTACT_EMAIL}" }
+        }
     }
 }
 

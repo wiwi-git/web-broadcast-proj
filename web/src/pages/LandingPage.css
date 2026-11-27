@@ -113,8 +113,7 @@
 }
 
 .landing-more:hover,
-.landing-empty a:hover,
-.landing-footer a:hover {
+.landing-empty a:hover {
   text-decoration: underline;
 }
 
@@ -198,19 +197,6 @@
 .landing-app p {
   margin: 8px 0 0;
   color: var(--text-muted);
-}
-
-/* 푸터 */
-
-.landing-footer {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 24px;
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  border-top: 1px solid var(--border);
 }
 
 /* 키보드로 이동할 때 어디에 있는지 보이게 한다 */

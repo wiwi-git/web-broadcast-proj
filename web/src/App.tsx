@@ -16,6 +16,9 @@ import CheckoutPage, { CheckoutFailPage, CheckoutSuccessPage } from './pages/Che
 import AdminReportsPage from './pages/AdminReportsPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import AdminHiddenPage from './pages/AdminHiddenPage.tsx'
+import TermsPage from './pages/TermsPage.tsx'
+import PrivacyPage from './pages/PrivacyPage.tsx'
+import SiteFooter from './components/SiteFooter.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
 import { loginPath, useAuth } from './auth/useAuth.ts'
 import {
@@ -138,11 +141,14 @@ export default function App() {
               </RequireLogin>
             }
           />
+          <Route path="/terms" element={<TermsPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="*" element={<p className="notice">페이지를 찾을 수 없습니다.</p>} />
         </Routes>
       </main>
+      <SiteFooter />
     </>
   )
 }

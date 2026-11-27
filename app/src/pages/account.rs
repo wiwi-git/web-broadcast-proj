@@ -2,6 +2,7 @@ use dioxus::prelude::*;
 
 use crate::api::{self, LogInInput, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH, PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, SignUpInput};
 use crate::auth::use_auth;
+use crate::config;
 use crate::route::{Route, safe_next};
 
 #[component]
@@ -83,6 +84,7 @@ pub fn SignUp(next: String) -> Element {
     let mut password = use_signal(String::new);
     let mut password_confirm = use_signal(String::new);
     let mut nickname = use_signal(String::new);
+    let mut agreed = use_signal(|| false);
     let mut submitting = use_signal(|| false);
     let mut error = use_signal(|| None::<String>);
 
@@ -111,6 +113,7 @@ pub fn SignUp(next: String) -> Element {
         && !password().is_empty()
         && !password_confirm().is_empty()
         && !nickname().is_empty()
+        && agreed()
         && username_error.is_none()
         && password_error.is_none()
         && confirm_error.is_none()
@@ -126,7 +129,12 @@ pub fn SignUp(next: String) -> Element {
             }
             submitting.set(true);
             error.set(None);
-            let input = SignUpInput { username: username(), password: password(), nickname: nickname().trim().to_owned() };
+            let input = SignUpInput {
+                username: username(),
+                password: password(),
+                nickname: nickname().trim().to_owned(),
+                agree_terms: agreed(),
+            };
             match api::sign_up(&input).await {
                 Ok(me) => {
                     auth.set(Some(me));
@@ -199,6 +207,21 @@ pub fn SignUp(next: String) -> Element {
                 }
                 span { class: if nickname_error.is_some() { "hint error" } else { "hint" },
                     {nickname_error.clone().unwrap_or_else(|| "방송과 댓글에 보이는 이름입니다. 다른 회원과 겹칠 수 없습니다.".to_owned())}
+                }
+            }
+            label { class: "agree-check",
+                input {
+                    r#type: "checkbox",
+                    checked: agreed(),
+                    onchange: move |e| agreed.set(e.checked()),
+                }
+                span {
+                    "만 14세 이상이며 "
+                    // 웹 문서를 기본 브라우저로 연다
+                    a { href: config::terms_url(), target: "_blank", "이용약관" }
+                    "과 "
+                    a { href: config::privacy_url(), target: "_blank", "개인정보처리방침" }
+                    "에 동의합니다. (필수)"
                 }
             }
             if let Some(message) = error() {

@@ -147,7 +147,7 @@ class ReportTest {
 	private Cookie signUp(String nickname) throws Exception {
 		String username = "report" + users.incrementAndGet();
 		MvcResult result = mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\"}".formatted(username, nickname)))
+				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
 			.andExpect(status().isCreated())
 			.andReturn();
 		Cookie session = result.getResponse().getCookie("SESSION");

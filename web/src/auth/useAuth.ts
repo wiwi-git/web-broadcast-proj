@@ -7,7 +7,7 @@ export interface Auth {
   /** 첫 로그인 상태 확인이 끝났는지 */
   ready: boolean
   logIn(input: { username: string; password: string }): Promise<void>
-  signUp(input: { username: string; password: string; nickname: string }): Promise<void>
+  signUp(input: { username: string; password: string; nickname: string; agreeTerms: boolean }): Promise<void>
   logOut(): Promise<void>
 }
 

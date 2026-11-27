@@ -11,7 +11,6 @@ const MAX_CARDS = 4
 const REFRESH_INTERVAL_MS = 10_000
 /** App.tsx와 같다. 운영 서버의 Caddy가 내주므로 개발 서버에서도 운영 주소로 보낸다 */
 const APP_DOWNLOAD_URL = 'https://live.duse.dev/download/'
-const GITHUB_URL = 'https://github.com/wiwi-git/web-broadcast-proj'
 
 /** 랜딩에 필요한 방송·동영상. 불러오기 전이면 null, 실패하면 error만 채운다 */
 interface Showcase {
@@ -74,12 +73,6 @@ export default function LandingPage() {
       <NowLive showcase={showcase} />
       <Features />
       <DesktopApp />
-      <footer className="landing-footer">
-        <span>Web Broadcast</span>
-        <a href={GITHUB_URL} target="_blank" rel="noreferrer">
-          GitHub 저장소
-        </a>
-      </footer>
     </div>
   )
 }

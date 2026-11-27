@@ -57,3 +57,15 @@ pub fn resolve(path: &str) -> String {
         format!("{}{path}", api_origin())
     }
 }
+
+/// 이용약관·개인정보처리방침 문의 연락처 (web/src/legal.ts와 같다)
+pub const CONTACT_EMAIL: &str = "duse34@hotmail.com";
+
+/// 이용약관·개인정보처리방침은 웹 화면을 기본 브라우저로 연다. 문서를 한 곳(web/src/pages)에만 둔다
+pub fn terms_url() -> String {
+    format!("{}/terms", web_origin())
+}
+
+pub fn privacy_url() -> String {
+    format!("{}/privacy", web_origin())
+}
