@@ -1095,6 +1095,59 @@ button.danger:hover:not(:disabled) {
   flex-shrink: 0;
 }
 
+/* 신고 (ReportButton). 열리면 줄 하나를 다 쓴다 */
+
+.report-row {
+  margin: 4px 0 0;
+}
+
+.comment-actions:has(.report-form) {
+  flex-basis: 100%;
+}
+
+.report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 480px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.report-title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.report-reasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
+.report-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.report-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.report-done {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
 /* 화면 안에서 한 번 더 묻는 확인 (ConfirmButton) */
 
 .confirm-inline {

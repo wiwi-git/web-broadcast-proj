@@ -26,6 +26,14 @@ _Avoid_: 채팅, 메시지
 Comment를 쓴 User. Comment를 수정·삭제할 수 있는 유일한 사람이다. Content의 Owner라도 남의 Comment는 지울 수 없다.
 _Avoid_: 소유자(Content에 쓴다)
 
+**Report (신고)**:
+User가 남의 Broadcast, Video, Comment 하나를 사유와 함께 운영자에게 알리는 일 한 건. 한 User는 같은 대상을 한 번만 신고하고, 자기 것은 신고할 수 없다. 대상이 지워져도 Report는 남는다.
+_Avoid_: 제보, 블라인드 요청
+
+**Reporter (신고자)**:
+Report를 보낸 User.
+_Avoid_: 제보자
+
 ### 후원
 
 **Donation (후원)**:

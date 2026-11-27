@@ -20,6 +20,8 @@ import com.webbroadcast.donation.DonationNotFoundException;
 import com.webbroadcast.donation.DonationNotPendingException;
 import com.webbroadcast.donation.InvalidDonationException;
 import com.webbroadcast.donation.PaymentUnavailableException;
+import com.webbroadcast.report.AlreadyReportedException;
+import com.webbroadcast.report.InvalidReportException;
 import com.webbroadcast.simulcast.InvalidYouTubeKeyException;
 import com.webbroadcast.simulcast.SimulcastNotConfiguredException;
 import com.webbroadcast.user.DuplicateUserException;
@@ -48,7 +50,7 @@ class ApiExceptionHandler {
 
 	@ExceptionHandler({ InvalidUploadException.class, UploadQuotaExceededException.class, InvalidBroadcastException.class,
 			InvalidCommentException.class, InvalidSignUpException.class, InvalidDonationException.class,
-			InvalidYouTubeKeyException.class })
+			InvalidYouTubeKeyException.class, InvalidReportException.class })
 	ProblemDetail badRequest(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
 	}
@@ -68,8 +70,8 @@ class ApiExceptionHandler {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
 	}
 
-	@ExceptionHandler(DuplicateUserException.class)
-	ProblemDetail duplicateUser(DuplicateUserException e) {
+	@ExceptionHandler({ DuplicateUserException.class, AlreadyReportedException.class })
+	ProblemDetail duplicateUser(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, e.getMessage());
 	}
 

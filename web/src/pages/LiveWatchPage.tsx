@@ -6,6 +6,7 @@ import ConfirmButton from '../components/ConfirmButton.tsx'
 import DonationAlert from '../components/DonationAlert.tsx'
 import HlsPlayer from '../components/HlsPlayer.tsx'
 import LiveComments from '../components/LiveComments.tsx'
+import ReportButton from '../components/ReportButton.tsx'
 import { formatDate } from '../format.ts'
 import { useBroadcast } from '../live/useBroadcast.ts'
 import { useBroadcastDonations } from '../live/useBroadcastDonations.ts'
@@ -68,6 +69,9 @@ export default function LiveWatchPage() {
           )}
           {broadcast.status === 'ENDED' && broadcast.endedAt && ` · ${formatDate(broadcast.endedAt)} 종료`}
         </p>
+        <div className="report-row">
+          <ReportButton targetType="BROADCAST" targetId={broadcast.id} ownerId={broadcast.owner.id} />
+        </div>
 
         {me?.id === broadcast.owner.id && <OwnerControls broadcast={broadcast} onRenamed={setRenamed} />}
       </article>

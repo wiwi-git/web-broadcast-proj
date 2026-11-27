@@ -1,4 +1,5 @@
 import ConfirmButton from '../components/ConfirmButton.tsx'
+import ReportButton from '../components/ReportButton.tsx'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import {
@@ -122,6 +123,9 @@ export default function VideoDetailPage() {
             <span className="owner-name">{video.owner.nickname}</span> · {formatDate(video.createdAt)}
             {video.durationSeconds != null && ` · ${formatDuration(video.durationSeconds)}`}
           </p>
+          <div className="report-row">
+            <ReportButton targetType="VIDEO" targetId={video.id} ownerId={video.owner.id} />
+          </div>
           {video.description && <p className="description">{video.description}</p>}
         </>
       )}

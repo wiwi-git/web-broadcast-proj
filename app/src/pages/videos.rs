@@ -5,9 +5,11 @@ use std::time::Duration;
 use dioxus::html::FileData;
 use dioxus::prelude::*;
 
-use crate::api::{self, ApiError, DESCRIPTION_MAX_LENGTH, TITLE_MAX_LENGTH, Video, VideoEdit, VideoStatus};
+use crate::api::{
+    self, ApiError, DESCRIPTION_MAX_LENGTH, ReportTargetType, TITLE_MAX_LENGTH, Video, VideoEdit, VideoStatus,
+};
 use crate::auth::{RequireLogin, use_auth};
-use crate::components::{ConfirmButton, HlsPlayer, VideoComments};
+use crate::components::{ConfirmButton, HlsPlayer, ReportButton, VideoComments};
 use crate::config;
 use crate::route::Route;
 use crate::time::{format_bytes, format_date, format_duration, sleep};
@@ -200,6 +202,13 @@ pub fn VideoDetail(id: String) -> Element {
                 p { class: "meta",
                     span { class: "owner-name", "{video.owner.nickname}" }
                     " · {meta_date}{meta_duration}"
+                }
+                div { class: "report-row",
+                    ReportButton {
+                        target_type: ReportTargetType::Video,
+                        target_id: video.id.clone(),
+                        owner_id: video.owner.id.clone(),
+                    }
                 }
                 if let Some(description) = video.description.as_ref().filter(|d| !d.is_empty()) {
                     p { class: "description", "{description}" }

@@ -220,6 +220,66 @@ pub async fn delete_comment(id: &str) -> ApiResult<()> {
     send_empty(Method::DELETE, &format!("/api/comments/{}", encode(id))).await
 }
 
+// 신고
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ReportTargetType {
+    Broadcast,
+    Video,
+    Comment,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ReportReason {
+    Spam,
+    Hate,
+    Sexual,
+    Violence,
+    Copyright,
+    Other,
+}
+
+/// 화면에 보여 주는 순서와 문구 (web/src/api.ts의 REPORT_REASONS와 같다)
+pub const REPORT_REASONS: [(ReportReason, &str); 6] = [
+    (ReportReason::Spam, "스팸·광고"),
+    (ReportReason::Hate, "욕설·혐오"),
+    (ReportReason::Sexual, "성적인 콘텐츠"),
+    (ReportReason::Violence, "폭력·위험한 행동"),
+    (ReportReason::Copyright, "저작권 침해"),
+    (ReportReason::Other, "기타"),
+];
+
+/// 서버(Report)와 같은 제약
+pub const REPORT_DETAIL_MAX_LENGTH: usize = 200;
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ReportInput<'a> {
+    target_type: ReportTargetType,
+    target_id: &'a str,
+    reason: ReportReason,
+    detail: &'a str,
+}
+
+#[derive(Deserialize)]
+struct Filed {
+    #[allow(dead_code)]
+    id: String,
+}
+
+/// 같은 대상을 다시 신고하면 409로 거절된다
+pub async fn file_report(
+    target_type: ReportTargetType,
+    target_id: &str,
+    reason: ReportReason,
+    detail: &str,
+) -> ApiResult<()> {
+    let input = ReportInput { target_type, target_id, reason, detail };
+    send_json::<Filed>(Method::POST, "/api/reports", &input).await.map(|_| ())
+}
+
 // 라이브
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]

@@ -297,6 +297,34 @@ export function deleteComment(id: string): Promise<void> {
   return request(`/api/comments/${encodeURIComponent(id)}`, { method: 'DELETE' })
 }
 
+// 신고
+
+export type ReportTargetType = 'BROADCAST' | 'VIDEO' | 'COMMENT'
+export type ReportReason = 'SPAM' | 'HATE' | 'SEXUAL' | 'VIOLENCE' | 'COPYRIGHT' | 'OTHER'
+
+/** 화면에 보여 주는 순서와 문구 */
+export const REPORT_REASONS: { value: ReportReason; label: string }[] = [
+  { value: 'SPAM', label: '스팸·광고' },
+  { value: 'HATE', label: '욕설·혐오' },
+  { value: 'SEXUAL', label: '성적인 콘텐츠' },
+  { value: 'VIOLENCE', label: '폭력·위험한 행동' },
+  { value: 'COPYRIGHT', label: '저작권 침해' },
+  { value: 'OTHER', label: '기타' },
+]
+
+// 서버(Report)와 같은 제약
+export const REPORT_DETAIL_MAX_LENGTH = 200
+
+/** 같은 대상을 다시 신고하면 409로 거절된다 */
+export function fileReport(input: {
+  targetType: ReportTargetType
+  targetId: string
+  reason: ReportReason
+  detail: string
+}): Promise<{ id: string }> {
+  return sendJson('POST', '/api/reports', input)
+}
+
 // 후원
 
 export type DonationStatus = 'PENDING' | 'DONE' | 'FAILED' | 'CANCELED' | 'EXPIRED'

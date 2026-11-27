@@ -75,6 +75,10 @@ public class CommentService {
 		return repository.save(Comment.onBroadcast(broadcastId, userService.get(authorId), body, clock.instant()));
 	}
 
+	public Comment get(UUID id) {
+		return repository.findById(id).orElseThrow(CommentNotFoundException::new);
+	}
+
 	public Comment edit(UUID id, UUID userId, String rawBody) {
 		String body = validBody(rawBody);
 		Comment comment = writtenBy(id, userId);
@@ -87,7 +91,7 @@ public class CommentService {
 	}
 
 	private Comment writtenBy(UUID id, UUID userId) {
-		Comment comment = repository.findById(id).orElseThrow(CommentNotFoundException::new);
+		Comment comment = get(id);
 		if (!comment.isWrittenBy(userId)) {
 			throw new NotOwnerException("본인이 쓴 댓글만 수정하거나 삭제할 수 있습니다.");
 		}

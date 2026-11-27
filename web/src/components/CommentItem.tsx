@@ -1,4 +1,5 @@
 import ConfirmButton from './ConfirmButton.tsx'
+import ReportButton from './ReportButton.tsx'
 import { useState, type FormEvent } from 'react'
 import { COMMENT_MAX_LENGTH, deleteComment, editComment, type Comment } from '../api.ts'
 import { useAuth } from '../auth/useAuth.ts'
@@ -75,6 +76,11 @@ export default function CommentItem({ comment, onEdited, onDeleted }: Props) {
             >
               삭제
             </ConfirmButton>
+          </span>
+        )}
+        {!mine && (
+          <span className="comment-actions">
+            <ReportButton targetType="COMMENT" targetId={comment.id} ownerId={comment.author.id} />
           </span>
         )}
       </div>

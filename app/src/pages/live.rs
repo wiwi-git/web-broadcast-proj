@@ -3,11 +3,14 @@ use std::time::Duration;
 use chrono::Utc;
 use dioxus::prelude::*;
 
-use crate::api::{self, ApiError, BROADCAST_TITLE_MAX_LENGTH, Broadcast as BroadcastInfo, BroadcastList, BroadcastStatus};
+use crate::api::{
+    self, ApiError, BROADCAST_TITLE_MAX_LENGTH, Broadcast as BroadcastInfo, BroadcastList, BroadcastStatus,
+    ReportTargetType,
+};
 use crate::auth::{RequireLogin, use_auth};
 use crate::components::{
-    BroadcastDonations, ConfirmButton, DonationAlert, HlsPlayer, LiveComments, SimulcastPicker, SimulcastStatusLine,
-    use_broadcast_donations,
+    BroadcastDonations, ConfirmButton, DonationAlert, HlsPlayer, LiveComments, ReportButton, SimulcastPicker,
+    SimulcastStatusLine, use_broadcast_donations,
 };
 use crate::config;
 use crate::route::Route;
@@ -218,6 +221,13 @@ pub fn LiveWatch(id: String) -> Element {
                     }
                     if let Some(ended) = broadcast.ended_at.as_ref().filter(|_| broadcast.status == BroadcastStatus::Ended) {
                         " · {format_date(ended)} 종료"
+                    }
+                }
+                div { class: "report-row",
+                    ReportButton {
+                        target_type: ReportTargetType::Broadcast,
+                        target_id: broadcast.id.clone(),
+                        owner_id: broadcast.owner.id.clone(),
                     }
                 }
 

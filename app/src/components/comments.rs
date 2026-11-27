@@ -4,8 +4,8 @@ use std::collections::HashSet;
 
 use dioxus::prelude::*;
 
-use super::ConfirmButton;
-use crate::api::{self, COMMENT_MAX_LENGTH, Comment, CommentTarget};
+use super::{ConfirmButton, ReportButton};
+use crate::api::{self, COMMENT_MAX_LENGTH, Comment, CommentTarget, ReportTargetType};
 use crate::auth::use_auth;
 use crate::route::Route;
 use crate::time::format_relative;
@@ -265,6 +265,15 @@ pub fn CommentItem(comment: Comment, on_edited: EventHandler<Comment>, on_delete
                             confirm_label: "삭제",
                             on_confirm: delete,
                             "삭제"
+                        }
+                    }
+                }
+                if !mine {
+                    span { class: "comment-actions",
+                        ReportButton {
+                            target_type: ReportTargetType::Comment,
+                            target_id: comment.id.clone(),
+                            owner_id: comment.author.id.clone(),
                         }
                     }
                 }
