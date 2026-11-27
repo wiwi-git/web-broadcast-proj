@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.security.core.CredentialsContainer;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 /**
@@ -21,12 +22,18 @@ public final class CurrentUser implements UserDetails, CredentialsContainer {
 	private final UUID id;
 	private final String username;
 	private final String nickname;
+	/** 로그인할 때의 역할. 역할을 바꾸면 다시 로그인해야 반영된다 */
+	private final boolean admin;
+	/** 정지된 User는 로그인할 수 없다 (DaoAuthenticationProvider가 isAccountNonLocked로 확인한다) */
+	private final boolean suspended;
 	private String passwordHash;
 
 	CurrentUser(User user) {
 		this.id = user.getId();
 		this.username = user.getUsername();
 		this.nickname = user.getNickname();
+		this.admin = user.isAdmin();
+		this.suspended = user.isSuspended();
 		this.passwordHash = user.getPasswordHash();
 	}
 
@@ -36,6 +43,10 @@ public final class CurrentUser implements UserDetails, CredentialsContainer {
 
 	public String nickname() {
 		return nickname;
+	}
+
+	public boolean admin() {
+		return admin;
 	}
 
 	@Override
@@ -50,7 +61,12 @@ public final class CurrentUser implements UserDetails, CredentialsContainer {
 
 	@Override
 	public Collection<? extends GrantedAuthority> getAuthorities() {
-		return List.of();
+		return admin ? List.of(new SimpleGrantedAuthority("ROLE_ADMIN")) : List.of();
+	}
+
+	@Override
+	public boolean isAccountNonLocked() {
+		return !suspended;
 	}
 
 	@Override

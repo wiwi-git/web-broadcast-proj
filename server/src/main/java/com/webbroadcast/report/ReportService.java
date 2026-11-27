@@ -1,6 +1,8 @@
 package com.webbroadcast.report;
 
 import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -14,7 +16,7 @@ import com.webbroadcast.video.VideoService;
 
 /**
  * 로그인한 User가 남의 Broadcast·Video·Comment를 신고한다. 대상마다 한 번만 받는다.
- * 신고를 처리하는 운영자 기능은 아직 없다.
+ * 운영자는 처리 전 신고를 보고 대상을 내리거나 기각한다 (ModerationService).
  */
 @Service
 public class ReportService {
@@ -59,6 +61,20 @@ public class ReportService {
 			// 같은 신고를 동시에 두 번 보낸 경우
 			throw new AlreadyReportedException();
 		}
+	}
+
+	/** 처리 전인 신고 전부, 오래된 순 */
+	public List<Report> listOpen() {
+		return repository.findByStatusOrderByCreatedAtAsc(ReportStatus.OPEN);
+	}
+
+	/** 대상 하나에 걸린 처리 전 신고를 모두 닫는다 */
+	public void resolveOpen(ReportTargetType targetType, UUID targetId, ReportStatus result, UUID adminId) {
+		User admin = userService.get(adminId);
+		Instant now = clock.instant();
+		List<Report> open = repository.findByTargetTypeAndTargetIdAndStatus(targetType, targetId, ReportStatus.OPEN);
+		open.forEach(report -> report.resolve(result, admin, now));
+		repository.saveAll(open);
 	}
 
 	/** 대상이 없으면 각 서비스의 NotFound 예외가 난다 */

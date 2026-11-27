@@ -41,6 +41,9 @@ public class Comment {
 	/** 수정한 적이 없으면 null */
 	private Instant updatedAt;
 
+	/** 운영자가 내렸으면 그 시각. 숨긴 Comment는 목록에 나오지 않는다 */
+	private Instant hiddenAt;
+
 	protected Comment() {
 	}
 
@@ -69,6 +72,16 @@ public class Comment {
 		return author.is(userId);
 	}
 
+	void hide(Instant now) {
+		if (hiddenAt == null) {
+			hiddenAt = now;
+		}
+	}
+
+	public boolean isHidden() {
+		return hiddenAt != null;
+	}
+
 	void edit(String body, Instant now) {
 		this.body = body;
 		this.updatedAt = now;
@@ -94,7 +107,13 @@ public class Comment {
 		return updatedAt;
 	}
 
-	UUID getVideoId() {
+	/** Broadcast에 달렸으면 null */
+	public UUID getVideoId() {
 		return videoId;
+	}
+
+	/** Video에 달렸으면 null */
+	public UUID getBroadcastId() {
+		return broadcastId;
 	}
 }

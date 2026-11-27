@@ -34,6 +34,21 @@ _Avoid_: 제보, 블라인드 요청
 Report를 보낸 User.
 _Avoid_: 제보자
 
+**Admin (운영자)**:
+Report를 처리하는 User. DB에서 역할을 ADMIN으로 지정한다. Content·Comment를 숨기거나 Report를 기각하고, User를 정지할 수 있다.
+_Avoid_: 관리자, 모더레이터, 매니저
+
+**숨김 (Hidden)**:
+Admin이 Report를 보고 Broadcast·Video·Comment를 내린 상태. 지우지 않고 남기지만 Owner·Author를 포함해 누구에게도 보이지 않는다. 진행 중인 Broadcast는 숨기면 끝난다.
+_Avoid_: 블라인드, 삭제
+
+**정지 (Suspended)**:
+Admin이 User의 이용을 막은 상태. 로그인할 수 없고, 정지되는 순간 로그인된 세션이 끊기고 진행 중인 Broadcast가 끝난다. 이미 만든 Content·Comment는 그대로 남는다.
+_Avoid_: 차단(다른 User를 안 보이게 하는 기능에 쓴다), 밴
+
+**기각 (Dismissed)**:
+Admin이 문제없다고 보고 Report만 닫은 상태. 대상은 그대로 남는다.
+
 ### 후원
 
 **Donation (후원)**:

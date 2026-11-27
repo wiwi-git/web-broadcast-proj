@@ -3,7 +3,9 @@ package com.webbroadcast.video;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -114,8 +116,24 @@ public class VideoService {
 		return bytes + units[unit];
 	}
 
+	/** 운영자가 내린 Video는 Owner에게도 없는 것으로 보인다 */
 	public Video get(UUID id) {
-		return repository.findById(id).orElseThrow(() -> new VideoNotFoundException(id));
+		return repository.findById(id).filter(v -> !v.isHidden()).orElseThrow(() -> new VideoNotFoundException(id));
+	}
+
+	/** 운영자 화면용. 숨긴 Video도 찾는다 */
+	public Optional<Video> findIncludingHidden(UUID id) {
+		return repository.findById(id);
+	}
+
+	/**
+	 * 운영자가 내린다. 파일은 지우지 않는다. HLS 파일은 주소를 아는 사람에게는 계속 열리지만
+	 * 주소(무작위 ID)는 더 이상 어디에도 나오지 않는다.
+	 */
+	public void hide(UUID id) {
+		Video video = repository.findById(id).orElseThrow(() -> new VideoNotFoundException(id));
+		video.hide(Instant.now());
+		repository.save(video);
 	}
 
 	/** Owner만 제목과 설명을 바꿀 수 있다. */
@@ -145,7 +163,7 @@ public class VideoService {
 
 	/** 공개된 Video만, 최신순으로. */
 	public Page<Video> listPublished(int page) {
-		return repository.findByStatusOrderByCreatedAtDesc(VideoStatus.PUBLISHED,
+		return repository.findByStatusAndHiddenAtIsNullOrderByCreatedAtDesc(VideoStatus.PUBLISHED,
 				PageRequest.of(Math.max(page, 0), PAGE_SIZE));
 	}
 

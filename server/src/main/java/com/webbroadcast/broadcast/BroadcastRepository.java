@@ -11,10 +11,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface BroadcastRepository extends JpaRepository<Broadcast, UUID> {
 
 	@EntityGraph(attributePaths = "owner")
-	List<Broadcast> findByStatusOrderByStartedAtDesc(BroadcastStatus status);
+	List<Broadcast> findByStatusAndHiddenAtIsNullOrderByStartedAtDesc(BroadcastStatus status);
 
 	@EntityGraph(attributePaths = "owner")
-	List<Broadcast> findTop20ByStatusOrderByEndedAtDesc(BroadcastStatus status);
+	List<Broadcast> findTop20ByStatusAndHiddenAtIsNullOrderByEndedAtDesc(BroadcastStatus status);
 
 	Optional<Broadcast> findFirstByOwnerIdAndStatusIn(UUID ownerId, Collection<BroadcastStatus> statuses);
 

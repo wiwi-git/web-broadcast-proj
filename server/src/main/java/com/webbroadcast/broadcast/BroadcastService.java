@@ -68,18 +68,39 @@ public class BroadcastService {
 		}
 	}
 
+	/** 운영자가 내린 Broadcast는 Owner에게도 없는 것으로 보인다 */
 	public Broadcast get(UUID id) {
-		return repository.findById(id).orElseThrow(() -> new BroadcastNotFoundException(id));
+		return repository.findById(id).filter(b -> !b.isHidden()).orElseThrow(() -> new BroadcastNotFoundException(id));
+	}
+
+	/** 운영자 화면용. 숨긴 Broadcast도 찾는다 */
+	public Optional<Broadcast> findIncludingHidden(UUID id) {
+		return repository.findById(id);
+	}
+
+	/** 운영자가 내린다. 진행 중이면 끝내고, 송출 연결은 다음 동기화 때 끊긴다 */
+	public void hide(UUID id) {
+		Broadcast broadcast = repository.findById(id).orElseThrow(() -> new BroadcastNotFoundException(id));
+		broadcast.hide(clock.instant());
+		repository.save(broadcast);
+	}
+
+	/** 정지된 User의 진행 중인 Broadcast를 끝낸다 */
+	public void endActiveOf(UUID ownerId) {
+		repository.findFirstByOwnerIdAndStatusIn(ownerId, ACTIVE).ifPresent(broadcast -> {
+			broadcast.end(clock.instant());
+			repository.save(broadcast);
+		});
 	}
 
 	/** 방송 중인 Broadcast, 최근에 시작한 순. */
 	public List<Broadcast> listLive() {
-		return repository.findByStatusOrderByStartedAtDesc(BroadcastStatus.LIVE);
+		return repository.findByStatusAndHiddenAtIsNullOrderByStartedAtDesc(BroadcastStatus.LIVE);
 	}
 
 	/** 최근 종료된 Broadcast 20개. */
 	public List<Broadcast> listRecentlyEnded() {
-		return repository.findTop20ByStatusOrderByEndedAtDesc(BroadcastStatus.ENDED);
+		return repository.findTop20ByStatusAndHiddenAtIsNullOrderByEndedAtDesc(BroadcastStatus.ENDED);
 	}
 
 	public Broadcast rename(UUID id, UUID userId, String rawTitle) {
@@ -116,7 +137,7 @@ public class BroadcastService {
 	public boolean canPublish(String mediaPath, String streamKey) {
 		return MediaPath.parse(mediaPath)
 			.flatMap(repository::findById)
-			.filter(b -> b.getStatus() == BroadcastStatus.PENDING)
+			.filter(b -> b.getStatus() == BroadcastStatus.PENDING && !b.isHidden())
 			.filter(b -> b.acceptsStreamKey(streamKey))
 			.isPresent();
 	}
@@ -124,7 +145,7 @@ public class BroadcastService {
 	public boolean canWatch(String mediaPath) {
 		return MediaPath.parse(mediaPath)
 			.flatMap(repository::findById)
-			.filter(b -> b.getStatus() != BroadcastStatus.ENDED)
+			.filter(b -> b.getStatus() != BroadcastStatus.ENDED && !b.isHidden())
 			.isPresent();
 	}
 

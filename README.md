@@ -20,14 +20,18 @@ load-test/  k6 부하 테스트
 | 누가 | 할 수 있는 일 |
 | --- | --- |
 | 누구나 (로그인 없이) | 라이브 목록·동영상 목록 보기, 라이브와 동영상 시청, 댓글 목록 보기, 방송에 완료된 후원 보기 (후원자 닉네임·금액·메시지) |
-| 로그인한 회원 | 위의 모든 것, 동영상 업로드, 방송 시작, 댓글 쓰기, 방송 중인 남의 방송에 후원, 자기 후원 내역(보낸 후원·받은 후원) 보기 |
+| 로그인한 회원 | 위의 모든 것, 동영상 업로드, 방송 시작, 댓글 쓰기, 방송 중인 남의 방송에 후원, 자기 후원 내역(보낸 후원·받은 후원) 보기, 남의 방송·동영상·댓글 신고(대상마다 한 번) |
 | 콘텐츠 소유자 (올린 사람·방송한 사람) | 동영상 제목·설명 수정과 삭제, 방송 제목 수정·종료·삭제, 방송 키 재발급 |
 | 댓글 작성자 | 자기 댓글 수정·삭제. 콘텐츠 소유자라도 남의 댓글은 지울 수 없다 |
 | 후원자 | 자기 후원의 결제 승인·취소 처리. 완료된 후원은 되돌릴 수 없다 |
+| 운영자 (`role`이 `ADMIN`인 회원) | 처리 전 신고 보기(웹 `/admin/reports`), 신고된 방송·동영상·댓글 내리기(숨김)와 기각, 회원 정지·해제. 운영자는 정지할 수 없다 |
 
 - 한 회원이 동시에 진행할 수 있는 방송은 하나다.
 - 처리 중이거나 처리에 실패한 동영상은 목록에 나오지 않지만, 주소를 알면 상세 정보는 볼 수 있다. 준비 상태의 방송도 목록에는 나오지 않는다.
 - 회원의 아이디는 다른 사람에게 보이지 않고 닉네임만 보인다.
+- 운영자가 내린 방송·동영상·댓글은 지우지 않고 숨긴다. 소유자를 포함해 누구에게도 보이지 않으며(404), 방송은 진행 중이면 끝난다. 동영상의 HLS 파일은 주소를 아는 사람에게는 계속 열린다.
+- 정지된 회원은 로그인할 수 없고, 정지하는 순간 로그인된 세션이 모두 끊기며 진행 중인 방송이 끝난다. 이미 올린 콘텐츠는 그대로 남는다.
+- 운영자는 DB에서 지정한다: `update app_user set role = 'ADMIN' where username = '아이디';`. 역할은 로그인할 때 세션에 담기므로 지정한 뒤 다시 로그인해야 한다.
 - 결제 대기·실패·취소·만료된 후원은 후원자 본인만 후원 내역에서 볼 수 있다. 공개되는 것은 완료된 후원뿐이다.
 - 로그인은 서버 세션 쿠키로 유지되며, 30분 동안 요청이 없으면 만료된다. 상태를 바꾸는 요청에는 CSRF 토큰이 필요하다 ([ADR-0003](docs/adr/0003-session-cookie-auth.md)).
 - 영상 송출(WHIP)만은 로그인 세션이 아닌 방송 키로 허가한다. 미디어 서버가 브라우저 쿠키를 받지 못하기 때문이다. 방송 키는 소유자에게만 발급된다.
@@ -235,13 +239,13 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 
 ## API
 
-🔓 누구나, 🔑 로그인 필요, 👤 소유자 또는 작성자만. 🔑·👤 요청은 `X-XSRF-TOKEN` 헤더에 `XSRF-TOKEN` 쿠키 값을 담아야 한다.
+🔓 누구나, 🔑 로그인 필요, 👤 소유자 또는 작성자만, 🛡️ 운영자만. 🔑·👤 요청은 `X-XSRF-TOKEN` 헤더에 `XSRF-TOKEN` 쿠키 값을 담아야 한다.
 
 | 메서드 | 경로 | | 설명 |
 | --- | --- | --- | --- |
-| `GET` | `/api/auth/me` | 🔓 | `{user}`. 로그인하지 않았으면 `user`가 null. CSRF 토큰 쿠키도 이때 받는다 |
+| `GET` | `/api/auth/me` | 🔓 | `{user}`. 로그인하지 않았으면 `user`가 null. `user.admin`이 true면 운영자다. CSRF 토큰 쿠키도 이때 받는다 |
 | `POST` | `/api/auth/signup` | 🔓 | JSON `{username, password, nickname}`. 가입하면 바로 로그인된다 |
-| `POST` | `/api/auth/login` | 🔓 | JSON `{username, password}` |
+| `POST` | `/api/auth/login` | 🔓 | JSON `{username, password}`. 정지된 회원이면 403 |
 | `POST` | `/api/auth/logout` | 🔑 | 204 |
 | `POST` | `/api/videos` | 🔑 | multipart: `file`, `title`, `description`. 201과 처리 중 상태의 Video |
 | `GET` | `/api/videos?page=0` | 🔓 | 공개된 Video 목록, 최신순 20개씩 |
@@ -271,6 +275,11 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 | `GET` | `/api/simulcast` | 🔑 | 내 동시 송출 설정 `{available, youtubeKeyLast4, onByDefault}`. `available`이 false면 서버에 설정이 없다 |
 | `PUT` | `/api/simulcast/youtube-key` | 🔑 | JSON `{key}`. 유튜브 스트림 키 등록·변경. 끝 네 자리만 돌려준다 |
 | `DELETE` | `/api/simulcast/youtube-key` | 🔑 | 204 |
+| `POST` | `/api/reports` | 🔑 | JSON `{targetType, targetId, reason, detail}`. `targetType`은 `BROADCAST`/`VIDEO`/`COMMENT`, `reason`은 `SPAM`/`HATE`/`SEXUAL`/`VIOLENCE`/`COPYRIGHT`/`OTHER`, `detail`은 200자 이하(선택). 201. 자기 것이면 400, 이미 신고했으면 409 |
+| `GET` | `/api/admin/reports` | 🛡️ | 처리 전 신고를 대상별로 묶어 오래된 순으로. 대상 요약, 소유자(정지 여부), 사유별 건수, 신고 목록 |
+| `POST` | `/api/admin/reports/{targetType}/{targetId}/hide` | 🛡️ | 대상을 숨기고 걸린 신고를 처리 완료로 닫는다. 방송은 진행 중이면 끝난다. 204 |
+| `POST` | `/api/admin/reports/{targetType}/{targetId}/dismiss` | 🛡️ | 문제없음으로 신고만 닫는다. 204 |
+| `POST` | `/api/admin/users/{id}/suspend`, `/unsuspend` | 🛡️ | 회원 정지·해제. 정지하면 세션을 끊고 진행 중인 방송을 끝낸다. 운영자는 정지할 수 없다(400). 204 |
 | `POST` | `/api/media-server/auth` | | MediaMTX 인증 훅 (내부용) |
 | `GET`·`POST` | `/api/internal/simulcast/target`, `/status` | | MediaMTX 동시 송출 중계 스크립트 전용. `X-Relay-Secret` 헤더가 맞지 않으면 404 |
 

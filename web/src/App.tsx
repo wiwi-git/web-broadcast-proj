@@ -13,6 +13,7 @@ import DonatePage from './pages/DonatePage.tsx'
 import { DonationFailPage, DonationSuccessPage } from './pages/DonationResultPage.tsx'
 import DonationsPage from './pages/DonationsPage.tsx'
 import CheckoutPage, { CheckoutFailPage, CheckoutSuccessPage } from './pages/CheckoutPage.tsx'
+import AdminReportsPage from './pages/AdminReportsPage.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
 import { loginPath, useAuth } from './auth/useAuth.ts'
 import {
@@ -23,6 +24,7 @@ import {
   LiveIcon,
   LoginIcon,
   LogoutIcon,
+  ShieldIcon,
   UploadIcon,
   UserIcon,
   VideoIcon,
@@ -110,6 +112,14 @@ export default function App() {
               </RequireLogin>
             }
           />
+          <Route
+            path="/admin/reports"
+            element={
+              <RequireLogin>
+                <AdminReportsPage />
+              </RequireLogin>
+            }
+          />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignUpPage />} />
           <Route path="*" element={<p className="notice">페이지를 찾을 수 없습니다.</p>} />
@@ -160,13 +170,13 @@ function HeaderActions() {
         <span className="nav-label">업로드</span>
       </Link>
       {download}
-      <AccountMenu nickname={me.nickname} />
+      <AccountMenu nickname={me.nickname} admin={me.admin} />
     </div>
   )
 }
 
-/** 닉네임 버튼. 누르면 화면 오른쪽에서 후원 내역·로그아웃이 있는 패널이 열린다 */
-function AccountMenu({ nickname }: { nickname: string }) {
+/** 닉네임 버튼. 누르면 화면 오른쪽에서 후원 내역·(운영자면 신고 관리)·로그아웃이 있는 패널이 열린다 */
+function AccountMenu({ nickname, admin }: { nickname: string; admin: boolean }) {
   const { logOut } = useAuth()
   const location = useLocation()
   // 연 화면의 경로를 기억한다. 다른 화면으로 가면(후원 내역, 뒤로 가기) 저절로 닫힌다
@@ -218,6 +228,12 @@ function AccountMenu({ nickname }: { nickname: string }) {
                 <HeartIcon />
                 후원 내역
               </Link>
+              {admin && (
+                <Link to="/admin/reports" className="drawer-item">
+                  <ShieldIcon />
+                  신고 관리
+                </Link>
+              )}
               <button
                 type="button"
                 className="drawer-item"

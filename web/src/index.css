@@ -1148,6 +1148,80 @@ button.danger:hover:not(:disabled) {
   color: var(--text-muted);
 }
 
+/* 운영자 신고 관리 (AdminReportsPage) */
+
+.admin-page {
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.report-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.report-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.report-group-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.report-group .badge {
+  background: var(--surface-hover);
+}
+
+.report-group .badge.danger {
+  color: #fff;
+  background: var(--danger);
+}
+
+.report-group .meta .badge {
+  margin-left: 6px;
+}
+
+.report-summary {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.report-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 0 0;
+  list-style: none;
+  border-top: 1px solid var(--border);
+}
+
+.report-detail {
+  margin: 2px 0 0;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.report-group-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* 화면 안에서 한 번 더 묻는 확인 (ConfirmButton) */
 
 .confirm-inline {

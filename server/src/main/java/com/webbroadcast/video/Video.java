@@ -49,6 +49,9 @@ public class Video {
 	@Column(nullable = false)
 	private Instant createdAt;
 
+	/** 운영자가 내렸으면 그 시각. 숨긴 Video는 목록과 상세에 나오지 않는다 */
+	private Instant hiddenAt;
+
 	protected Video() {
 	}
 
@@ -66,6 +69,16 @@ public class Video {
 		video.durationSeconds = durationSeconds;
 		video.createdAt = Instant.now();
 		return video;
+	}
+
+	void hide(Instant now) {
+		if (hiddenAt == null) {
+			hiddenAt = now;
+		}
+	}
+
+	public boolean isHidden() {
+		return hiddenAt != null;
 	}
 
 	boolean isOwnedBy(UUID userId) {

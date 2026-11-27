@@ -48,6 +48,18 @@ public class Report {
 	@Column(nullable = false)
 	private Instant createdAt;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private ReportStatus status = ReportStatus.OPEN;
+
+	/** 처리 전이면 null */
+	private Instant resolvedAt;
+
+	/** 처리한 운영자. 처리 전이면 null */
+	@ManyToOne
+	@JoinColumn(name = "resolved_by")
+	private User resolvedBy;
+
 	protected Report() {
 	}
 
@@ -64,7 +76,37 @@ public class Report {
 		return report;
 	}
 
+	void resolve(ReportStatus result, User admin, Instant now) {
+		status = result;
+		resolvedBy = admin;
+		resolvedAt = now;
+	}
+
 	public UUID getId() {
 		return id;
+	}
+
+	public User getReporter() {
+		return reporter;
+	}
+
+	public ReportTargetType getTargetType() {
+		return targetType;
+	}
+
+	public UUID getTargetId() {
+		return targetId;
+	}
+
+	public ReportReason getReason() {
+		return reason;
+	}
+
+	public String getDetail() {
+		return detail;
+	}
+
+	public Instant getCreatedAt() {
+		return createdAt;
 	}
 }

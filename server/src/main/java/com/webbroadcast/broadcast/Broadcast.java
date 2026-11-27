@@ -62,6 +62,9 @@ public class Broadcast {
 	@Version
 	private long version;
 
+	/** 운영자가 내렸으면 그 시각. 숨긴 Broadcast는 누구에게도 보이지 않는다 */
+	private Instant hiddenAt;
+
 	protected Broadcast() {
 	}
 
@@ -141,6 +144,18 @@ public class Broadcast {
 	/** 중계할 수 있는 방송인지. 영상이 들어오자마자 중계가 시작되므로 아직 준비 상태일 수 있다 */
 	boolean wantsSimulcast() {
 		return simulcast && status != BroadcastStatus.ENDED;
+	}
+
+	/** 운영자가 내린다. 진행 중이면 끝낸다 */
+	void hide(Instant now) {
+		end(now);
+		if (hiddenAt == null) {
+			hiddenAt = now;
+		}
+	}
+
+	public boolean isHidden() {
+		return hiddenAt != null;
 	}
 
 	void end(Instant now) {

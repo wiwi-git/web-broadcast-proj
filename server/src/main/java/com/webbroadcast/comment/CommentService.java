@@ -2,6 +2,7 @@ package com.webbroadcast.comment;
 
 import java.time.Clock;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Limit;
@@ -54,7 +55,7 @@ public class CommentService {
 				: repository.findOnVideoOlderThan(videoId, cursor.getCreatedAt(), cursor.getId(), limit);
 		boolean hasMore = found.size() > VIDEO_PAGE_SIZE;
 		List<Comment> items = hasMore ? found.subList(0, VIDEO_PAGE_SIZE) : found;
-		return new VideoComments(items, hasMore ? items.getLast().getId() : null, repository.countByVideoId(videoId));
+		return new VideoComments(items, hasMore ? items.getLast().getId() : null, repository.countByVideoIdAndHiddenAtIsNull(videoId));
 	}
 
 	/** 최근 Comment들을 오래된 순으로. 화면 아래에 새 Comment가 쌓인다. */
@@ -75,8 +76,20 @@ public class CommentService {
 		return repository.save(Comment.onBroadcast(broadcastId, userService.get(authorId), body, clock.instant()));
 	}
 
+	/** 운영자가 내린 Comment는 Author에게도 없는 것으로 보인다 */
 	public Comment get(UUID id) {
-		return repository.findById(id).orElseThrow(CommentNotFoundException::new);
+		return repository.findById(id).filter(c -> !c.isHidden()).orElseThrow(CommentNotFoundException::new);
+	}
+
+	/** 운영자 화면용. 숨긴 Comment도 찾는다 */
+	public Optional<Comment> findIncludingHidden(UUID id) {
+		return repository.findById(id);
+	}
+
+	public void hide(UUID id) {
+		Comment comment = repository.findById(id).orElseThrow(CommentNotFoundException::new);
+		comment.hide(clock.instant());
+		repository.save(comment);
 	}
 
 	public Comment edit(UUID id, UUID userId, String rawBody) {

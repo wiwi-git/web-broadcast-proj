@@ -4,6 +4,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -20,6 +21,7 @@ import com.webbroadcast.donation.DonationNotFoundException;
 import com.webbroadcast.donation.DonationNotPendingException;
 import com.webbroadcast.donation.InvalidDonationException;
 import com.webbroadcast.donation.PaymentUnavailableException;
+import com.webbroadcast.moderation.InvalidModerationException;
 import com.webbroadcast.report.AlreadyReportedException;
 import com.webbroadcast.report.InvalidReportException;
 import com.webbroadcast.simulcast.InvalidYouTubeKeyException;
@@ -50,7 +52,7 @@ class ApiExceptionHandler {
 
 	@ExceptionHandler({ InvalidUploadException.class, UploadQuotaExceededException.class, InvalidBroadcastException.class,
 			InvalidCommentException.class, InvalidSignUpException.class, InvalidDonationException.class,
-			InvalidYouTubeKeyException.class, InvalidReportException.class })
+			InvalidYouTubeKeyException.class, InvalidReportException.class, InvalidModerationException.class })
 	ProblemDetail badRequest(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
 	}
@@ -58,6 +60,12 @@ class ApiExceptionHandler {
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	ProblemDetail unreadableBody(HttpMessageNotReadableException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "요청 형식이 올바르지 않습니다.");
+	}
+
+	/** 운영자가 정지한 User. AuthenticationException보다 먼저 고른다 */
+	@ExceptionHandler(LockedException.class)
+	ProblemDetail suspended(LockedException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, "운영 정책 위반으로 정지된 계정입니다.");
 	}
 
 	@ExceptionHandler(AuthenticationException.class)

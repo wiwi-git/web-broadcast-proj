@@ -91,6 +91,8 @@ export interface Me {
   id: string
   username: string
   nickname: string
+  /** 운영자면 신고 관리 화면을 쓸 수 있다 */
+  admin: boolean
 }
 
 // 서버(UserService)와 같은 제약
@@ -444,4 +446,52 @@ export function approveCheckout(token: string, paymentKey: string, amount: numbe
 
 export function abandonCheckout(token: string, code: string | null, message: string | null): Promise<SentDonation> {
   return sendJson('POST', `${checkoutUrl(token)}/abandon`, { code, message })
+}
+
+// 운영자 (role이 ADMIN인 User만)
+
+export interface ReportItem {
+  reporterNickname: string
+  reason: ReportReason
+  detail: string | null
+  createdAt: string
+}
+
+/** 대상 하나에 걸린 처리 전 신고. 대상이 지워졌으면 summary·parent·owner가 null이다 */
+export interface ReportGroup {
+  targetType: ReportTargetType
+  targetId: string
+  /** 방송·동영상 제목이나 댓글 본문 */
+  summary: string | null
+  /** 화면에서 열 Content. 댓글이면 달린 방송이나 동영상이다 */
+  parentType: 'BROADCAST' | 'VIDEO' | null
+  parentId: string | null
+  owner: { id: string; nickname: string; suspended: boolean } | null
+  hidden: boolean
+  reportCount: number
+  reasons: Partial<Record<ReportReason, number>>
+  reports: ReportItem[]
+}
+
+export function fetchOpenReports(): Promise<ReportGroup[]> {
+  return getJson('/api/admin/reports')
+}
+
+/** 대상을 숨기고 걸린 신고를 닫는다. 방송은 진행 중이면 끝난다 */
+export function hideReported(targetType: ReportTargetType, targetId: string): Promise<void> {
+  return request(`/api/admin/reports/${targetType}/${encodeURIComponent(targetId)}/hide`, { method: 'POST' })
+}
+
+/** 문제없다고 보고 신고만 닫는다 */
+export function dismissReports(targetType: ReportTargetType, targetId: string): Promise<void> {
+  return request(`/api/admin/reports/${targetType}/${encodeURIComponent(targetId)}/dismiss`, { method: 'POST' })
+}
+
+/** 로그인을 막고 세션을 끊고 진행 중인 방송을 끝낸다 */
+export function suspendUser(userId: string): Promise<void> {
+  return request(`/api/admin/users/${encodeURIComponent(userId)}/suspend`, { method: 'POST' })
+}
+
+export function unsuspendUser(userId: string): Promise<void> {
+  return request(`/api/admin/users/${encodeURIComponent(userId)}/unsuspend`, { method: 'POST' })
 }

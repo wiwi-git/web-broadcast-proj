@@ -39,7 +39,8 @@ public class AuthController {
 	record LoginRequest(String username, String password) {
 	}
 
-	record MeUser(UUID id, String username, String nickname) {
+	/** admin이면 운영자 화면을 쓸 수 있다 */
+	record MeUser(UUID id, String username, String nickname, boolean admin) {
 	}
 
 	/** 로그인하지 않았으면 user가 null */
@@ -97,6 +98,6 @@ public class AuthController {
 	}
 
 	private static MeResponse response(CurrentUser user) {
-		return new MeResponse(user == null ? null : new MeUser(user.id(), user.getUsername(), user.nickname()));
+		return new MeResponse(user == null ? null : new MeUser(user.id(), user.getUsername(), user.nickname(), user.admin()));
 	}
 }

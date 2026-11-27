@@ -1,6 +1,7 @@
 package com.webbroadcast.user;
 
 import java.time.Clock;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -60,6 +61,23 @@ public class UserService implements UserDetailsService {
 			// 동시에 같은 값으로 가입한 경우
 			throw new DuplicateUserException("이미 사용 중인 아이디나 닉네임입니다.");
 		}
+	}
+
+	public Optional<User> find(UUID id) {
+		return repository.findById(id);
+	}
+
+	/** 운영자가 정지한다. 운영자인지 확인하고 세션을 끊는 일은 ModerationService가 한다 */
+	public User suspend(UUID id) {
+		User user = repository.findById(id).orElseThrow(UserNotFoundException::new);
+		user.suspend(clock.instant());
+		return repository.save(user);
+	}
+
+	public User unsuspend(UUID id) {
+		User user = repository.findById(id).orElseThrow(UserNotFoundException::new);
+		user.unsuspend();
+		return repository.save(user);
 	}
 
 	/** 로그인한 User. 세션이 살아 있는 동안 탈퇴는 없으므로 항상 존재한다. */

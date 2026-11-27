@@ -19,9 +19,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.HttpStatusReturningLogoutSuccessHandler;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 
+import com.webbroadcast.web.admin.ModerationController;
 import com.webbroadcast.web.auth.AuthController;
 import com.webbroadcast.web.broadcast.MediaServerAuthController;
 import com.webbroadcast.web.donation.CheckoutController;
@@ -69,6 +71,8 @@ class SecurityConfig {
 					SimulcastRelayController.PATH + "/**", CheckoutController.CHECKOUT_PATH))
 			.securityContext(context -> context.securityContextRepository(securityContextRepository))
 			.authorizeHttpRequests(requests -> requests
+				// 신고 처리와 회원 정지는 운영자만 한다
+				.requestMatchers(ModerationController.PATH + "/**").hasRole("ADMIN")
 				// 후원 내역은 본인 것만 보므로 조회도 로그인이 필요하다
 				.requestMatchers(HttpMethod.GET, DonationController.DONATIONS_PATH).authenticated()
 				// YouTube Key는 본인 것만 다룬다
@@ -85,9 +89,11 @@ class SecurityConfig {
 			.exceptionHandling(exceptions -> exceptions
 				.authenticationEntryPoint((request, response, e) ->
 						writeProblem(response, HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."))
-				// 로그인한 상태에서 거부되는 경우는 CSRF 토큰이 없거나 맞지 않을 때다
-				.accessDeniedHandler((request, response, e) ->
-						writeProblem(response, HttpStatus.FORBIDDEN, "요청이 거부되었습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.")))
+				// 로그인한 상태에서 거부되는 경우는 운영자 API이거나, CSRF 토큰이 없거나 맞지 않을 때다
+				.accessDeniedHandler((request, response, e) -> writeProblem(response, HttpStatus.FORBIDDEN,
+						request.getRequestURI().startsWith(ModerationController.PATH + "/") && !(e instanceof CsrfException)
+								? "운영자만 할 수 있습니다."
+								: "요청이 거부되었습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.")))
 			.logout(logout -> logout
 				.logoutUrl(LOGOUT_PATH)
 				.logoutSuccessHandler(new HttpStatusReturningLogoutSuccessHandler(HttpStatus.NO_CONTENT)))
