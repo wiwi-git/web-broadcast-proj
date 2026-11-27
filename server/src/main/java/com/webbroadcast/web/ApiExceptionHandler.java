@@ -36,6 +36,7 @@ import com.webbroadcast.video.VideoNotFoundException;
 import com.webbroadcast.video.VideoService;
 import com.webbroadcast.video.VideoUploadProperties;
 import com.webbroadcast.web.donation.PaymentNotConfiguredException;
+import com.webbroadcast.withdrawal.InvalidWithdrawalException;
 
 /**
  * 오류는 RFC 9457 ProblemDetail 형식으로, 사용자에게 보여줄 문구를 detail에 담는다.
@@ -52,7 +53,8 @@ class ApiExceptionHandler {
 
 	@ExceptionHandler({ InvalidUploadException.class, UploadQuotaExceededException.class, InvalidBroadcastException.class,
 			InvalidCommentException.class, InvalidSignUpException.class, InvalidDonationException.class,
-			InvalidYouTubeKeyException.class, InvalidReportException.class, InvalidModerationException.class })
+			InvalidYouTubeKeyException.class, InvalidReportException.class, InvalidModerationException.class,
+			InvalidWithdrawalException.class })
 	ProblemDetail badRequest(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
 	}

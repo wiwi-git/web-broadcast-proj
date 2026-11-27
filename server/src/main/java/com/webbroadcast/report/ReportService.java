@@ -81,6 +81,15 @@ public class ReportService {
 			.collect(Collectors.groupingBy(Report::getTargetId));
 	}
 
+	/**
+	 * 회원 탈퇴. 그 User가 한 신고를 지운다. 그 User의 Content에 걸린 다른 사람의 신고는
+	 * 신고한 사람의 기록이므로 남긴다(대상은 지워졌다고 보인다).
+	 */
+	public void forget(UUID userId) {
+		repository.deleteByReporterId(userId);
+		repository.forgetResolver(userId);
+	}
+
 	/** 대상 하나에 걸린 처리 전 신고를 모두 닫는다 */
 	public void resolveOpen(ReportTargetType targetType, UUID targetId, ReportStatus result, UUID adminId) {
 		User admin = userService.get(adminId);

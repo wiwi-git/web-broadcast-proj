@@ -1578,3 +1578,56 @@ button.danger:hover:not(:disabled) {
     display: none;
   }
 }
+
+/* 내 계정과 회원 탈퇴 (AccountPage) */
+
+.account-page {
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.account-info {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0 0 28px;
+}
+
+.account-info dt {
+  color: var(--text-muted);
+}
+
+.account-info dd {
+  margin: 0;
+}
+
+.withdraw-box {
+  padding: 16px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+}
+
+.withdraw-box h2 {
+  margin: 0 0 8px;
+  font-size: 1.0625rem;
+}
+
+.withdraw-box form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.withdraw-box p,
+.withdraw-box ul {
+  margin: 0;
+}
+
+.withdraw-box ul {
+  padding-left: 20px;
+  line-height: 1.7;
+}
+
+.withdraw-box .meta a {
+  color: var(--accent);
+}

@@ -92,6 +92,14 @@ public class BroadcastService {
 		repository.save(broadcast);
 	}
 
+	/**
+	 * 회원 탈퇴. 그 User의 Broadcast를 모두 지운다(진행 중이어도). 남은 송출은 다음 동기화 때 끊기고,
+	 * Comment는 함께 지워지며, 받은 Donation은 그 전에 지운다.
+	 */
+	public void deleteAllOwnedBy(UUID ownerId) {
+		repository.deleteByOwnerId(ownerId);
+	}
+
 	/** 정지된 User의 진행 중인 Broadcast를 끝낸다 */
 	public void endActiveOf(UUID ownerId) {
 		repository.findFirstByOwnerIdAndStatusIn(ownerId, ACTIVE).ifPresent(broadcast -> {

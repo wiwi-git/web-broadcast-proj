@@ -151,6 +151,10 @@ fn AccountMenu(nickname: String) -> Element {
                         }
                     }
                     nav { class: "drawer-menu",
+                        Link { to: Route::Account {}, class: "drawer-item",
+                            UserIcon {}
+                            "내 계정"
+                        }
                         Link { to: Route::Donations { tab: String::new() }, class: "drawer-item",
                             HeartIcon {}
                             "후원 내역"

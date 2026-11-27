@@ -6,7 +6,7 @@ mod live;
 mod not_found;
 mod videos;
 
-pub use account::{Login, SignUp};
+pub use account::{Account, Login, SignUp};
 pub use donations::{Donate, DonationFail, DonationSuccess, Donations};
 pub use live::{Broadcast, LiveList, LiveWatch};
 pub use not_found::NotFound;

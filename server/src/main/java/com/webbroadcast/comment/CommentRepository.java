@@ -9,6 +9,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 /** 목록은 모두 최신순(작성 시각, 같으면 ID 역순)이고, 운영자가 숨긴 Comment는 빠진다. */
@@ -32,6 +33,11 @@ interface CommentRepository extends JpaRepository<Comment, UUID> {
 	/** 운영자 화면용. 정렬은 pageable로 준다 */
 	@EntityGraph(attributePaths = "author")
 	Page<Comment> findByHiddenAtIsNotNull(Pageable pageable);
+
+	/** 탈퇴하는 User가 쓴 Comment 모두. 다른 사람의 Content에 단 것도 지운다 */
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query("delete from Comment c where c.author.id = :authorId")
+	int deleteByAuthorId(UUID authorId);
 
 	/** 운영자가 숨긴 Video의 Comment ID들 */
 	@Query("select c.id from Comment c where c.videoId = :videoId and c.hiddenAt is not null")

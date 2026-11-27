@@ -9,6 +9,8 @@ export interface Auth {
   logIn(input: { username: string; password: string }): Promise<void>
   signUp(input: { username: string; password: string; nickname: string; agreeTerms: boolean }): Promise<void>
   logOut(): Promise<void>
+  /** 회원 탈퇴. 성공하면 로그아웃된 상태가 된다 */
+  withdraw(password: string): Promise<void>
 }
 
 export const AuthContext = createContext<Auth | null>(null)

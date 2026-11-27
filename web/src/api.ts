@@ -116,6 +116,11 @@ export async function logIn(input: { username: string; password: string }): Prom
   return (await sendJson<{ user: Me }>('POST', '/api/auth/login', input)).user
 }
 
+/** 회원 탈퇴. 비밀번호가 맞으면 그 회원의 모든 것을 지우고 로그인이 끊긴다 */
+export function withdraw(password: string): Promise<void> {
+  return sendJson('POST', '/api/auth/withdraw', { password })
+}
+
 export function logOut(): Promise<void> {
   return request('/api/auth/logout', { method: 'POST' })
 }

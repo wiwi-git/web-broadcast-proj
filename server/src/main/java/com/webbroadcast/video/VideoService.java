@@ -5,14 +5,16 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -120,6 +122,27 @@ public class VideoService {
 	/** 운영자가 내린 Video는 Owner에게도 없는 것으로 보인다 */
 	public Video get(UUID id) {
 		return repository.findById(id).filter(v -> !v.isHidden()).orElseThrow(() -> new VideoNotFoundException(id));
+	}
+
+	/**
+	 * 회원 탈퇴. 그 User의 Video를 모두 지운다(운영자가 내린 것도). Comment는 DB에서 함께 지워진다.
+	 * 파일은 트랜잭션이 커밋된 뒤에 지운다. 탈퇴가 중간에 실패하면 파일은 그대로 남는다.
+	 */
+	public void deleteAllOwnedBy(UUID ownerId) {
+		List<Video> videos = repository.findByOwnerId(ownerId);
+		repository.deleteAll(videos);
+		Runnable deleteFiles = () -> videos.forEach(v -> storage.deleteAll(v.getId(), v.getOriginalExtension()));
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+				@Override
+				public void afterCommit() {
+					deleteFiles.run();
+				}
+			});
+		}
+		else {
+			deleteFiles.run();
+		}
 	}
 
 	/** 운영자 화면용. 운영자가 내린 것들 */

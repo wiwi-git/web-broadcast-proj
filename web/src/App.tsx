@@ -17,6 +17,7 @@ import AdminReportsPage from './pages/AdminReportsPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import AdminHiddenPage from './pages/AdminHiddenPage.tsx'
 import TermsPage from './pages/TermsPage.tsx'
+import AccountPage from './pages/AccountPage.tsx'
 import PrivacyPage from './pages/PrivacyPage.tsx'
 import SiteFooter from './components/SiteFooter.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
@@ -141,6 +142,7 @@ export default function App() {
               </RequireLogin>
             }
           />
+          <Route path="/account" element={<AccountPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -248,6 +250,10 @@ function AccountMenu({ nickname, admin }: { nickname: string; admin: boolean }) 
               </button>
             </div>
             <nav className="drawer-menu">
+              <Link to="/account" className="drawer-item">
+                <UserIcon />
+                내 계정
+              </Link>
               <Link to="/donations" className="drawer-item">
                 <HeartIcon />
                 후원 내역

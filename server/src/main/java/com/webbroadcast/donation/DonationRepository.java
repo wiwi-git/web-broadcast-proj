@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.data.domain.Limit;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 interface DonationRepository extends JpaRepository<Donation, UUID> {
@@ -26,6 +27,11 @@ interface DonationRepository extends JpaRepository<Donation, UUID> {
 	@EntityGraph(attributePaths = "donor")
 	List<Donation> findByRecipientIdAndStatusOrderByCompletedAtDesc(UUID recipientId, DonationStatus status,
 			Limit limit);
+
+	/** 탈퇴하는 User가 보내거나 받은 Donation 모두 */
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
+	@Query("delete from Donation d where d.donor.id = :userId or d.recipient.id = :userId")
+	int deleteByParticipant(UUID userId);
 
 	interface Total {
 		long getCount();

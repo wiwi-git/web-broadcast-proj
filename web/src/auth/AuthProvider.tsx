@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { fetchMe, logIn, logOut, signUp, type Me } from '../api.ts'
+import { fetchMe, logIn, logOut, signUp, withdraw, type Me } from '../api.ts'
 import { AuthContext, type Auth } from './useAuth.ts'
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
@@ -27,6 +27,12 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           // 로그아웃하면 CSRF 토큰도 지워지므로 새로 받는다
           await fetchMe().catch(() => null)
         }
+      },
+      withdraw: async (password) => {
+        await withdraw(password)
+        setMe(null)
+        // 세션이 지워졌으므로 새 CSRF 토큰을 받는다
+        await fetchMe().catch(() => null)
       },
     }),
     [me, ready],

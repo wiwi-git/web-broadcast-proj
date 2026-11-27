@@ -30,6 +30,8 @@ pub enum Route {
         VideoDetail { id: String },
         #[route("/upload")]
         Upload {},
+        #[route("/account")]
+        Account {},
         #[route("/login?:next")]
         Login { next: String },
         #[route("/signup?:next")]

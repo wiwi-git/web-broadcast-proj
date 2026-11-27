@@ -21,9 +21,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.webbroadcast.user.CurrentUser;
 import com.webbroadcast.user.UserService;
+import com.webbroadcast.withdrawal.WithdrawalService;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 /** 회원가입·로그인. 로그아웃은 Spring Security가 SecurityConfig.LOGOUT_PATH에서 처리한다. */
 @RestController
@@ -40,6 +42,9 @@ public class AuthController {
 	record LoginRequest(String username, String password) {
 	}
 
+	record WithdrawRequest(String password) {
+	}
+
 	/** admin이면 운영자 화면을 쓸 수 있다 */
 	record MeUser(UUID id, String username, String nickname, boolean admin) {
 	}
@@ -49,13 +54,15 @@ public class AuthController {
 	}
 
 	private final UserService userService;
+	private final WithdrawalService withdrawalService;
 	private final AuthenticationManager authenticationManager;
 	private final SecurityContextRepository securityContextRepository;
 	private final SecurityContextHolderStrategy contextHolder = SecurityContextHolder.getContextHolderStrategy();
 
-	AuthController(UserService userService, AuthenticationManager authenticationManager,
-			SecurityContextRepository securityContextRepository) {
+	AuthController(UserService userService, WithdrawalService withdrawalService,
+			AuthenticationManager authenticationManager, SecurityContextRepository securityContextRepository) {
 		this.userService = userService;
+		this.withdrawalService = withdrawalService;
 		this.authenticationManager = authenticationManager;
 		this.securityContextRepository = securityContextRepository;
 	}
@@ -71,6 +78,22 @@ public class AuthController {
 	@PostMapping("/login")
 	MeResponse login(@RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
 		return logIn(body.username(), body.password(), request, response);
+	}
+
+	/**
+	 * 회원 탈퇴. 비밀번호를 다시 받아 확인하고 그 User의 모든 것을 지운다 (WithdrawalService).
+	 * 모든 기기의 로그인이 끊기고, 이 요청의 세션도 무효가 된다
+	 */
+	@PostMapping("/withdraw")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void withdraw(@AuthenticationPrincipal CurrentUser user, @RequestBody WithdrawRequest body,
+			HttpServletRequest request) {
+		withdrawalService.withdraw(user.id(), body.password());
+		HttpSession session = request.getSession(false);
+		if (session != null) {
+			session.invalidate();
+		}
+		contextHolder.clearContext();
 	}
 
 	/** 웹은 시작할 때 이 요청으로 로그인 상태를 확인하고 CSRF 토큰 쿠키를 받는다 */

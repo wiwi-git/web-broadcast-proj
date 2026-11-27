@@ -31,6 +31,7 @@ load-test/  k6 부하 테스트
 - 회원의 아이디는 다른 사람에게 보이지 않고 닉네임만 보인다.
 - 만 14세 이상만 가입할 수 있다. 가입할 때 [이용약관](web/src/pages/TermsPage.tsx)(`/terms`)과 [개인정보처리방침](web/src/pages/PrivacyPage.tsx)(`/privacy`)에 동의해야 한다. 두 문서는 웹과 앱의 모든 화면 아래쪽에서 열 수 있고, 앱은 웹 화면을 기본 브라우저로 연다. 문서를 바꾸면 `web/src/legal.ts`의 시행일과 `UserService.TERMS_VERSION`을 같이 바꾼다. 문서에 적힌 저장 항목·외부 서비스가 바뀌면 개인정보처리방침도 고친다.
 - 운영자가 내린 방송·동영상·댓글은 지우지 않고 숨긴다. 소유자를 포함해 누구에게도 보이지 않으며(404), 방송은 진행 중이면 끝난다. 이미 열려 있는 화면에서도 댓글은 3초 안에 사라진다(라이브는 댓글 목록 갱신, 동영상은 숨긴 댓글 ID 확인). 동영상의 HLS 파일은 주소를 아는 사람에게는 계속 열린다.
+- 회원은 웹·앱의 "내 계정"(`/account`)에서 비밀번호를 다시 넣고 탈퇴할 수 있다. 탈퇴하면 그 회원의 모든 것(계정, 동영상과 파일, 방송, 쓴 댓글, 내 콘텐츠에 달린 댓글, 보내거나 받은 후원, 한 신고, 유튜브 키, 모든 기기의 로그인)을 바로 지운다. 운영자는 역할을 해제해야 탈퇴할 수 있다.
 - 정지된 회원은 로그인할 수 없고, 정지하는 순간 로그인된 세션이 모두 끊기며 진행 중인 방송이 끝난다. 이미 올린 콘텐츠는 그대로 남는다.
 - 운영자는 DB에서 지정한다: `update app_user set role = 'ADMIN' where username = '아이디';`. 역할은 로그인할 때 세션에 담기므로 지정한 뒤 다시 로그인해야 한다.
 - 결제 대기·실패·취소·만료된 후원은 후원자 본인만 후원 내역에서 볼 수 있다. 공개되는 것은 완료된 후원뿐이다.
@@ -248,6 +249,7 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 | `POST` | `/api/auth/signup` | 🔓 | JSON `{username, password, nickname, agreeTerms}`. `agreeTerms`(만 14세 이상이며 이용약관·개인정보처리방침에 동의)가 true가 아니면 400. 동의 시각과 문서 버전(`UserService.TERMS_VERSION`)을 남긴다. 가입하면 바로 로그인된다 |
 | `POST` | `/api/auth/login` | 🔓 | JSON `{username, password}`. 정지된 회원이면 403 |
 | `POST` | `/api/auth/logout` | 🔑 | 204 |
+| `POST` | `/api/auth/withdraw` | 🔑 | JSON `{password}`. 회원 탈퇴. 비밀번호가 틀리면 400, 운영자면 400. 계정, 동영상(파일 포함), 방송, 쓴 댓글, 보내거나 받은 후원, 한 신고, 유튜브 키, 모든 기기의 세션을 지운다. 204 |
 | `POST` | `/api/videos` | 🔑 | multipart: `file`, `title`, `description`. 201과 처리 중 상태의 Video |
 | `GET` | `/api/videos?page=0` | 🔓 | 공개된 Video 목록, 최신순 20개씩 |
 | `GET` | `/api/videos/{id}` | 🔓 | Video 하나. 공개 상태면 `playbackUrl`(HLS)과 `thumbnailUrl` 포함 |

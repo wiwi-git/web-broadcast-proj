@@ -215,6 +215,12 @@ pub async fn send_json<T: DeserializeOwned>(method: Method, path: &str, body: &i
     Ok(response.json().await?)
 }
 
+/// JSON 본문을 보내고 응답 본문은 쓰지 않는 요청 (204를 돌려주는 탈퇴 등)
+pub async fn send_json_no_content(method: Method, path: &str, body: &impl Serialize) -> ApiResult<()> {
+    check(request(method, path).json(body).send().await?).await?;
+    Ok(())
+}
+
 /// 본문 없이 보내고 응답 본문도 쓰지 않는 요청 (로그아웃, 삭제 등)
 pub async fn send_empty(method: Method, path: &str) -> ApiResult<()> {
     let response = check(request(method, path).send().await?).await?;

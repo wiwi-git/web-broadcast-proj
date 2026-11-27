@@ -290,4 +290,9 @@ public class DonationService {
 	private static String truncate(String value, int maxLength) {
 		return value.length() <= maxLength ? value : value.substring(0, maxLength);
 	}
+
+	/** 회원 탈퇴. 그 User가 보내거나 받은 Donation을 모두 지운다 (상대의 후원 내역에서도 사라진다) */
+	public void deleteAllOf(UUID userId) {
+		repository.deleteByParticipant(userId);
+	}
 }

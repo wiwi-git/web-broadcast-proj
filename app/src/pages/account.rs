@@ -240,3 +240,115 @@ pub fn SignUp(next: String) -> Element {
         }
     }
 }
+
+/// 내 계정. 아이디·닉네임을 보여 주고 회원 탈퇴를 받는다. web/src/pages/AccountPage.tsx와 같다.
+/// 탈퇴하면 로그아웃되므로 RequireLogin으로 감싸지 않고, 탈퇴 완료 안내까지 이 화면이 직접 보여 준다.
+#[component]
+pub fn Account() -> Element {
+    let mut auth = use_auth();
+    let navigator = use_navigator();
+    let mut password = use_signal(String::new);
+    let mut understood = use_signal(|| false);
+    let mut busy = use_signal(|| false);
+    let mut done = use_signal(|| false);
+    let mut error = use_signal(|| None::<String>);
+
+    // 로그인하지 않았으면 로그인 화면으로 보낸다 (탈퇴를 마친 뒤는 제외)
+    let logged_out = auth.ready() && auth.me().is_none() && !done();
+    use_effect(use_reactive!(|logged_out| {
+        if logged_out {
+            navigator.replace(Route::Account {}.login_then());
+        }
+    }));
+
+    if done() {
+        return rsx! {
+            div { class: "notice",
+                p { "탈퇴했습니다. 계정과 기록을 모두 지웠습니다. 그동안 이용해 주셔서 감사합니다." }
+                Link { to: Route::LiveList {}, class: "button", "처음으로" }
+            }
+        };
+    }
+    let Some(me) = auth.me() else {
+        return rsx! { p { class: "notice", "불러오는 중…" } };
+    };
+
+    let submit = move |event: FormEvent| async move {
+        event.prevent_default();
+        busy.set(true);
+        error.set(None);
+        match api::withdraw(&password()).await {
+            Ok(()) => {
+                // 먼저 완료 화면으로 바꿔 두어야 로그아웃된 순간 로그인 화면으로 넘어가지 않는다
+                done.set(true);
+                auth.set(None);
+            }
+            Err(e) => {
+                error.set(Some(e.to_string()));
+                busy.set(false);
+            }
+        }
+    };
+
+    rsx! {
+        div { class: "account-page",
+            h1 { class: "page-title", "내 계정" }
+            dl { class: "account-info",
+                dt { "아이디" }
+                dd { "{me.username}" }
+                dt { "닉네임" }
+                dd { "{me.nickname}" }
+            }
+            section { class: "withdraw-box",
+                h2 { "회원 탈퇴" }
+                if me.admin {
+                    p { class: "meta", "운영자 계정은 탈퇴할 수 없습니다. 먼저 운영자 역할을 해제해 주세요." }
+                } else {
+                    form { onsubmit: submit,
+                        p { "탈퇴하면 아래 것들이 바로 지워지고 되돌릴 수 없습니다." }
+                        ul {
+                            li { "계정(아이디, 닉네임). 같은 아이디로 다시 가입할 수는 있습니다" }
+                            li { "올린 동영상과 영상 파일, 내 방송 기록" }
+                            li { "내가 쓴 댓글, 그리고 내 동영상·방송에 다른 사람이 단 댓글" }
+                            li { "보내거나 받은 후원 기록 (상대방의 후원 내역에서도 사라집니다)" }
+                            li { "내가 한 신고, 등록한 유튜브 키" }
+                            li { "모든 기기의 로그인" }
+                        }
+                        p { class: "meta",
+                            "자세한 내용은 "
+                            a { href: config::privacy_url(), target: "_blank", "개인정보처리방침" }
+                            "에 있습니다. 로그인할 수 없다면 {config::CONTACT_EMAIL}로 요청해 주세요."
+                        }
+                        label { class: "field",
+                            span { class: "label", "비밀번호 확인" }
+                            input {
+                                r#type: "password",
+                                class: "text-input",
+                                autocomplete: "current-password",
+                                value: "{password}",
+                                oninput: move |e| password.set(e.value()),
+                            }
+                        }
+                        label { class: "agree-check",
+                            input {
+                                r#type: "checkbox",
+                                checked: understood(),
+                                onchange: move |e| understood.set(e.checked()),
+                            }
+                            span { "위 내용이 모두 지워지고 되돌릴 수 없다는 것을 확인했습니다." }
+                        }
+                        if let Some(message) = error() {
+                            p { class: "hint error", "{message}" }
+                        }
+                        button {
+                            r#type: "submit",
+                            class: "button danger",
+                            disabled: password().is_empty() || !understood() || busy(),
+                            if busy() { "탈퇴하는 중…" } else { "탈퇴하기" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

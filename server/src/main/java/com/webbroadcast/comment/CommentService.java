@@ -92,6 +92,11 @@ public class CommentService {
 		return repository.findById(id).filter(c -> !c.isHidden()).orElseThrow(CommentNotFoundException::new);
 	}
 
+	/** 회원 탈퇴. 그 User가 쓴 Comment를 모두 지운다 */
+	public void deleteAllWrittenBy(UUID authorId) {
+		repository.deleteByAuthorId(authorId);
+	}
+
 	/** 운영자 화면용. 운영자가 내린 것들 */
 	public Page<Comment> listHidden(Pageable pageable) {
 		return repository.findByHiddenAtIsNotNull(pageable);

@@ -11,7 +11,7 @@ pub use upload::{ALLOWED_EXTENSIONS, UploadInput, file_problem, upload_video};
 #[cfg(any(target_os = "ios", target_os = "android"))]
 pub use upload::upload_path;
 
-use client::{get_json, send_empty, send_json};
+use client::{get_json, send_empty, send_json, send_json_no_content};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 
@@ -40,6 +40,9 @@ pub struct Me {
     pub id: String,
     pub username: String,
     pub nickname: String,
+    /// 운영자면 true. 운영자는 탈퇴할 수 없다
+    #[serde(default)]
+    pub admin: bool,
 }
 
 #[derive(Deserialize)]
@@ -89,6 +92,16 @@ pub async fn log_in(input: &LogInInput) -> ApiResult<Me> {
 
 pub async fn sign_up(input: &SignUpInput) -> ApiResult<Me> {
     Ok(send_json::<User>(Method::POST, "/api/auth/signup", input).await?.user)
+}
+
+#[derive(Serialize)]
+struct WithdrawInput<'a> {
+    password: &'a str,
+}
+
+/// 회원 탈퇴. 비밀번호가 맞으면 그 회원의 모든 것을 지우고 로그인이 끊긴다
+pub async fn withdraw(password: &str) -> ApiResult<()> {
+    send_json_no_content(Method::POST, "/api/auth/withdraw", &WithdrawInput { password }).await
 }
 
 pub async fn log_out() -> ApiResult<()> {

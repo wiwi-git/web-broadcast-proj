@@ -1,5 +1,6 @@
 package com.webbroadcast.video;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -17,6 +18,8 @@ public interface VideoRepository extends JpaRepository<Video, UUID> {
 
 	@EntityGraph(attributePaths = "owner")
 	Page<Video> findByStatusAndHiddenAtIsNullOrderByCreatedAtDesc(VideoStatus status, Pageable pageable);
+
+	List<Video> findByOwnerId(UUID ownerId);
 
 	/** Owner가 올린 Original 크기의 합계(바이트). 변환 중·실패한 Video도 디스크를 쓰므로 모두 센다. */
 	@Query("select coalesce(sum(v.sizeBytes), 0) from Video v where v.owner.id = :ownerId")

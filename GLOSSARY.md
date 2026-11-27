@@ -46,6 +46,10 @@ _Avoid_: 블라인드, 삭제
 Admin이 User의 이용을 막은 상태. 로그인할 수 없고, 정지되는 순간 로그인된 세션이 끊기고 진행 중인 Broadcast가 끝난다. 이미 만든 Content·Comment는 그대로 남는다.
 _Avoid_: 차단(다른 User를 안 보이게 하는 기능에 쓴다), 밴
 
+**탈퇴 (Withdrawal)**:
+User가 비밀번호를 다시 확인하고 자기 계정을 없애는 것. 그 User의 Content·Comment·Donation·Report와 로그인을 모두 지우며 되돌릴 수 없다. 같은 아이디로 다시 가입할 수 있다.
+_Avoid_: 회원 삭제, 계정 해지
+
 **기각 (Dismissed)**:
 Admin이 문제없다고 보고 Report만 닫은 상태. 대상은 그대로 남는다.
 
