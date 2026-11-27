@@ -15,6 +15,7 @@ import DonationsPage from './pages/DonationsPage.tsx'
 import CheckoutPage, { CheckoutFailPage, CheckoutSuccessPage } from './pages/CheckoutPage.tsx'
 import AdminReportsPage from './pages/AdminReportsPage.tsx'
 import AdminUsersPage from './pages/AdminUsersPage.tsx'
+import AdminHiddenPage from './pages/AdminHiddenPage.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
 import { loginPath, useAuth } from './auth/useAuth.ts'
 import {
@@ -118,6 +119,14 @@ export default function App() {
             element={
               <RequireLogin>
                 <AdminReportsPage />
+              </RequireLogin>
+            }
+          />
+          <Route
+            path="/admin/hidden"
+            element={
+              <RequireLogin>
+                <AdminHiddenPage />
               </RequireLogin>
             }
           />

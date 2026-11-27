@@ -1216,6 +1216,31 @@ button.danger:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
+/* 운영자 내린 콘텐츠 (AdminHiddenPage) */
+
+.hidden-thumbnail,
+.hidden-player {
+  width: 100%;
+  max-width: 480px;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.hidden-thumbnail {
+  display: block;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  background: #000;
+}
+
+.hidden-reports summary {
+  cursor: pointer;
+}
+
+.hidden-reports .report-items {
+  margin-top: 8px;
+}
+
 /* 운영자 회원 관리 (AdminUsersPage) */
 
 .admin-search {

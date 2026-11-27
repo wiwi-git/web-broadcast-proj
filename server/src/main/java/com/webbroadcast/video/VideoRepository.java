@@ -11,6 +11,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface VideoRepository extends JpaRepository<Video, UUID> {
 
+	/** 운영자 화면용. 정렬은 pageable로 준다 */
+	@EntityGraph(attributePaths = "owner")
+	Page<Video> findByHiddenAtIsNotNull(Pageable pageable);
+
 	@EntityGraph(attributePaths = "owner")
 	Page<Video> findByStatusAndHiddenAtIsNullOrderByCreatedAtDesc(VideoStatus status, Pageable pageable);
 

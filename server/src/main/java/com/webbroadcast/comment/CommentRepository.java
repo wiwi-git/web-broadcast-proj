@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -26,6 +28,10 @@ interface CommentRepository extends JpaRepository<Comment, UUID> {
 	List<Comment> findOnVideoOlderThan(UUID videoId, Instant createdAt, UUID id, Limit limit);
 
 	long countByVideoIdAndHiddenAtIsNull(UUID videoId);
+
+	/** 운영자 화면용. 정렬은 pageable로 준다 */
+	@EntityGraph(attributePaths = "author")
+	Page<Comment> findByHiddenAtIsNotNull(Pageable pageable);
 
 	/** 운영자가 숨긴 Video의 Comment ID들 */
 	@Query("select c.id from Comment c where c.videoId = :videoId and c.hiddenAt is not null")

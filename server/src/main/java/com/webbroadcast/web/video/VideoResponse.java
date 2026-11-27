@@ -22,7 +22,7 @@ public record VideoResponse(
 		String playbackUrl,
 		String thumbnailUrl) {
 
-	static VideoResponse from(Video video) {
+	public static VideoResponse from(Video video) {
 		boolean published = video.getStatus() == VideoStatus.PUBLISHED;
 		String mediaBase = MediaWebConfig.MEDIA_PATH + video.getId() + "/";
 		return new VideoResponse(

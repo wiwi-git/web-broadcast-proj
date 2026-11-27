@@ -526,3 +526,37 @@ export function fetchAdminUsers(input: { query: string; suspended?: boolean; pag
   if (input.suspended !== undefined) params.set('suspended', String(input.suspended))
   return getJson(`/api/admin/users?${params}`)
 }
+
+/** 운영자가 내린 것 하나. parent는 화면에서 열 Content(댓글이면 달린 곳)다 */
+export interface HiddenItem {
+  type: ReportTargetType
+  id: string
+  /** 방송·동영상 제목이나 댓글 본문 */
+  summary: string
+  parentType: 'BROADCAST' | 'VIDEO'
+  parentId: string
+  owner: { id: string; nickname: string; suspended: boolean }
+  createdAt: string
+  hiddenAt: string
+  /** 방송·동영상의 상태. 댓글이면 null */
+  status: string | null
+  /** 이것을 내리게 만든 신고 */
+  reportCount: number
+  reasons: Partial<Record<ReportReason, number>>
+  reports: ReportItem[]
+  /** 공개 상태까지 변환된 동영상만. 파일이 남아 있어 운영자는 재생할 수 있다 */
+  playbackUrl: string | null
+  thumbnailUrl: string | null
+}
+
+export interface HiddenPage {
+  items: HiddenItem[]
+  page: number
+  totalPages: number
+  totalItems: number
+}
+
+/** 최근에 내린 순 20개씩 */
+export function fetchHidden(type: ReportTargetType, page: number): Promise<HiddenPage> {
+  return getJson(`/api/admin/hidden?type=${type}&page=${page}`)
+}

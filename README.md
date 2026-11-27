@@ -24,7 +24,7 @@ load-test/  k6 부하 테스트
 | 콘텐츠 소유자 (올린 사람·방송한 사람) | 동영상 제목·설명 수정과 삭제, 방송 제목 수정·종료·삭제, 방송 키 재발급 |
 | 댓글 작성자 | 자기 댓글 수정·삭제. 콘텐츠 소유자라도 남의 댓글은 지울 수 없다 |
 | 후원자 | 자기 후원의 결제 승인·취소 처리. 완료된 후원은 되돌릴 수 없다 |
-| 운영자 (`role`이 `ADMIN`인 회원) | 처리 전 신고 보기(웹 `/admin/reports`), 신고된 방송·동영상·댓글 내리기(숨김)와 기각, 회원 목록·검색과 정지·해제(웹 `/admin/users`). 운영자는 정지할 수 없다 |
+| 운영자 (`role`이 `ADMIN`인 회원) | 처리 전 신고 보기(웹 `/admin/reports`), 신고된 방송·동영상·댓글 내리기(숨김)와 기각, 내린 콘텐츠 보기와 내린 동영상 재생(웹 `/admin/hidden`), 회원 목록·검색과 정지·해제(웹 `/admin/users`). 운영자는 정지할 수 없다 |
 
 - 한 회원이 동시에 진행할 수 있는 방송은 하나다.
 - 처리 중이거나 처리에 실패한 동영상은 목록에 나오지 않지만, 주소를 알면 상세 정보는 볼 수 있다. 준비 상태의 방송도 목록에는 나오지 않는다.
@@ -280,6 +280,7 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 | `GET` | `/api/admin/reports` | 🛡️ | 처리 전 신고를 대상별로 묶어 오래된 순으로. 대상 요약, 소유자(정지 여부), 사유별 건수, 신고 목록 |
 | `POST` | `/api/admin/reports/{targetType}/{targetId}/hide` | 🛡️ | 대상을 숨기고 걸린 신고를 처리 완료로 닫는다. 방송은 진행 중이면 끝난다. 204 |
 | `POST` | `/api/admin/reports/{targetType}/{targetId}/dismiss` | 🛡️ | 문제없음으로 신고만 닫는다. 204 |
+| `GET` | `/api/admin/hidden?type=VIDEO&page=0` | 🛡️ | 운영자가 내린 것, 최근에 내린 순 20개씩. `type`은 `BROADCAST`/`VIDEO`/`COMMENT`. 항목은 내용(제목이나 본문), 소유자, 내린 시각, 상태, 내리게 한 신고(사유별 건수와 목록), 변환된 동영상이면 `playbackUrl`·`thumbnailUrl` |
 | `GET` | `/api/admin/users?q=&suspended=&page=0` | 🛡️ | 회원 목록, 최근 가입한 순 20명씩. `q`는 아이디나 닉네임 일부(대소문자 무시), `suspended`는 `true`/`false`로 정지 여부를 거른다. 항목은 `{id, username, nickname, admin, suspended, suspendedAt, createdAt}` |
 | `POST` | `/api/admin/users/{id}/suspend`, `/unsuspend` | 🛡️ | 회원 정지·해제. 정지하면 세션을 끊고 진행 중인 방송을 끝낸다. 운영자는 정지할 수 없다(400). 204 |
 | `POST` | `/api/media-server/auth` | | MediaMTX 인증 훅 (내부용) |

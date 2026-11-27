@@ -158,6 +158,11 @@ public class Broadcast {
 		return hiddenAt != null;
 	}
 
+	/** 운영자가 내린 시각. 내리지 않았으면 null */
+	public Instant getHiddenAt() {
+		return hiddenAt;
+	}
+
 	void end(Instant now) {
 		if (status != BroadcastStatus.ENDED) {
 			status = BroadcastStatus.ENDED;

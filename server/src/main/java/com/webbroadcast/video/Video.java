@@ -81,6 +81,11 @@ public class Video {
 		return hiddenAt != null;
 	}
 
+	/** 운영자가 내린 시각. 내리지 않았으면 null */
+	public Instant getHiddenAt() {
+		return hiddenAt;
+	}
+
 	boolean isOwnedBy(UUID userId) {
 		return owner.is(userId);
 	}

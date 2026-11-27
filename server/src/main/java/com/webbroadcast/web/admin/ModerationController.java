@@ -23,6 +23,7 @@ import com.webbroadcast.report.ReportTargetType;
 import com.webbroadcast.user.CurrentUser;
 import com.webbroadcast.user.User;
 import com.webbroadcast.user.UserService;
+import com.webbroadcast.web.video.VideoResponse;
 
 /** 운영자(ADMIN)만 쓴다 (SecurityConfig). */
 @RestController
@@ -64,6 +65,18 @@ public class ModerationController {
 	record UserPageResponse(List<UserResponse> items, int page, int totalPages, long totalItems) {
 	}
 
+	/**
+	 * 운영자가 내린 것 하나. summary는 제목이나 댓글 본문, parent는 화면에서 열 Content(댓글이면 달린 곳)다.
+	 * reportCount·reasons는 이것을 내리게 만든 신고다. playbackUrl·thumbnailUrl은 공개 상태까지 변환된 동영상만 있다.
+	 */
+	record HiddenItemResponse(ReportTargetType type, UUID id, String summary, ReportTargetType parentType,
+			UUID parentId, OwnerResponse owner, Instant createdAt, Instant hiddenAt, String status, int reportCount,
+			Map<ReportReason, Long> reasons, List<ReportItem> reports, String playbackUrl, String thumbnailUrl) {
+	}
+
+	record HiddenPageResponse(List<HiddenItemResponse> items, int page, int totalPages, long totalItems) {
+	}
+
 	private final ModerationService moderationService;
 	private final UserService userService;
 
@@ -81,11 +94,29 @@ public class ModerationController {
 				found.getTotalPages(), found.getTotalElements());
 	}
 
+	/** 운영자가 내린 Broadcast·Video·Comment, 최근에 내린 순 20개씩. 파일은 남아 있어 동영상은 재생할 수 있다 */
+	@GetMapping(PATH + "/hidden")
+	HiddenPageResponse hidden(@RequestParam ReportTargetType type, @RequestParam(defaultValue = "0") int page) {
+		Page<ModerationService.HiddenContent> found = moderationService.hidden(type, page);
+		return new HiddenPageResponse(found.getContent().stream().map(h -> {
+			VideoResponse video = h.video() == null ? null : VideoResponse.from(h.video());
+			return new HiddenItemResponse(h.type(), h.id(), h.summary(), h.parentType(), h.parentId(),
+					OwnerResponse.from(h.owner()), h.createdAt(), h.hiddenAt(), h.status(), h.reports().size(),
+					countReasons(h.reports()), h.reports().stream().map(ReportItem::from).toList(),
+					video == null ? null : video.playbackUrl(), video == null ? null : video.thumbnailUrl());
+		}).toList(), found.getNumber(), found.getTotalPages(), found.getTotalElements());
+	}
+
+	private static Map<ReportReason, Long> countReasons(List<Report> reports) {
+		Map<ReportReason, Long> reasons = new EnumMap<>(ReportReason.class);
+		reports.forEach(r -> reasons.merge(r.getReason(), 1L, Long::sum));
+		return reasons;
+	}
+
 	@GetMapping(PATH + "/reports")
 	List<ReportGroupResponse> openReports() {
 		return moderationService.openGroups().stream().map(group -> {
-			Map<ReportReason, Long> reasons = new EnumMap<>(ReportReason.class);
-			group.reports().forEach(r -> reasons.merge(r.getReason(), 1L, Long::sum));
+			Map<ReportReason, Long> reasons = countReasons(group.reports());
 			var target = group.target();
 			return new ReportGroupResponse(group.targetType(), group.targetId(),
 					target.map(ModerationService.Target::summary).orElse(null),

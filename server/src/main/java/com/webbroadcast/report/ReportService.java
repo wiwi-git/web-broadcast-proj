@@ -2,7 +2,10 @@ package com.webbroadcast.report;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
@@ -66,6 +69,16 @@ public class ReportService {
 	/** 처리 전인 신고 전부, 오래된 순 */
 	public List<Report> listOpen() {
 		return repository.findByStatusOrderByCreatedAtAsc(ReportStatus.OPEN);
+	}
+
+	/** 대상들을 내리게 만든(ACTIONED) 신고, 대상 ID별로 */
+	public Map<UUID, List<Report>> actionedFor(ReportTargetType targetType, Collection<UUID> targetIds) {
+		if (targetIds.isEmpty()) {
+			return Map.of();
+		}
+		return repository.findByTargetTypeAndTargetIdInAndStatus(targetType, targetIds, ReportStatus.ACTIONED)
+			.stream()
+			.collect(Collectors.groupingBy(Report::getTargetId));
 	}
 
 	/** 대상 하나에 걸린 처리 전 신고를 모두 닫는다 */

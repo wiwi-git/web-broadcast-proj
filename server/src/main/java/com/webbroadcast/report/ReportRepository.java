@@ -1,5 +1,6 @@
 package com.webbroadcast.report;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,6 +14,10 @@ interface ReportRepository extends JpaRepository<Report, UUID> {
 	/** 오래된 순 */
 	@EntityGraph(attributePaths = "reporter")
 	List<Report> findByStatusOrderByCreatedAtAsc(ReportStatus status);
+
+	@EntityGraph(attributePaths = "reporter")
+	List<Report> findByTargetTypeAndTargetIdInAndStatus(ReportTargetType targetType, Collection<UUID> targetIds,
+			ReportStatus status);
 
 	List<Report> findByTargetTypeAndTargetIdAndStatus(ReportTargetType targetType, UUID targetId, ReportStatus status);
 }

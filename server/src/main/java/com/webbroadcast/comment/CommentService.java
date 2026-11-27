@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.domain.Limit;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.webbroadcast.broadcast.BroadcastService;
@@ -88,6 +90,11 @@ public class CommentService {
 	/** 운영자가 내린 Comment는 Author에게도 없는 것으로 보인다 */
 	public Comment get(UUID id) {
 		return repository.findById(id).filter(c -> !c.isHidden()).orElseThrow(CommentNotFoundException::new);
+	}
+
+	/** 운영자 화면용. 운영자가 내린 것들 */
+	public Page<Comment> listHidden(Pageable pageable) {
+		return repository.findByHiddenAtIsNotNull(pageable);
 	}
 
 	/** 운영자 화면용. 숨긴 Comment도 찾는다 */

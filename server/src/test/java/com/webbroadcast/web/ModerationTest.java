@@ -173,14 +173,7 @@ class ModerationTest {
 	void hiddenVideoCommentIdsAreListedSoOpenScreensCanDropThem() throws Exception {
 		Account uploader = signUp("댓글영상주인");
 		Account author = signUp("영상댓글작성자");
-		MvcResult uploaded = mvc.perform(multipart("/api/videos")
-				.file(new MockMultipartFile("file", "sample.mp4", "video/mp4", Files.readAllBytes(sampleVideo)))
-				.param("title", "댓글 숨김 영상")
-				.cookie(uploader.session())
-				.with(csrf()))
-			.andExpect(status().isCreated())
-			.andReturn();
-		String videoId = read(uploaded, "$.id");
+		String videoId = upload(uploader, "댓글 숨김 영상");
 		String hidden = writeVideoComment(author, videoId, "숨길 영상 댓글");
 		String kept = writeVideoComment(author, videoId, "남을 영상 댓글");
 
@@ -202,6 +195,50 @@ class ModerationTest {
 			.andExpect(jsonPath("$.items[0].id").value(kept));
 		mvc.perform(get("/api/videos/" + UUID.randomUUID() + "/comments/hidden"))
 			.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void adminsSeeHiddenContentWithWhyItWasHidden() throws Exception {
+		Account owner = signUp("내린콘텐츠주인");
+		Account admin = admin("운영자10");
+		String videoId = upload(owner, "내린 영상");
+		String broadcastId = startBroadcast(owner);
+		String commentId = writeVideoComment(owner, videoId, "내린 댓글 본문");
+		report(signUp("내림신고1"), "VIDEO", videoId, "COPYRIGHT", "");
+		report(signUp("내림신고2"), "VIDEO", videoId, "COPYRIGHT", "");
+		report(signUp("내림신고3"), "COMMENT", commentId, "HATE", "");
+		for (String target : new String[] { "COMMENT/" + commentId, "VIDEO/" + videoId, "BROADCAST/" + broadcastId }) {
+			mvc.perform(post("/api/admin/reports/" + target + "/hide").with(csrf()).cookie(admin.session()))
+				.andExpect(status().isNoContent());
+		}
+
+		mvc.perform(get("/api/admin/hidden").param("type", "VIDEO").cookie(owner.session()))
+			.andExpect(status().isForbidden());
+
+		// 최근에 내린 순. 운영자는 내린 동영상을 재생할 수 있다 (파일은 그대로 남는다)
+		String videos = mvc.perform(get("/api/admin/hidden").param("type", "VIDEO").cookie(admin.session()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.items[0].id").value(videoId))
+			.andExpect(jsonPath("$.items[0].type").value("VIDEO"))
+			.andExpect(jsonPath("$.items[0].summary").value("내린 영상"))
+			.andExpect(jsonPath("$.items[0].owner.nickname").value("내린콘텐츠주인"))
+			.andExpect(jsonPath("$.items[0].hiddenAt").isNotEmpty())
+			.andExpect(jsonPath("$.items[0].reportCount").value(2))
+			.andExpect(jsonPath("$.items[0].reasons.COPYRIGHT").value(2))
+			.andReturn().getResponse().getContentAsString();
+		assertThat(JsonPath.<Object>read(videos, "$.items[0].status")).isNotNull();
+
+		mvc.perform(get("/api/admin/hidden").param("type", "COMMENT").cookie(admin.session()))
+			.andExpect(jsonPath("$.items[0].id").value(commentId))
+			.andExpect(jsonPath("$.items[0].summary").value("내린 댓글 본문"))
+			.andExpect(jsonPath("$.items[0].parentType").value("VIDEO"))
+			.andExpect(jsonPath("$.items[0].parentId").value(videoId))
+			.andExpect(jsonPath("$.items[0].reasons.HATE").value(1));
+
+		// 신고 없이 내렸어도 나온다 (방송에는 신고가 없었다)
+		mvc.perform(get("/api/admin/hidden").param("type", "BROADCAST").cookie(admin.session()))
+			.andExpect(jsonPath("$.items[0].id").value(broadcastId))
+			.andExpect(jsonPath("$.items[0].reportCount").value(0));
 	}
 
 	@Test
@@ -339,6 +376,17 @@ class ModerationTest {
 			.andExpect(status().isCreated())
 			.andReturn();
 		return read(result, "$.id");
+	}
+
+	private String upload(Account owner, String title) throws Exception {
+		MvcResult uploaded = mvc.perform(multipart("/api/videos")
+				.file(new MockMultipartFile("file", "sample.mp4", "video/mp4", Files.readAllBytes(sampleVideo)))
+				.param("title", title)
+				.cookie(owner.session())
+				.with(csrf()))
+			.andExpect(status().isCreated())
+			.andReturn();
+		return read(uploaded, "$.id");
 	}
 
 	private String writeVideoComment(Account author, String videoId, String body) throws Exception {

@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
@@ -119,6 +120,11 @@ public class VideoService {
 	/** 운영자가 내린 Video는 Owner에게도 없는 것으로 보인다 */
 	public Video get(UUID id) {
 		return repository.findById(id).filter(v -> !v.isHidden()).orElseThrow(() -> new VideoNotFoundException(id));
+	}
+
+	/** 운영자 화면용. 운영자가 내린 것들 */
+	public Page<Video> listHidden(Pageable pageable) {
+		return repository.findByHiddenAtIsNotNull(pageable);
 	}
 
 	/** 운영자 화면용. 숨긴 Video도 찾는다 */

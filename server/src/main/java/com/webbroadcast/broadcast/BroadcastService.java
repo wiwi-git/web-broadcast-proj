@@ -9,6 +9,8 @@ import java.util.UUID;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import com.webbroadcast.simulcast.SimulcastService;
@@ -71,6 +73,11 @@ public class BroadcastService {
 	/** 운영자가 내린 Broadcast는 Owner에게도 없는 것으로 보인다 */
 	public Broadcast get(UUID id) {
 		return repository.findById(id).filter(b -> !b.isHidden()).orElseThrow(() -> new BroadcastNotFoundException(id));
+	}
+
+	/** 운영자 화면용. 운영자가 내린 것들 */
+	public Page<Broadcast> listHidden(Pageable pageable) {
+		return repository.findByHiddenAtIsNotNull(pageable);
 	}
 
 	/** 운영자 화면용. 숨긴 Broadcast도 찾는다 */

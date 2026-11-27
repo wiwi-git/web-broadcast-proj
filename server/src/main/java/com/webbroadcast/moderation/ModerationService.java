@@ -1,5 +1,6 @@
 package com.webbroadcast.moderation;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -8,6 +9,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.session.FindByIndexNameSessionRepository;
 import org.springframework.session.Session;
 import org.springframework.stereotype.Service;
@@ -22,6 +27,7 @@ import com.webbroadcast.report.ReportStatus;
 import com.webbroadcast.report.ReportTargetType;
 import com.webbroadcast.user.User;
 import com.webbroadcast.user.UserService;
+import com.webbroadcast.video.Video;
 import com.webbroadcast.video.VideoService;
 
 /**
@@ -45,6 +51,21 @@ public class ModerationService {
 	public record ReportGroup(ReportTargetType targetType, UUID targetId, Optional<Target> target,
 			List<Report> reports) {
 	}
+
+	/**
+	 * 운영자가 내린 Broadcast·Video·Comment 하나와, 그것을 내리게 만든 신고들.
+	 * 신고 없이 내린 경우는 없지만(내리기는 신고 카드에서 한다), 신고 기록이 비어 있어도 그대로 보인다.
+	 *
+	 * @param video VIDEO일 때만. 운영자 화면이 재생 주소를 만든다
+	 * @param status Broadcast·Video의 상태 이름. Comment면 null
+	 */
+	public record HiddenContent(ReportTargetType type, UUID id, String summary, ReportTargetType parentType,
+			UUID parentId, User owner, Instant createdAt, Instant hiddenAt, String status, Video video,
+			List<Report> reports) {
+	}
+
+	/** 운영자 화면의 내린 콘텐츠 한 쪽 */
+	public static final int HIDDEN_PAGE_SIZE = 20;
 
 	private final ReportService reportService;
 	private final BroadcastService broadcastService;
@@ -120,6 +141,30 @@ public class ModerationService {
 			throw new InvalidModerationException("회원을 찾을 수 없습니다.");
 		}
 		userService.unsuspend(userId);
+	}
+
+	/** 최근에 내린 순 */
+	@Transactional(readOnly = true)
+	public Page<HiddenContent> hidden(ReportTargetType type, int page) {
+		Pageable pageable = PageRequest.of(Math.max(page, 0), HIDDEN_PAGE_SIZE,
+				Sort.by(Sort.Direction.DESC, "hiddenAt", "id"));
+		Page<HiddenContent> found = switch (type) {
+			case BROADCAST -> broadcastService.listHidden(pageable)
+				.map(b -> new HiddenContent(type, b.getId(), b.getTitle(), ReportTargetType.BROADCAST, b.getId(),
+						b.getOwner(), b.getCreatedAt(), b.getHiddenAt(), b.getStatus().name(), null, List.of()));
+			case VIDEO -> videoService.listHidden(pageable)
+				.map(v -> new HiddenContent(type, v.getId(), v.getTitle(), ReportTargetType.VIDEO, v.getId(),
+						v.getOwner(), v.getCreatedAt(), v.getHiddenAt(), v.getStatus().name(), v, List.of()));
+			case COMMENT -> commentService.listHidden(pageable).map(c -> {
+				Target where = commentTarget(c);
+				return new HiddenContent(type, c.getId(), c.getBody(), where.parentType(), where.parentId(),
+						c.getAuthor(), c.getCreatedAt(), c.getHiddenAt(), null, null, List.of());
+			});
+		};
+		Map<UUID, List<Report>> reports = reportService.actionedFor(type,
+				found.getContent().stream().map(HiddenContent::id).toList());
+		return found.map(h -> new HiddenContent(h.type(), h.id(), h.summary(), h.parentType(), h.parentId(),
+				h.owner(), h.createdAt(), h.hiddenAt(), h.status(), h.video(), reports.getOrDefault(h.id(), List.of())));
 	}
 
 	private Optional<Target> target(ReportTargetType type, UUID id) {
