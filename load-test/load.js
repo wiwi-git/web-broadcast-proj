@@ -42,12 +42,12 @@ function json(body, token, extra = {}) {
 export function setup() {
   const jar = http.cookieJar();
   const suffix = Date.now().toString(36).slice(-6);
-  const username = `load${suffix}`;
+  const email = `load${suffix}@example.com`;
   const nickname = `부하${suffix}`;
 
   http.get(`${BASE}/api/auth/me`);
   const signup = http.post(`${BASE}/api/auth/signup`,
-    JSON.stringify({ username, password: PASSWORD, nickname, agreeTerms: true }), json(null, xsrf(jar)));
+    JSON.stringify({ email, password: PASSWORD, nickname, agreeTerms: true }), json(null, xsrf(jar)));
   check(signup, { 'signup 201': (r) => r.status === 201 });
 
   const token = xsrf(jar);
@@ -62,14 +62,14 @@ export function setup() {
     json(null, token));
   check(comment, { 'comment 201': (r) => r.status === 201 });
 
-  return { username, nickname, broadcastId, marker, session: jar.cookiesForURL(BASE).SESSION[0] };
+  return { email, nickname, broadcastId, marker, session: jar.cookiesForURL(BASE).SESSION[0] };
 }
 
 export default function (data) {
   // ① CPU 부하: 로그인 (가상 사용자마다 자기 쿠키 저장소를 쓴다)
   const jar = http.cookieJar();
   http.get(`${BASE}/api/auth/me`);
-  http.post(`${BASE}/api/auth/login`, JSON.stringify({ username: data.username, password: PASSWORD }),
+  http.post(`${BASE}/api/auth/login`, JSON.stringify({ email: data.email, password: PASSWORD }),
     json(null, xsrf(jar), { tags: { name: 'login' } }));
   http.get(`${BASE}/api/broadcasts`, { tags: { name: 'broadcasts' } });
   http.get(`${BASE}/api/videos`, { tags: { name: 'videos' } });

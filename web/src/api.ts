@@ -89,14 +89,19 @@ function sendJson<T>(method: string, url: string, body?: unknown): Promise<T> {
 
 export interface Me {
   id: string
-  username: string
+  /** 로그인 아이디. 본인과 운영자만 본다 */
+  email: string
   nickname: string
   /** 운영자면 신고 관리 화면을 쓸 수 있다 */
   admin: boolean
+  /** false면 동영상 업로드·댓글을 할 수 없다. 메일의 인증 링크를 누르면 true가 된다 */
+  emailVerified: boolean
 }
 
 // 서버(UserService)와 같은 제약
-export const USERNAME_PATTERN = /^[a-z0-9]{4,20}$/
+/** 형식만 본다. 실제로 받을 수 있는 주소인지는 인증 메일로 확인한다 */
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const EMAIL_MAX_LENGTH = 254
 export const PASSWORD_MIN_LENGTH = 8
 export const PASSWORD_MAX_LENGTH = 64
 export const NICKNAME_MIN_LENGTH = 2
@@ -108,12 +113,37 @@ export async function fetchMe(): Promise<Me | null> {
 }
 
 /** agreeTerms: 만 14세 이상이며 이용약관·개인정보처리방침에 동의함. false면 서버가 거절한다 */
-export async function signUp(input: { username: string; password: string; nickname: string; agreeTerms: boolean }): Promise<Me> {
+export async function signUp(input: { email: string; password: string; nickname: string; agreeTerms: boolean }): Promise<Me> {
   return (await sendJson<{ user: Me }>('POST', '/api/auth/signup', input)).user
 }
 
-export async function logIn(input: { username: string; password: string }): Promise<Me> {
+export async function logIn(input: { email: string; password: string }): Promise<Me> {
   return (await sendJson<{ user: Me }>('POST', '/api/auth/login', input)).user
+}
+
+/** 메일 속 인증 링크의 값으로 이메일을 인증한다. 로그인하지 않아도 된다 */
+export function verifyEmail(token: string): Promise<void> {
+  return sendJson('POST', '/api/auth/verify-email', { token })
+}
+
+/** 인증 메일을 다시 보낸다. 1분 안에 다시 누르면 429 */
+export function resendVerification(): Promise<void> {
+  return sendJson('POST', '/api/auth/verify-email/resend')
+}
+
+/** 지금 비밀번호를 알면 바꾼다. 이 기기의 로그인은 그대로, 다른 기기는 로그아웃된다 */
+export function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  return sendJson('POST', '/api/auth/password', { currentPassword, newPassword })
+}
+
+/** 비밀번호 찾기. 가입 여부와 상관없이 같은 응답이다 */
+export function requestPasswordReset(email: string): Promise<void> {
+  return sendJson('POST', '/api/auth/password-reset/request', { email })
+}
+
+/** 메일 속 재설정 링크의 값으로 새 비밀번호를 정한다. 모든 기기에서 로그아웃된다 */
+export function resetPassword(token: string, newPassword: string): Promise<void> {
+  return sendJson('POST', '/api/auth/password-reset', { token, newPassword })
 }
 
 /** 회원 탈퇴. 비밀번호가 맞으면 그 회원의 모든 것을 지우고 로그인이 끊긴다 */
@@ -507,10 +537,10 @@ export function unsuspendUser(userId: string): Promise<void> {
   return request(`/api/admin/users/${encodeURIComponent(userId)}/unsuspend`, { method: 'POST' })
 }
 
-/** 운영자 회원 목록의 한 사람. 아이디는 운영자에게만 보인다 */
+/** 운영자 회원 목록의 한 사람. 이메일은 운영자에게만 보인다 */
 export interface AdminUser {
   id: string
-  username: string
+  email: string
   nickname: string
   admin: boolean
   suspended: boolean
@@ -525,7 +555,7 @@ export interface AdminUserPage {
   totalItems: number
 }
 
-/** query는 아이디나 닉네임 일부. suspended가 undefined면 상태와 상관없이. 최근 가입한 순 20명씩 */
+/** query는 이메일이나 닉네임 일부. suspended가 undefined면 상태와 상관없이. 최근 가입한 순 20명씩 */
 export function fetchAdminUsers(input: { query: string; suspended?: boolean; page: number }): Promise<AdminUserPage> {
   const params = new URLSearchParams({ page: String(input.page) })
   if (input.query.trim()) params.set('q', input.query.trim())

@@ -53,11 +53,11 @@ public class ModerationController {
 			List<ReportItem> reports) {
 	}
 
-	/** 운영자에게만 아이디를 보여 준다 (운영자 지정 SQL에 쓴다) */
-	record UserResponse(UUID id, String username, String nickname, boolean admin, boolean suspended,
+	/** 운영자에게만 이메일을 보여 준다 (운영자 지정 SQL에 쓴다) */
+	record UserResponse(UUID id, String email, String nickname, boolean admin, boolean suspended,
 			Instant suspendedAt, Instant createdAt) {
 		static UserResponse from(User user) {
-			return new UserResponse(user.getId(), user.getUsername(), user.getNickname(), user.isAdmin(),
+			return new UserResponse(user.getId(), user.getEmail(), user.getNickname(), user.isAdmin(),
 					user.isSuspended(), user.getSuspendedAt(), user.getCreatedAt());
 		}
 	}
@@ -85,7 +85,7 @@ public class ModerationController {
 		this.userService = userService;
 	}
 
-	/** q는 아이디나 닉네임 일부, suspended로 정지 여부를 거른다. 최근 가입한 순 20명씩 */
+	/** q는 이메일이나 닉네임 일부, suspended로 정지 여부를 거른다. 최근 가입한 순 20명씩 */
 	@GetMapping(PATH + "/users")
 	UserPageResponse users(@RequestParam(required = false) String q, @RequestParam(required = false) Boolean suspended,
 			@RequestParam(defaultValue = "0") int page) {

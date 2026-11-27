@@ -109,7 +109,7 @@ class VideoJobsTest {
 
 	private UUID processingVideo(String age) {
 		int n = users.incrementAndGet();
-		UUID owner = userService.signUp("jobs" + n, "password1", "작업" + n, true).getId();
+		UUID owner = userService.signUp("jobs" + n + "@example.com", "password1", "작업" + n, true).getId();
 		UUID id = UUID.randomUUID();
 		jdbc.sql("""
 				insert into video (id, owner_id, title, status, original_extension, size_bytes, created_at)

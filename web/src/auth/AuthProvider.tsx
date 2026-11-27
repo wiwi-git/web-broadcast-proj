@@ -28,6 +28,9 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           await fetchMe().catch(() => null)
         }
       },
+      refresh: async () => {
+        setMe(await fetchMe().catch(() => null))
+      },
       withdraw: async (password) => {
         await withdraw(password)
         setMe(null)

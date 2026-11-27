@@ -51,6 +51,8 @@ public class VideoService {
 	 * 처리 중인 Video가 곧 변환 대기열이므로, 변환 워커가 가져가 이어서 변환한다 (ADR-0004).
 	 */
 	public Video upload(UUID ownerId, MultipartFile file, String rawTitle, String rawDescription) {
+		// 이메일 인증을 마친 회원만 올린다 (파일을 받기 전에 거절한다)
+		userService.requireVerified(ownerId);
 		String title = validTitle(rawTitle);
 		String description = validDescription(rawDescription);
 		if (file == null || file.isEmpty()) {

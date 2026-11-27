@@ -16,7 +16,7 @@ import com.webbroadcast.user.UserService;
 import com.webbroadcast.video.VideoService;
 
 /**
- * 누구나 Comment를 읽을 수 있고, 로그인한 User만 쓸 수 있다. 수정·삭제는 Author만 한다.
+ * 누구나 Comment를 읽을 수 있고, 이메일 인증을 마친 User만 쓸 수 있다. 수정·삭제는 Author만 한다.
  */
 @Service
 public class CommentService {
@@ -78,13 +78,13 @@ public class CommentService {
 	public Comment writeOnVideo(UUID videoId, UUID authorId, String rawBody) {
 		String body = validBody(rawBody);
 		videoService.get(videoId);
-		return repository.save(Comment.onVideo(videoId, userService.get(authorId), body, clock.instant()));
+		return repository.save(Comment.onVideo(videoId, userService.requireVerified(authorId), body, clock.instant()));
 	}
 
 	public Comment writeOnBroadcast(UUID broadcastId, UUID authorId, String rawBody) {
 		String body = validBody(rawBody);
 		broadcastService.get(broadcastId);
-		return repository.save(Comment.onBroadcast(broadcastId, userService.get(authorId), body, clock.instant()));
+		return repository.save(Comment.onBroadcast(broadcastId, userService.requireVerified(authorId), body, clock.instant()));
 	}
 
 	/** 운영자가 내린 Comment는 Author에게도 없는 것으로 보인다 */

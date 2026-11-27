@@ -19,7 +19,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.webbroadcast.user.AccountMailService;
 import com.webbroadcast.user.CurrentUser;
+import com.webbroadcast.user.User;
 import com.webbroadcast.user.UserService;
 import com.webbroadcast.withdrawal.WithdrawalService;
 
@@ -34,19 +36,36 @@ public class AuthController {
 
 	public static final String SIGN_UP_PATH = "/api/auth/signup";
 	public static final String LOGIN_PATH = "/api/auth/login";
+	/** 메일 속 링크로 여는 일이라 로그인하지 않아도 된다 */
+	public static final String VERIFY_EMAIL_PATH = "/api/auth/verify-email";
+	public static final String PASSWORD_RESET_REQUEST_PATH = "/api/auth/password-reset/request";
+	public static final String PASSWORD_RESET_PATH = "/api/auth/password-reset";
 
 	/** agreeTerms: 만 14세 이상이며 이용약관과 개인정보처리방침에 동의함. true여야 가입된다 */
-	record SignUpRequest(String username, String password, String nickname, Boolean agreeTerms) {
+	record SignUpRequest(String email, String password, String nickname, Boolean agreeTerms) {
 	}
 
-	record LoginRequest(String username, String password) {
+	record LoginRequest(String email, String password) {
 	}
 
 	record WithdrawRequest(String password) {
 	}
 
+	record TokenRequest(String token) {
+	}
+
+	record PasswordChangeRequest(String currentPassword, String newPassword) {
+	}
+
+	record PasswordResetRequest(String email) {
+	}
+
+	record PasswordResetConfirm(String token, String newPassword) {
+	}
+
 	/** admin이면 운영자 화면을 쓸 수 있다 */
-	record MeUser(UUID id, String username, String nickname, boolean admin) {
+	/** emailVerified가 false면 동영상 업로드·댓글을 할 수 없다 */
+	record MeUser(UUID id, String email, String nickname, boolean admin, boolean emailVerified) {
 	}
 
 	/** 로그인하지 않았으면 user가 null */
@@ -55,14 +74,16 @@ public class AuthController {
 
 	private final UserService userService;
 	private final WithdrawalService withdrawalService;
+	private final AccountMailService accountMailService;
 	private final AuthenticationManager authenticationManager;
 	private final SecurityContextRepository securityContextRepository;
 	private final SecurityContextHolderStrategy contextHolder = SecurityContextHolder.getContextHolderStrategy();
 
-	AuthController(UserService userService, WithdrawalService withdrawalService,
+	AuthController(UserService userService, WithdrawalService withdrawalService, AccountMailService accountMailService,
 			AuthenticationManager authenticationManager, SecurityContextRepository securityContextRepository) {
 		this.userService = userService;
 		this.withdrawalService = withdrawalService;
+		this.accountMailService = accountMailService;
 		this.authenticationManager = authenticationManager;
 		this.securityContextRepository = securityContextRepository;
 	}
@@ -71,13 +92,53 @@ public class AuthController {
 	@PostMapping("/signup")
 	@ResponseStatus(HttpStatus.CREATED)
 	MeResponse signUp(@RequestBody SignUpRequest body, HttpServletRequest request, HttpServletResponse response) {
-		userService.signUp(body.username(), body.password(), body.nickname(), Boolean.TRUE.equals(body.agreeTerms()));
-		return logIn(body.username().strip(), body.password(), request, response);
+		User user = userService.signUp(body.email(), body.password(), body.nickname(),
+				Boolean.TRUE.equals(body.agreeTerms()));
+		accountMailService.sendVerification(user.getId());
+		return logIn(body.email(), body.password(), request, response);
 	}
 
 	@PostMapping("/login")
 	MeResponse login(@RequestBody LoginRequest body, HttpServletRequest request, HttpServletResponse response) {
-		return logIn(body.username(), body.password(), request, response);
+		return logIn(body.email(), body.password(), request, response);
+	}
+
+	/** 메일 속 인증 링크(웹 /verify-email)가 부른다. 로그인하지 않아도 된다 */
+	@PostMapping("/verify-email")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void verifyEmail(@RequestBody TokenRequest body) {
+		accountMailService.verifyEmail(body.token());
+	}
+
+	/** 인증 메일을 다시 보낸다. 1분에 한 번 (429) */
+	@PostMapping("/verify-email/resend")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void resendVerification(@AuthenticationPrincipal CurrentUser user) {
+		accountMailService.resendVerification(user.id());
+	}
+
+	/** 로그인한 회원이 지금 비밀번호를 알면 바꾼다. 이 기기의 로그인은 유지하고 다른 기기는 끊는다 */
+	@PostMapping("/password")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void changePassword(@AuthenticationPrincipal CurrentUser user, @RequestBody PasswordChangeRequest body,
+			HttpServletRequest request) {
+		HttpSession session = request.getSession(false);
+		accountMailService.changePassword(user.id(), body.currentPassword(), body.newPassword(),
+				session == null ? null : session.getId());
+	}
+
+	/** 비밀번호 찾기. 가입 여부를 알려 주지 않도록 언제나 204다 */
+	@PostMapping("/password-reset/request")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void requestPasswordReset(@RequestBody PasswordResetRequest body) {
+		accountMailService.requestPasswordReset(body.email());
+	}
+
+	/** 메일 속 재설정 링크(웹 /reset-password)에서 새 비밀번호를 정한다. 모든 기기의 로그인이 끊긴다 */
+	@PostMapping("/password-reset")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	void resetPassword(@RequestBody PasswordResetConfirm body) {
+		accountMailService.resetPassword(body.token(), body.newPassword());
 	}
 
 	/**
@@ -104,11 +165,11 @@ public class AuthController {
 		return response(user);
 	}
 
-	private MeResponse logIn(String username, String password, HttpServletRequest request,
+	private MeResponse logIn(String email, String password, HttpServletRequest request,
 			HttpServletResponse response) {
 		// 실패하면 AuthenticationException → ApiExceptionHandler에서 401
 		Authentication authentication = authenticationManager.authenticate(
-				UsernamePasswordAuthenticationToken.unauthenticated(username, password));
+				UsernamePasswordAuthenticationToken.unauthenticated(UserService.normalizeEmail(email), password));
 
 		// 세션 고정 공격을 막기 위해 로그인할 때 세션 ID를 바꾼다
 		if (request.getSession(false) != null) {
@@ -121,7 +182,16 @@ public class AuthController {
 		return response((CurrentUser) authentication.getPrincipal());
 	}
 
-	private static MeResponse response(CurrentUser user) {
-		return new MeResponse(user == null ? null : new MeUser(user.id(), user.getUsername(), user.nickname(), user.admin()));
+	/**
+	 * 세션의 로그인 정보는 로그인할 때의 모습이라, 로그인한 뒤에 바뀔 수 있는 인증 여부는 DB에서 읽는다.
+	 * 운영자 여부는 권한과 맞추려고 세션의 값을 쓴다(역할을 바꾸면 다시 로그인해야 한다).
+	 */
+	private MeResponse response(CurrentUser user) {
+		if (user == null) {
+			return new MeResponse(null);
+		}
+		return new MeResponse(userService.find(user.id())
+			.map(u -> new MeUser(u.getId(), u.getEmail(), u.getNickname(), user.admin(), u.isEmailVerified()))
+			.orElse(null));
 	}
 }

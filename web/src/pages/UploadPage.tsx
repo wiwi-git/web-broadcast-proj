@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
+import { useAuth } from '../auth/useAuth.ts'
 import {
   ALLOWED_EXTENSIONS,
   DESCRIPTION_MAX_LENGTH,
@@ -20,6 +21,7 @@ function fileProblem(file: File): string | null {
 }
 
 export default function UploadPage() {
+  const { me } = useAuth()
   const navigate = useNavigate()
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
@@ -43,6 +45,17 @@ export default function UploadPage() {
       setError((e as Error).message)
       setProgress(null)
     }
+  }
+
+  if (me && !me.emailVerified) {
+    return (
+      <div className="notice">
+        <p>이메일 인증을 마친 회원만 동영상을 올릴 수 있어요.</p>
+        <Link to="/account" className="button">
+          내 계정에서 인증하기
+        </Link>
+      </div>
+    )
   }
 
   return (

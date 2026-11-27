@@ -1631,3 +1631,52 @@ button.danger:hover:not(:disabled) {
 .withdraw-box .meta a {
   color: var(--accent);
 }
+
+/* 이메일 인증 안내와 내 계정의 인증·비밀번호 */
+
+.verify-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  max-width: 1232px;
+  margin: 12px auto 0;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  background: var(--donation-soft);
+  border: 1px solid var(--donation);
+  border-radius: var(--radius);
+}
+
+.verify-banner-actions,
+.account-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.account-info .badge.verified {
+  color: var(--accent-text);
+  background: var(--accent);
+}
+
+.account-info .badge.danger {
+  color: #fff;
+  background: var(--danger);
+}
+
+.account-section {
+  margin: 0 0 28px;
+}
+
+.account-section h2 {
+  margin: 0 0 12px;
+  font-size: 1.0625rem;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}

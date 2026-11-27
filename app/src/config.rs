@@ -69,3 +69,12 @@ pub fn terms_url() -> String {
 pub fn privacy_url() -> String {
     format!("{}/privacy", web_origin())
 }
+
+/// 앱에서 후원(테스트 결제)을 보여 줄지. 지금은 웹에서만 후원하고 앱은 후원하기 버튼과 후원 내역을 숨긴다.
+/// 웹에서 보낸 후원이 방송 화면에 알림으로 뜨는 것은 그대로 보인다
+pub const SHOW_DONATIONS: bool = false;
+
+/// 비밀번호 찾기는 웹 화면을 기본 브라우저로 연다 (재설정 링크도 웹으로 온다)
+pub fn forgot_password_url() -> String {
+    format!("{}/forgot-password", web_origin())
+}

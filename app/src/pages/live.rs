@@ -208,7 +208,8 @@ pub fn LiveWatch(id: String) -> Element {
 
                 div { class: "title-row",
                     h1 { class: "video-title", "{broadcast.title}" }
-                    if live && !owned {
+                    // 앱에서는 후원(테스트 결제)을 숨긴다 (config::SHOW_DONATIONS)
+                    if live && !owned && config::SHOW_DONATIONS {
                         Link { to: donate, class: "button primary", "후원하기" }
                     }
                 }

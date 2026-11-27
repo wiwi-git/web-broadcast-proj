@@ -27,6 +27,9 @@ import com.webbroadcast.report.InvalidReportException;
 import com.webbroadcast.simulcast.InvalidYouTubeKeyException;
 import com.webbroadcast.simulcast.SimulcastNotConfiguredException;
 import com.webbroadcast.user.DuplicateUserException;
+import com.webbroadcast.user.EmailNotVerifiedException;
+import com.webbroadcast.user.InvalidAccountRequestException;
+import com.webbroadcast.user.TooManyRequestsException;
 import com.webbroadcast.user.InvalidSignUpException;
 import com.webbroadcast.user.NotOwnerException;
 import com.webbroadcast.video.InvalidUploadException;
@@ -54,7 +57,7 @@ class ApiExceptionHandler {
 	@ExceptionHandler({ InvalidUploadException.class, UploadQuotaExceededException.class, InvalidBroadcastException.class,
 			InvalidCommentException.class, InvalidSignUpException.class, InvalidDonationException.class,
 			InvalidYouTubeKeyException.class, InvalidReportException.class, InvalidModerationException.class,
-			InvalidWithdrawalException.class })
+			InvalidWithdrawalException.class, InvalidAccountRequestException.class })
 	ProblemDetail badRequest(RuntimeException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, e.getMessage());
 	}
@@ -72,12 +75,22 @@ class ApiExceptionHandler {
 
 	@ExceptionHandler(AuthenticationException.class)
 	ProblemDetail loginFailed(AuthenticationException e) {
-		return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.");
+		return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
 	}
 
 	@ExceptionHandler(NotOwnerException.class)
 	ProblemDetail forbidden(NotOwnerException e) {
 		return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+	}
+
+	@ExceptionHandler(EmailNotVerifiedException.class)
+	ProblemDetail emailNotVerified(EmailNotVerifiedException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+	}
+
+	@ExceptionHandler(TooManyRequestsException.class)
+	ProblemDetail tooManyRequests(TooManyRequestsException e) {
+		return ProblemDetail.forStatusAndDetail(HttpStatus.TOO_MANY_REQUESTS, e.getMessage());
 	}
 
 	@ExceptionHandler({ DuplicateUserException.class, AlreadyReportedException.class })

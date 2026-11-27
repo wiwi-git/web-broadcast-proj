@@ -10,7 +10,7 @@ interface Props {
   compact?: boolean
 }
 
-/** 로그인한 User만 쓸 수 있다. 로그인하지 않았으면 로그인 안내를 보여 준다. */
+/** 이메일 인증을 마친 User만 쓸 수 있다. 로그인하지 않았거나 인증 전이면 안내를 보여 준다. */
 export default function CommentForm({ target, onWritten, compact = false }: Props) {
   const { me } = useAuth()
   const location = useLocation()
@@ -22,6 +22,13 @@ export default function CommentForm({ target, onWritten, compact = false }: Prop
     return (
       <p className="comment-login">
         <Link to={loginPath(location.pathname)}>로그인</Link>하고 댓글을 남겨 보세요.
+      </p>
+    )
+  }
+  if (!me.emailVerified) {
+    return (
+      <p className="comment-login">
+        이메일 인증을 마치면 댓글을 쓸 수 있어요. <Link to="/account">내 계정</Link>
       </p>
     )
   }

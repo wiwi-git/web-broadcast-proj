@@ -40,6 +40,14 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # 개발용 메일 수신기. 서버가 보낸 인증·비밀번호 재설정 메일을 http://localhost:8025 에서 본다
+  # 서버 설정: MAIL_HOST=localhost, MAIL_PORT=1025, MAIL_SMTP_AUTH=false, MAIL_STARTTLS=false (config/local.properties.example)
+  mailpit:
+    image: axllent/mailpit:v1.21.8
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # 받은 메일 화면
+
   # 유튜브 대신 동시 송출을 받아 보는 로컬 RTMP 수신기. 서버의 simulcast.youtube-url을 rtmp://rtmp-sink:1935/live2로 바꿔 쓴다
   #   docker compose --profile simulcast-test up -d rtmp-sink
   rtmp-sink:

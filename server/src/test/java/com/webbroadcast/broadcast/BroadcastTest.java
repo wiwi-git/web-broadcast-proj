@@ -13,7 +13,7 @@ class BroadcastTest {
 
 	private static final Instant T0 = Instant.parse("2026-11-03T10:00:00Z");
 
-	private final User owner = User.signedUp(UUID.randomUUID(), "owner1", "hash", "방송자", "test", T0);
+	private final User owner = User.signedUp(UUID.randomUUID(), "owner1@example.com", "hash", "방송자", "test", T0);
 	private final String key = StreamKey.generate();
 	private final Broadcast broadcast = Broadcast.pending(UUID.randomUUID(), owner, "첫 방송", StreamKey.hash(key), false, T0);
 

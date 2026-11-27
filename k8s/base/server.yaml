@@ -32,6 +32,9 @@ spec:
             # 유튜브 동시 송출 (선택, ADR-0007). SIMULCAST_ENCRYPTION_KEY와 SIMULCAST_RELAY_SECRET.
             # MediaMTX도 같은 Secret에서 SIMULCAST_RELAY_SECRET을 읽는다
             - secretRef: { name: simulcast, optional: true }
+            # 메일 발송 SMTP (선택). MAIL_HOST, MAIL_PORT, MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM.
+            # 없으면 인증·비밀번호 재설정 메일을 보내지 않고 서버 로그에 링크를 남긴다
+            - secretRef: { name: mail, optional: true }
           env:
             # 변환은 워커 Pod가 맡는다 (ADR-0004)
             - name: VIDEO_WORKER_ENABLED

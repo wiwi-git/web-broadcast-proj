@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -45,6 +46,9 @@ class VideoWorkerTest {
 	}
 
 	@Autowired
+	JdbcTemplate jdbc;
+
+	@Autowired
 	VideoService videoService;
 
 	@Autowired
@@ -63,7 +67,8 @@ class VideoWorkerTest {
 				"testsrc=size=320x240:rate=15", "-t", "1", "-pix_fmt", "yuv420p", sample.toString())
 			.inheritIO().start();
 		assertThat(ffmpeg.waitFor()).isZero();
-		var owner = userService.signUp("worker1", "password1", "워커", true);
+		var owner = userService.signUp("worker1@example.com", "password1", "워커", true);
+		jdbc.update("update app_user set email_verified_at = now() where id = ?", owner.getId());
 
 		Video video = videoService.upload(owner.getId(),
 				new MockMultipartFile("file", "sample.mp4", "video/mp4", Files.readAllBytes(sample)), "영상", null);

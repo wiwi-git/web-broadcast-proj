@@ -32,6 +32,7 @@ pub fn Shell() -> Element {
             }
             HeaderActions {}
         }
+        VerifyBanner {}
         main { class: "app-main", Outlet::<Route> {} }
         SiteFooter {}
     }
@@ -107,7 +108,7 @@ fn HeaderActions() -> Element {
     }
 }
 
-/// 닉네임 버튼. 누르면 화면 오른쪽에서 후원 내역·로그아웃이 있는 패널이 열린다
+/// 닉네임 버튼. 누르면 화면 오른쪽에서 내 계정·로그아웃이 있는 패널이 열린다 (후원 내역은 config::SHOW_DONATIONS일 때만)
 #[component]
 fn AccountMenu(nickname: String) -> Element {
     let mut auth = use_auth();
@@ -155,9 +156,11 @@ fn AccountMenu(nickname: String) -> Element {
                             UserIcon {}
                             "내 계정"
                         }
-                        Link { to: Route::Donations { tab: String::new() }, class: "drawer-item",
-                            HeartIcon {}
-                            "후원 내역"
+                        if config::SHOW_DONATIONS {
+                            Link { to: Route::Donations { tab: String::new() }, class: "drawer-item",
+                                HeartIcon {}
+                                "후원 내역"
+                            }
                         }
                         button {
                             r#type: "button",
@@ -171,6 +174,48 @@ fn AccountMenu(nickname: String) -> Element {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/// 로그인했지만 이메일 인증을 하지 않은 회원에게 머리글 아래에 띄운다 (web/src/components/VerifyBanner.tsx와 같다).
+/// 인증 링크는 메일에서 브라우저로 열리므로, 인증한 뒤 "인증했어요"로 상태를 다시 읽는다
+#[component]
+fn VerifyBanner() -> Element {
+    let mut auth = use_auth();
+    let mut message = use_signal(|| None::<String>);
+    let mut busy = use_signal(|| false);
+
+    let Some(me) = auth.me().filter(|me| !me.email_verified) else {
+        return rsx! {};
+    };
+    let resend = move |_| async move {
+        busy.set(true);
+        message.set(Some(match crate::api::resend_verification().await {
+            Ok(()) => "인증 메일을 다시 보냈습니다.".to_owned(),
+            Err(e) => e.to_string(),
+        }));
+        busy.set(false);
+    };
+
+    rsx! {
+        div { class: "verify-banner", role: "status",
+            span {
+                strong { "{me.email}" }
+                "로 보낸 메일의 링크를 눌러 이메일을 인증해 주세요. 인증하면 동영상을 올리고 댓글을 쓸 수 있어요."
+            }
+            span { class: "verify-banner-actions",
+                button { r#type: "button", class: "button small", disabled: busy(), onclick: resend, "메일 다시 받기" }
+                button {
+                    r#type: "button",
+                    class: "button small",
+                    onclick: move |_| async move { auth.refresh().await },
+                    "인증했어요"
+                }
+            }
+            if let Some(text) = message() {
+                span { class: "hint", "{text}" }
             }
         }
     }

@@ -287,8 +287,23 @@ fn EditVideoForm(video: Video, on_saved: EventHandler<Video>, on_cancel: EventHa
 #[component]
 pub fn Upload() -> Element {
     rsx! {
-        RequireLogin { UploadForm {} }
+        RequireLogin { VerifiedOnly { UploadForm {} } }
     }
+}
+
+/// 이메일 인증을 마친 회원에게만 children을 보여 준다. 서버도 다시 확인한다
+#[component]
+fn VerifiedOnly(children: Element) -> Element {
+    let auth = use_auth();
+    if auth.me().is_some_and(|me| !me.email_verified) {
+        return rsx! {
+            div { class: "notice",
+                p { "이메일 인증을 마친 회원만 동영상을 올릴 수 있어요." }
+                Link { to: Route::Account {}, class: "button", "내 계정에서 인증하기" }
+            }
+        };
+    }
+    children
 }
 
 /// 고른 파일. iOS·안드로이드는 Dioxus의 파일 입력이 동작하지 않아 웹뷰에서 고른다 (components/webview_file.rs)

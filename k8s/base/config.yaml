@@ -9,5 +9,7 @@ data:
   DB_URL: jdbc:postgresql://postgres:5432/webbroadcast
   MEDIAMTX_API_URL: http://mediamtx-api:9997
   MEDIA_STORAGE_ROOT: /data
+  # 인증·비밀번호 재설정 메일 속 링크가 가리킬 웹 주소
+  WEB_ORIGIN: https://live.duse.dev
   # 컨테이너 메모리 한도 안에서 JVM 힙을 잡는다
   JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75

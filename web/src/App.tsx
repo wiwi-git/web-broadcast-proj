@@ -18,6 +18,9 @@ import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import AdminHiddenPage from './pages/AdminHiddenPage.tsx'
 import TermsPage from './pages/TermsPage.tsx'
 import AccountPage from './pages/AccountPage.tsx'
+import VerifyEmailPage from './pages/VerifyEmailPage.tsx'
+import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordResetPages.tsx'
+import VerifyBanner from './components/VerifyBanner.tsx'
 import PrivacyPage from './pages/PrivacyPage.tsx'
 import SiteFooter from './components/SiteFooter.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
@@ -58,6 +61,7 @@ export default function App() {
         </nav>
         <HeaderActions />
       </header>
+      <VerifyBanner />
       <main className="app-main">
         <Routes>
           <Route path="/" element={<LandingPage />} />
@@ -143,6 +147,9 @@ export default function App() {
             }
           />
           <Route path="/account" element={<AccountPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/login" element={<LoginPage />} />

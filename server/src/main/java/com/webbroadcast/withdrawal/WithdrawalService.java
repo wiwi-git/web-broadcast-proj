@@ -53,7 +53,7 @@ public class WithdrawalService {
 		if (user.isAdmin()) {
 			throw new InvalidWithdrawalException("운영자 계정은 탈퇴할 수 없습니다. 먼저 운영자 역할을 해제해 주세요.");
 		}
-		String username = user.getUsername();
+		String email = user.getEmail();
 
 		// 이 User를 가리키는 기록부터 지운다 (외래 키 순서)
 		commentService.deleteAllWrittenBy(userId);
@@ -66,7 +66,7 @@ public class WithdrawalService {
 		// 다른 기기에서 로그인한 세션도 끊는다. 지금 요청의 세션은 컨트롤러가 무효로 만든다
 		FindByIndexNameSessionRepository<? extends Session> repository = sessions.getIfAvailable();
 		if (repository != null) {
-			repository.findByPrincipalName(username).keySet().forEach(repository::deleteById);
+			repository.findByPrincipalName(email).keySet().forEach(repository::deleteById);
 		}
 	}
 }

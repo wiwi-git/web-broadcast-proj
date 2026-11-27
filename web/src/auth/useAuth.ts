@@ -6,11 +6,13 @@ export interface Auth {
   me: Me | null
   /** 첫 로그인 상태 확인이 끝났는지 */
   ready: boolean
-  logIn(input: { username: string; password: string }): Promise<void>
-  signUp(input: { username: string; password: string; nickname: string; agreeTerms: boolean }): Promise<void>
+  logIn(input: { email: string; password: string }): Promise<void>
+  signUp(input: { email: string; password: string; nickname: string; agreeTerms: boolean }): Promise<void>
   logOut(): Promise<void>
   /** 회원 탈퇴. 성공하면 로그아웃된 상태가 된다 */
   withdraw(password: string): Promise<void>
+  /** 로그인 상태를 서버에서 다시 읽는다 (다른 창에서 이메일을 인증한 뒤 등) */
+  refresh(): Promise<void>
 }
 
 export const AuthContext = createContext<Auth | null>(null)

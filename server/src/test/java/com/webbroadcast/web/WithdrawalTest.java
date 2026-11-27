@@ -163,7 +163,7 @@ class WithdrawalTest {
 
 		// 같은 아이디로 다시 가입할 수 있다
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"다시가입\",\"agreeTerms\":true}"
+				"{\"email\":\"%s\",\"password\":\"password1\",\"nickname\":\"다시가입\",\"agreeTerms\":true}"
 					.formatted(leaving.username())))
 			.andExpect(status().isCreated());
 	}
@@ -225,16 +225,18 @@ class WithdrawalTest {
 	}
 
 	private static String login(String username) {
-		return "{\"username\":\"%s\",\"password\":\"password1\"}".formatted(username);
+		return "{\"email\":\"%s\",\"password\":\"password1\"}".formatted(username);
 	}
 
 	private Account signUp(String nickname) throws Exception {
-		String username = "bye" + users.incrementAndGet();
+		String username = "bye" + users.incrementAndGet() + "@example.com";
 		MvcResult result = mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}"
+				"{\"email\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}"
 					.formatted(username, nickname)))
 			.andExpect(status().isCreated())
 			.andReturn();
+		// 동영상 업로드·댓글은 이메일 인증을 마친 회원만 할 수 있다. 인증 흐름 자체는 AccountTest가 확인한다
+		jdbc.update("update app_user set email_verified_at = now() where email = ?", username);
 		Cookie session = result.getResponse().getCookie("SESSION");
 		assertThat(session).isNotNull();
 		return new Account(username, read(result, "$.user.id"), session);

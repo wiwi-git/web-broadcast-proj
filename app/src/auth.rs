@@ -24,6 +24,13 @@ impl Auth {
         self.state.set(Some(me));
     }
 
+    /// 로그인 상태를 서버에서 다시 읽는다 (브라우저에서 이메일을 인증한 뒤 등)
+    pub async fn refresh(&mut self) {
+        if let Ok(me) = api::fetch_me().await {
+            self.set(me);
+        }
+    }
+
     pub async fn log_out(&mut self) -> api::ApiResult<()> {
         api::log_out().await?;
         self.set(None);

@@ -100,18 +100,21 @@ class AccessControlTest {
 
 	@Test
 	void loginChecksThePassword() throws Exception {
-		String username = "login" + users.incrementAndGet();
+		int n = users.incrementAndGet();
+		String username = "Login" + n + "@Example.com";
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"로그인%s\",\"agreeTerms\":true}".formatted(username, username)))
+				"{\"email\":\"%s\",\"password\":\"password1\",\"nickname\":\"로그인%d\",\"agreeTerms\":true}".formatted(username, n)))
 			.andExpect(status().isCreated());
 
-		mvc.perform(json(post("/api/auth/login"), "{\"username\":\"%s\",\"password\":\"wrong-pass\"}".formatted(username)))
+		mvc.perform(json(post("/api/auth/login"), "{\"email\":\"%s\",\"password\":\"wrong-pass\"}".formatted(username)))
 			.andExpect(status().isUnauthorized())
-			.andExpect(jsonPath("$.detail").value("아이디 또는 비밀번호가 올바르지 않습니다."));
+			.andExpect(jsonPath("$.detail").value("이메일 또는 비밀번호가 올바르지 않습니다."));
 
 		MvcResult ok = mvc.perform(json(post("/api/auth/login"),
-				"{\"username\":\"%s\",\"password\":\"password1\"}".formatted(username)))
+				"{\"email\":\"%s\",\"password\":\"password1\"}".formatted(username)))
 			.andExpect(status().isOk())
+			// 이메일은 소문자로 저장하고 대소문자와 상관없이 로그인한다
+			.andExpect(jsonPath("$.user.email").value(username.toLowerCase()))
 			.andReturn();
 		assertThat(ok.getResponse().getCookie("SESSION")).isNotNull();
 	}
@@ -121,25 +124,33 @@ class AccessControlTest {
 		signUp("중복닉네임");
 
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"Upper\",\"password\":\"password1\",\"nickname\":\"새닉네임\",\"agreeTerms\":true}"))
+				"{\"email\":\"not-an-email\",\"password\":\"password1\",\"nickname\":\"새닉네임\",\"agreeTerms\":true}"))
 			.andExpect(status().isBadRequest());
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"newuser1\",\"password\":\"short\",\"nickname\":\"새닉네임\",\"agreeTerms\":true}"))
+				"{\"email\":\"newuser1@example.com\",\"password\":\"short\",\"nickname\":\"새닉네임\",\"agreeTerms\":true}"))
 			.andExpect(status().isBadRequest());
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"newuser2\",\"password\":\"password1\",\"nickname\":\"중복닉네임\",\"agreeTerms\":true}"))
+				"{\"email\":\"newuser2@example.com\",\"password\":\"password1\",\"nickname\":\"중복닉네임\",\"agreeTerms\":true}"))
 			.andExpect(status().isConflict())
 			.andExpect(jsonPath("$.detail").value("이미 사용 중인 닉네임입니다."));
+
+		mvc.perform(json(post("/api/auth/signup"),
+				"{\"email\":\"dup@example.com\",\"password\":\"password1\",\"nickname\":\"중복메일1\",\"agreeTerms\":true}"))
+			.andExpect(status().isCreated());
+		mvc.perform(json(post("/api/auth/signup"),
+				"{\"email\":\" DUP@Example.com \",\"password\":\"password1\",\"nickname\":\"중복메일2\",\"agreeTerms\":true}"))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.detail").value("이미 가입한 이메일입니다."));
 	}
 
 	@Test
 	void signUpNeedsTermsAgreementAndRecordsIt() throws Exception {
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"noagree1\",\"password\":\"password1\",\"nickname\":\"미동의\"}"))
+				"{\"email\":\"noagree1@example.com\",\"password\":\"password1\",\"nickname\":\"미동의\"}"))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.detail").value("만 14세 이상이며 이용약관과 개인정보처리방침에 동의해야 가입할 수 있습니다."));
 		mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"noagree2\",\"password\":\"password1\",\"nickname\":\"미동의2\",\"agreeTerms\":false}"))
+				"{\"email\":\"noagree2@example.com\",\"password\":\"password1\",\"nickname\":\"미동의2\",\"agreeTerms\":false}"))
 			.andExpect(status().isBadRequest());
 
 		signUp("동의함");
@@ -335,11 +346,13 @@ class AccessControlTest {
 	// 도우미
 
 	private Cookie signUp(String nickname) throws Exception {
-		String username = "user" + users.incrementAndGet();
+		String username = "user" + users.incrementAndGet() + "@example.com";
 		MvcResult result = mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
+				"{\"email\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
 			.andExpect(status().isCreated())
 			.andReturn();
+		// 동영상 업로드·댓글은 이메일 인증을 마친 회원만 할 수 있다. 인증 흐름 자체는 AccountTest가 확인한다
+		jdbc.update("update app_user set email_verified_at = now() where email = ?", username);
 		Cookie session = result.getResponse().getCookie("SESSION");
 		assertThat(session).isNotNull();
 		return session;

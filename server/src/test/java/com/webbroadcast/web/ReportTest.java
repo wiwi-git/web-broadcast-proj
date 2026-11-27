@@ -17,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -58,6 +59,9 @@ class ReportTest {
 
 	@Autowired
 	MockMvc mvc;
+
+	@Autowired
+	JdbcTemplate jdbc;
 
 	@Test
 	void reportingNeedsLogin() throws Exception {
@@ -145,11 +149,13 @@ class ReportTest {
 	}
 
 	private Cookie signUp(String nickname) throws Exception {
-		String username = "report" + users.incrementAndGet();
+		String username = "report" + users.incrementAndGet() + "@example.com";
 		MvcResult result = mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
+				"{\"email\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
 			.andExpect(status().isCreated())
 			.andReturn();
+		// 동영상 업로드·댓글은 이메일 인증을 마친 회원만 할 수 있다. 인증 흐름 자체는 AccountTest가 확인한다
+		jdbc.update("update app_user set email_verified_at = now() where email = ?", username);
 		Cookie session = result.getResponse().getCookie("SESSION");
 		assertThat(session).isNotNull();
 		return session;

@@ -38,11 +38,15 @@ pub struct UserSummary {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Me {
     pub id: String,
-    pub username: String,
+    /// 로그인 아이디. 본인과 운영자만 본다
+    pub email: String,
     pub nickname: String,
     /// 운영자면 true. 운영자는 탈퇴할 수 없다
     #[serde(default)]
     pub admin: bool,
+    /// false면 동영상 업로드·댓글을 할 수 없다. 메일의 인증 링크를 누르면 true가 된다
+    #[serde(rename = "emailVerified", default)]
+    pub email_verified: bool,
 }
 
 #[derive(Deserialize)]
@@ -57,7 +61,7 @@ struct User {
 
 #[derive(Serialize)]
 pub struct LogInInput {
-    pub username: String,
+    pub email: String,
     pub password: String,
 }
 
@@ -66,15 +70,22 @@ pub const PASSWORD_MAX_LENGTH: usize = 64;
 pub const NICKNAME_MIN_LENGTH: usize = 2;
 pub const NICKNAME_MAX_LENGTH: usize = 20;
 
-/// 아이디는 영문 소문자와 숫자로 4~20자 (web의 USERNAME_PATTERN)
-pub fn is_valid_username(username: &str) -> bool {
-    (4..=20).contains(&username.len()) && username.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit())
+pub const EMAIL_MAX_LENGTH: usize = 254;
+
+/// 이메일 형식만 본다 (web의 EMAIL_PATTERN). 실제로 받을 수 있는 주소인지는 인증 메일로 확인한다
+pub fn is_valid_email(email: &str) -> bool {
+    let Some((local, domain)) = email.split_once('@') else { return false };
+    let no_space = |s: &str| !s.is_empty() && !s.contains(char::is_whitespace) && !s.contains('@');
+    email.len() <= EMAIL_MAX_LENGTH
+        && no_space(local)
+        && no_space(domain)
+        && domain.split_once('.').is_some_and(|(a, b)| !a.is_empty() && !b.is_empty())
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SignUpInput {
-    pub username: String,
+    pub email: String,
     pub password: String,
     pub nickname: String,
     /// 만 14세 이상이며 이용약관·개인정보처리방침에 동의함. false면 서버가 거절한다
@@ -97,6 +108,23 @@ pub async fn sign_up(input: &SignUpInput) -> ApiResult<Me> {
 #[derive(Serialize)]
 struct WithdrawInput<'a> {
     password: &'a str,
+}
+
+/// 인증 메일을 다시 보낸다. 1분 안에 다시 누르면 429
+pub async fn resend_verification() -> ApiResult<()> {
+    send_empty(Method::POST, "/api/auth/verify-email/resend").await
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PasswordChange<'a> {
+    current_password: &'a str,
+    new_password: &'a str,
+}
+
+/// 지금 비밀번호를 알면 바꾼다. 이 기기의 로그인은 그대로, 다른 기기는 로그아웃된다
+pub async fn change_password(current_password: &str, new_password: &str) -> ApiResult<()> {
+    send_json_no_content(Method::POST, "/api/auth/password", &PasswordChange { current_password, new_password }).await
 }
 
 /// 회원 탈퇴. 비밀번호가 맞으면 그 회원의 모든 것을 지우고 로그인이 끊긴다
@@ -574,6 +602,18 @@ pub async fn fetch_received_donations() -> ApiResult<ReceivedDonations> {
 
 /// 실제 서버에 붙어 데스크톱·모바일 경로(앱 쿠키 저장소 + CSRF 헤더)를 확인한다.
 /// 서버를 띄운 뒤 `cargo test --no-default-features --features desktop -- --ignored`로 실행한다.
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn checks_email_shape() {
+        assert!(super::is_valid_email("a@b.co"));
+        assert!(!super::is_valid_email("ab.co"));
+        assert!(!super::is_valid_email("a@b"));
+        assert!(!super::is_valid_email("a b@c.de"));
+        assert!(!super::is_valid_email("a@@b.co"));
+    }
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod live_server_tests {
     use super::*;
@@ -582,13 +622,13 @@ mod live_server_tests {
     #[ignore = "localhost:8180에 서버가 떠 있어야 한다"]
     async fn signs_up_logs_out_and_logs_in_with_cookie_session() {
         let suffix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() % 1_000_000_000;
-        let username = format!("app{suffix}");
+        let email = format!("app{suffix}@example.com");
         let password = format!("pw-{suffix}-check");
 
         // 첫 요청으로 XSRF-TOKEN 쿠키를 받는다
         assert_eq!(fetch_me().await.unwrap(), None);
 
-        let me = sign_up(&SignUpInput { username: username.clone(), password: password.clone(), nickname: format!("앱{}", suffix % 10_000), agree_terms: true })
+        let me = sign_up(&SignUpInput { email: email.clone(), password: password.clone(), nickname: format!("앱{}", suffix % 10_000), agree_terms: true })
             .await
             .unwrap();
         assert_eq!(fetch_me().await.unwrap().as_ref(), Some(&me), "가입 뒤 세션 쿠키로 로그인 상태가 유지된다");
@@ -596,7 +636,7 @@ mod live_server_tests {
         log_out().await.unwrap();
         assert_eq!(fetch_me().await.unwrap(), None, "로그아웃(CSRF 헤더 필요)이 받아들여진다");
 
-        let again = log_in(&LogInInput { username, password }).await.unwrap();
+        let again = log_in(&LogInInput { email, password }).await.unwrap();
         assert_eq!(again.id, me.id);
         assert!(fetch_me().await.unwrap().is_some());
 
@@ -617,7 +657,7 @@ mod live_server_tests {
         let size = std::fs::metadata(&path).unwrap().len();
         let suffix = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() % 1_000_000_000;
         fetch_me().await.unwrap();
-        sign_up(&SignUpInput { username: format!("up{suffix}"), password: format!("pw-{suffix}-check"), nickname: format!("업{}", suffix % 10_000), agree_terms: true })
+        sign_up(&SignUpInput { email: format!("up{suffix}@example.com"), password: format!("pw-{suffix}-check"), nickname: format!("업{}", suffix % 10_000), agree_terms: true })
             .await
             .unwrap();
 

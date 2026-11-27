@@ -20,7 +20,8 @@ public final class CurrentUser implements UserDetails, CredentialsContainer {
 	private static final long serialVersionUID = 1L;
 
 	private final UUID id;
-	private final String username;
+	/** 로그인 아이디(이메일). 세션 저장소가 이 값으로 회원의 세션을 찾는다 */
+	private final String email;
 	private final String nickname;
 	/** 로그인할 때의 역할. 역할을 바꾸면 다시 로그인해야 반영된다 */
 	private final boolean admin;
@@ -30,7 +31,7 @@ public final class CurrentUser implements UserDetails, CredentialsContainer {
 
 	CurrentUser(User user) {
 		this.id = user.getId();
-		this.username = user.getUsername();
+		this.email = user.getEmail();
 		this.nickname = user.getNickname();
 		this.admin = user.isAdmin();
 		this.suspended = user.isSuspended();
@@ -49,9 +50,14 @@ public final class CurrentUser implements UserDetails, CredentialsContainer {
 		return admin;
 	}
 
+	public String email() {
+		return email;
+	}
+
+	/** Spring Security의 로그인 아이디. 이 서비스에서는 이메일이다 */
 	@Override
 	public String getUsername() {
-		return username;
+		return email;
 	}
 
 	@Override

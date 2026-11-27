@@ -82,6 +82,9 @@ class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/api/**", "/media/**").permitAll()
 				.requestMatchers(HttpMethod.POST, AuthController.SIGN_UP_PATH, AuthController.LOGIN_PATH,
 						MediaServerAuthController.PATH).permitAll()
+				// 메일 속 링크로 하는 일(이메일 인증, 비밀번호 재설정)은 로그인하지 않아도 된다. CSRF 토큰은 필요하다
+				.requestMatchers(HttpMethod.POST, AuthController.VERIFY_EMAIL_PATH,
+						AuthController.PASSWORD_RESET_REQUEST_PATH, AuthController.PASSWORD_RESET_PATH).permitAll()
 				// 결제 토큰이 인증 수단이다. 서비스가 토큰으로 Donation 하나만 찾아 처리한다
 				.requestMatchers(CheckoutController.CHECKOUT_PATH).permitAll()
 				.requestMatchers("/error", "/actuator/health/**").permitAll()

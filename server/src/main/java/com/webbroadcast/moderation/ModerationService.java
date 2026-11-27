@@ -131,7 +131,7 @@ public class ModerationService {
 		broadcastService.endActiveOf(userId);
 		FindByIndexNameSessionRepository<? extends Session> repository = sessions.getIfAvailable();
 		if (repository != null) {
-			repository.findByPrincipalName(user.getUsername()).keySet().forEach(repository::deleteById);
+			repository.findByPrincipalName(user.getEmail()).keySet().forEach(repository::deleteById);
 		}
 	}
 

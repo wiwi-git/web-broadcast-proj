@@ -15,7 +15,7 @@ const STATUS_FILTERS: { value: StatusFilter; label: string }[] = [
 ]
 
 /**
- * 운영자 회원 목록. 아이디나 닉네임으로 찾고 상태로 거를 수 있으며, 회원을 정지하거나 정지를 푼다.
+ * 운영자 회원 목록. 이메일이나 닉네임으로 찾고 상태로 거를 수 있으며, 회원을 정지하거나 정지를 푼다.
  * 검색어·상태·쪽은 주소(?q=&status=&page=)에 담아 새로고침과 뒤로 가기에도 유지한다.
  */
 export default function AdminUsersPage() {
@@ -70,7 +70,7 @@ export default function AdminUsersPage() {
         <input
           className="text-input"
           type="search"
-          placeholder="아이디나 닉네임"
+          placeholder="이메일이나 닉네임"
           aria-label="회원 검색"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -155,7 +155,7 @@ function UserRow({ user, isMe, onChanged }: RowProps) {
     <li className="admin-user">
       <div className="admin-user-info">
         <span className="comment-author">{user.nickname}</span>
-        <span className="meta">@{user.username}</span>
+        <span className="meta">{user.email}</span>
         {user.admin && <span className="badge inline">운영자</span>}
         {isMe && <span className="badge inline">나</span>}
         {user.suspended && <span className="badge danger inline">정지됨</span>}

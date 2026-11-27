@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
 import {
+  EMAIL_MAX_LENGTH,
+  EMAIL_PATTERN,
   NICKNAME_MAX_LENGTH,
   NICKNAME_MIN_LENGTH,
   PASSWORD_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
-  USERNAME_PATTERN,
 } from '../api.ts'
 import { safeNext, useAuth } from '../auth/useAuth.ts'
 
@@ -14,7 +15,7 @@ export default function SignUpPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const next = safeNext(searchParams.get('next'))
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [nickname, setNickname] = useState('')
@@ -25,7 +26,7 @@ export default function SignUpPage() {
   if (me && !submitting) return <Navigate to={next} replace />
 
   const nicknameLength = [...nickname.trim()].length
-  const usernameError = username && !USERNAME_PATTERN.test(username) ? '영문 소문자와 숫자로 4~20자' : null
+  const emailError = email && !EMAIL_PATTERN.test(email.trim()) ? '이메일 주소 형식이 아닙니다.' : null
   const passwordError =
     password && (password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH)
       ? `${PASSWORD_MIN_LENGTH}~${PASSWORD_MAX_LENGTH}자`
@@ -36,12 +37,12 @@ export default function SignUpPage() {
       ? `${NICKNAME_MIN_LENGTH}~${NICKNAME_MAX_LENGTH}자`
       : null
   const valid =
-    username &&
+    email &&
     password &&
     passwordConfirm &&
     nickname &&
     agreed &&
-    !usernameError &&
+    !emailError &&
     !passwordError &&
     !confirmError &&
     !nicknameError
@@ -52,7 +53,7 @@ export default function SignUpPage() {
     setSubmitting(true)
     setError(null)
     try {
-      await signUp({ username, password, nickname: nickname.trim(), agreeTerms: agreed })
+      await signUp({ email: email.trim(), password, nickname: nickname.trim(), agreeTerms: agreed })
       navigate(next, { replace: true })
     } catch (e) {
       setError((e as Error).message)
@@ -64,18 +65,18 @@ export default function SignUpPage() {
     <form className="auth-form" onSubmit={handleSubmit}>
       <h1 className="page-title">회원가입</h1>
       <label className="field">
-        <span className="label">아이디</span>
+        <span className="label">이메일</span>
         <input
-          type="text"
+          type="email"
           className="text-input"
-          autoComplete="username"
+          autoComplete="email"
           autoCapitalize="none"
-          maxLength={20}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          maxLength={EMAIL_MAX_LENGTH}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
-        <span className={usernameError ? 'hint error' : 'hint'}>
-          {usernameError ?? '로그인할 때 씁니다. 영문 소문자와 숫자로 4~20자, 나중에 바꿀 수 없습니다.'}
+        <span className={emailError ? 'hint error' : 'hint'}>
+          {emailError ?? '로그인할 때 씁니다. 가입하면 인증 메일을 보냅니다. 다른 회원에게는 보이지 않습니다.'}
         </span>
       </label>
       <label className="field">

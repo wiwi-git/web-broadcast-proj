@@ -157,6 +157,14 @@ pub fn CommentForm(target: CommentTarget, on_written: EventHandler<Comment>, #[p
             }
         };
     }
+    if auth.me().is_some_and(|me| !me.email_verified) {
+        return rsx! {
+            p { class: "comment-login",
+                "이메일 인증을 마치면 댓글을 쓸 수 있어요. "
+                Link { to: Route::Account {}, "내 계정" }
+            }
+        };
+    }
 
     let submit = move |event: FormEvent| {
         let target = target.clone();

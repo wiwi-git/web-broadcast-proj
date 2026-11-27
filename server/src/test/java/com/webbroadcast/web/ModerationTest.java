@@ -291,7 +291,7 @@ class ModerationTest {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.totalItems").value(1))
 			.andExpect(jsonPath("$.items[0].id").value(member.id()))
-			.andExpect(jsonPath("$.items[0].username").value(member.username()))
+			.andExpect(jsonPath("$.items[0].email").value(member.username()))
 			.andExpect(jsonPath("$.items[0].nickname").value("목록회원"))
 			.andExpect(jsonPath("$.items[0].admin").value(false))
 			.andExpect(jsonPath("$.items[0].suspended").value(false))
@@ -343,21 +343,23 @@ class ModerationTest {
 	/** 역할은 로그인할 때 세션에 담기므로 DB에서 바꾼 뒤 다시 로그인한다 */
 	private Account admin(String nickname) throws Exception {
 		Account account = signUp(nickname);
-		jdbc.update("update app_user set role = 'ADMIN' where username = ?", account.username());
+		jdbc.update("update app_user set role = 'ADMIN' where email = ?", account.username());
 		MvcResult result = mvc.perform(json(post("/api/auth/login"), login(account))).andExpect(status().isOk()).andReturn();
 		return new Account(account.username(), account.id(), result.getResponse().getCookie("SESSION"));
 	}
 
 	private static String login(Account account) {
-		return "{\"username\":\"%s\",\"password\":\"password1\"}".formatted(account.username());
+		return "{\"email\":\"%s\",\"password\":\"password1\"}".formatted(account.username());
 	}
 
 	private Account signUp(String nickname) throws Exception {
-		String username = "mod" + users.incrementAndGet();
+		String username = "mod" + users.incrementAndGet() + "@example.com";
 		MvcResult result = mvc.perform(json(post("/api/auth/signup"),
-				"{\"username\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
+				"{\"email\":\"%s\",\"password\":\"password1\",\"nickname\":\"%s\",\"agreeTerms\":true}".formatted(username, nickname)))
 			.andExpect(status().isCreated())
 			.andReturn();
+		// 동영상 업로드·댓글은 이메일 인증을 마친 회원만 할 수 있다. 인증 흐름 자체는 AccountTest가 확인한다
+		jdbc.update("update app_user set email_verified_at = now() where email = ?", username);
 		Cookie session = result.getResponse().getCookie("SESSION");
 		assertThat(session).isNotNull();
 		return new Account(username, read(result, "$.user.id"), session);

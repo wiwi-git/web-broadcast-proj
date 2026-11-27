@@ -6,6 +6,7 @@
 # - db-credentials: 필수. DB를 처음 만들 때의 비밀번호와 같아야 한다
 # - toss-keys:      선택. 두 값이 모두 있을 때만 만든다 (없으면 후원만 막힌다)
 # - simulcast:      선택. 두 값이 모두 있을 때만 만든다 (없으면 유튜브 동시 송출만 막힌다)
+# - mail:           선택. MAIL_HOST가 있을 때만 만든다 (없으면 인증·재설정 메일 대신 서버 로그에 링크가 남는다)
 set -euo pipefail
 
 ENV_FILE=${ENV_FILE:-/opt/web-broadcast/.env}
@@ -36,6 +37,15 @@ if [[ -n "${SIMULCAST_ENCRYPTION_KEY:-}" && -n "${SIMULCAST_RELAY_SECRET:-}" ]];
   apply_secret simulcast \
     --from-literal=SIMULCAST_ENCRYPTION_KEY="$SIMULCAST_ENCRYPTION_KEY" \
     --from-literal=SIMULCAST_RELAY_SECRET="$SIMULCAST_RELAY_SECRET"
+fi
+
+if [[ -n "${MAIL_HOST:-}" ]]; then
+  apply_secret mail \
+    --from-literal=MAIL_HOST="$MAIL_HOST" \
+    --from-literal=MAIL_PORT="${MAIL_PORT:-587}" \
+    --from-literal=MAIL_USERNAME="${MAIL_USERNAME:-}" \
+    --from-literal=MAIL_PASSWORD="${MAIL_PASSWORD:-}" \
+    --from-literal=MAIL_FROM="${MAIL_FROM:-Web Broadcast <no-reply@duse.dev>}"
 fi
 
 kubectl -n "$NAMESPACE" get secrets

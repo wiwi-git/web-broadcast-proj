@@ -20,7 +20,7 @@ load-test/  k6 부하 테스트
 | 누가 | 할 수 있는 일 |
 | --- | --- |
 | 누구나 (로그인 없이) | 라이브 목록·동영상 목록 보기, 라이브와 동영상 시청, 댓글 목록 보기, 방송에 완료된 후원 보기 (후원자 닉네임·금액·메시지) |
-| 로그인한 회원 | 위의 모든 것, 동영상 업로드, 방송 시작, 댓글 쓰기, 방송 중인 남의 방송에 후원, 자기 후원 내역(보낸 후원·받은 후원) 보기, 남의 방송·동영상·댓글 신고(대상마다 한 번) |
+| 로그인한 회원 | 위의 모든 것, 동영상 업로드(이메일 인증 필요), 방송 시작, 댓글 쓰기(이메일 인증 필요), 방송 중인 남의 방송에 후원, 자기 후원 내역(보낸 후원·받은 후원) 보기, 남의 방송·동영상·댓글 신고(대상마다 한 번) |
 | 콘텐츠 소유자 (올린 사람·방송한 사람) | 동영상 제목·설명 수정과 삭제, 방송 제목 수정·종료·삭제, 방송 키 재발급 |
 | 댓글 작성자 | 자기 댓글 수정·삭제. 콘텐츠 소유자라도 남의 댓글은 지울 수 없다 |
 | 후원자 | 자기 후원의 결제 승인·취소 처리. 완료된 후원은 되돌릴 수 없다 |
@@ -28,7 +28,10 @@ load-test/  k6 부하 테스트
 
 - 한 회원이 동시에 진행할 수 있는 방송은 하나다.
 - 처리 중이거나 처리에 실패한 동영상은 목록에 나오지 않지만, 주소를 알면 상세 정보는 볼 수 있다. 준비 상태의 방송도 목록에는 나오지 않는다.
-- 회원의 아이디는 다른 사람에게 보이지 않고 닉네임만 보인다.
+- 회원은 이메일과 비밀번호로 가입하고 로그인한다. 이메일은 다른 사람에게 보이지 않고 닉네임만 보인다.
+- 가입하면 인증 메일을 보낸다. 메일의 링크(`/verify-email`)로 **이메일 인증을 마친 회원만 동영상을 올리고 댓글을 쓸 수 있다**. 인증 링크는 24시간, 다시 받기는 1분에 한 번.
+- 비밀번호는 "내 계정"에서 지금 비밀번호로 바꾸고(다른 기기는 로그아웃), 잊으면 로그인 화면의 "비밀번호 찾기"로 재설정 메일(링크 30분)을 받는다. 재설정하면 모든 기기가 로그아웃되고 이메일도 인증된 것으로 본다.
+- 앱(Dioxus)은 후원(테스트 결제)을 숨긴다(`app/src/config.rs`의 `SHOW_DONATIONS`). 후원하기 버튼과 후원 내역이 없고, 웹에서 보낸 후원 알림은 방송 화면에 보인다.
 - 만 14세 이상만 가입할 수 있다. 가입할 때 [이용약관](web/src/pages/TermsPage.tsx)(`/terms`)과 [개인정보처리방침](web/src/pages/PrivacyPage.tsx)(`/privacy`)에 동의해야 한다. 두 문서는 웹과 앱의 모든 화면 아래쪽에서 열 수 있고, 앱은 웹 화면을 기본 브라우저로 연다. 문서를 바꾸면 `web/src/legal.ts`의 시행일과 `UserService.TERMS_VERSION`을 같이 바꾼다. 문서에 적힌 저장 항목·외부 서비스가 바뀌면 개인정보처리방침도 고친다.
 - 운영자가 내린 방송·동영상·댓글은 지우지 않고 숨긴다. 소유자를 포함해 누구에게도 보이지 않으며(404), 방송은 진행 중이면 끝난다. 이미 열려 있는 화면에서도 댓글은 3초 안에 사라진다(라이브는 댓글 목록 갱신, 동영상은 숨긴 댓글 ID 확인). 동영상의 HLS 파일은 주소를 아는 사람에게는 계속 열린다.
 - 회원은 웹·앱의 "내 계정"(`/account`)에서 비밀번호를 다시 넣고 탈퇴할 수 있다. 탈퇴하면 그 회원의 모든 것(계정, 동영상과 파일, 방송, 쓴 댓글, 내 콘텐츠에 달린 댓글, 보내거나 받은 후원, 한 신고, 유튜브 키, 모든 기기의 로그인)을 바로 지운다. 운영자는 역할을 해제해야 탈퇴할 수 있다.
@@ -95,7 +98,7 @@ simulcast.youtube-url=rtmp://rtmp-sink:1935/live2
 필요한 것: JDK 25, Node 24, Docker, ffmpeg (`brew install ffmpeg`)
 
 ```bash
-docker compose up -d          # PostgreSQL + MediaMTX
+docker compose up -d          # PostgreSQL + MediaMTX + Mailpit(받은 메일 http://localhost:8025)
 cd server && ./gradlew bootRun   # http://localhost:8180
 cd web && npm install && npm run dev   # http://localhost:5173
 ```
@@ -245,12 +248,17 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 
 | 메서드 | 경로 | | 설명 |
 | --- | --- | --- | --- |
-| `GET` | `/api/auth/me` | 🔓 | `{user}`. 로그인하지 않았으면 `user`가 null. `user.admin`이 true면 운영자다. CSRF 토큰 쿠키도 이때 받는다 |
-| `POST` | `/api/auth/signup` | 🔓 | JSON `{username, password, nickname, agreeTerms}`. `agreeTerms`(만 14세 이상이며 이용약관·개인정보처리방침에 동의)가 true가 아니면 400. 동의 시각과 문서 버전(`UserService.TERMS_VERSION`)을 남긴다. 가입하면 바로 로그인된다 |
-| `POST` | `/api/auth/login` | 🔓 | JSON `{username, password}`. 정지된 회원이면 403 |
+| `GET` | `/api/auth/me` | 🔓 | `{user}`. 로그인하지 않았으면 `user`가 null. `user`는 `{id, email, nickname, admin, emailVerified}`. `admin`이 true면 운영자, `emailVerified`가 false면 업로드·댓글을 할 수 없다. CSRF 토큰 쿠키도 이때 받는다 |
+| `POST` | `/api/auth/signup` | 🔓 | JSON `{email, password, nickname, agreeTerms}`. 이메일은 소문자로 저장하고 중복이면 409. `agreeTerms`(만 14세 이상이며 이용약관·개인정보처리방침에 동의)가 true가 아니면 400. 동의 시각과 문서 버전(`UserService.TERMS_VERSION`)을 남긴다. 인증 메일을 보내고, 바로 로그인된다 |
+| `POST` | `/api/auth/login` | 🔓 | JSON `{email, password}`(이메일 대소문자 무시). 정지된 회원이면 403 |
+| `POST` | `/api/auth/verify-email` | 🔓 | JSON `{token}`. 인증 메일 속 링크의 값. 만료·사용·잘못된 값이면 400. 204 |
+| `POST` | `/api/auth/verify-email/resend` | 🔑 | 인증 메일 다시 보내기. 이미 인증했으면 400, 1분 안에 다시 부르면 429. 204 |
+| `POST` | `/api/auth/password` | 🔑 | JSON `{currentPassword, newPassword}`. 지금 비밀번호가 틀리면 400. 이 기기는 로그인 유지, 다른 기기는 로그아웃. 204 |
+| `POST` | `/api/auth/password-reset/request` | 🔓 | JSON `{email}`. 가입한 이메일이면 재설정 메일을 보낸다(1분에 한 번, 정지된 계정 제외). 가입 여부를 알리지 않으려고 언제나 204 |
+| `POST` | `/api/auth/password-reset` | 🔓 | JSON `{token, newPassword}`. 재설정 메일 속 링크의 값. 모든 기기 로그아웃, 이메일 인증 처리. 204 |
 | `POST` | `/api/auth/logout` | 🔑 | 204 |
 | `POST` | `/api/auth/withdraw` | 🔑 | JSON `{password}`. 회원 탈퇴. 비밀번호가 틀리면 400, 운영자면 400. 계정, 동영상(파일 포함), 방송, 쓴 댓글, 보내거나 받은 후원, 한 신고, 유튜브 키, 모든 기기의 세션을 지운다. 204 |
-| `POST` | `/api/videos` | 🔑 | multipart: `file`, `title`, `description`. 201과 처리 중 상태의 Video |
+| `POST` | `/api/videos` | 🔑 | 이메일 인증 필요(아니면 403). multipart: `file`, `title`, `description`. 201과 처리 중 상태의 Video |
 | `GET` | `/api/videos?page=0` | 🔓 | 공개된 Video 목록, 최신순 20개씩 |
 | `GET` | `/api/videos/{id}` | 🔓 | Video 하나. 공개 상태면 `playbackUrl`(HLS)과 `thumbnailUrl` 포함 |
 | `PATCH` | `/api/videos/{id}` | 👤 | JSON `{title, description}` |
@@ -266,7 +274,7 @@ API 서버의 CPU는 그대로였다. 무거운 변환이 워커로만 가기 �
 | `GET` | `/api/videos/{id}/comments?before=` | 🔓 | 최신순 20개씩. 응답의 `nextCursor`를 `before`로 넘기면 이어서 온다 |
 | `GET` | `/api/videos/{id}/comments/hidden` | 🔓 | 운영자가 숨긴 댓글의 ID 목록(본문 없음). 열어 둔 동영상 화면이 3초마다 받아 화면에서 뺀다 |
 | `GET` | `/api/broadcasts/{id}/comments` | 🔓 | 최근 100개, 오래된 순 |
-| `POST` | `/api/videos/{id}/comments`, `/api/broadcasts/{id}/comments` | 🔑 | JSON `{body}` (500자 이하) |
+| `POST` | `/api/videos/{id}/comments`, `/api/broadcasts/{id}/comments` | 🔑 | 이메일 인증 필요(아니면 403). JSON `{body}` (500자 이하) |
 | `PATCH` | `/api/comments/{id}` | 👤 | JSON `{body}`. 수정되면 `updatedAt`이 채워진다 |
 | `DELETE` | `/api/comments/{id}` | 👤 | 204 |
 | `GET` | `/api/payments/config` | 🔓 | `{clientKey}` 결제창 클라이언트 키. 키가 설정되지 않았으면 null |
@@ -300,6 +308,10 @@ cd server && ./gradlew test
 `AccessControlTest`, `DonationTest`, `SimulcastTest`는 Testcontainers로 PostgreSQL을 띄워 HTTP 요청으로 확인하므로 Docker가 실행 중이어야 한다. `AccessControlTest`는 공개 범위와 소유자·작성자 권한을, `DonationTest`는 후원의 결제 흐름을 본다. `DonationTest`는 토스페이먼츠 대신 가짜 결제 서비스로 승인·거절·결과 모름을 정한다. `SimulcastTest`는 유튜브 키 암호화 저장과 중계 내부 API를 본다(실제 중계는 위의 로컬 RTMP 수신기로 확인한다).
 
 ## 배포할 때 주의
+
+**이메일 로그인 전환(V11)**: 배포하면 Flyway가 기존 회원과 그 콘텐츠(방송, 동영상, 댓글, 후원, 신고, 세션)를 DB에서 모두 지운다(기존 회원은 이메일이 없는 데모·테스트 계정이라서, 2026-11-27 결정). 동영상 파일은 DB 밖에 있으므로 배포할 때 미디어 저장소(`MEDIA_STORAGE_ROOT`의 `originals`, `public`, `work`)를 직접 비운다. 예시 영상도 함께 지워지므로 다시 올린다.
+
+**메일**: 인증·비밀번호 재설정 메일은 SMTP로 보낸다. `/opt/web-broadcast/.env`에 `MAIL_HOST` 등(deploy/env.example)을 적고 `deploy/k3s/secrets.sh`로 `mail` Secret을 만든다. 비어 있으면 메일 대신 서버 로그에 링크가 남는다. 메일 속 링크 주소는 `WEB_ORIGIN`(k8s/base/config.yaml, 기본 `https://live.duse.dev`)이다. 발송 업체를 정하면 개인정보처리방침의 위탁 표에 적는다.
 
 웹 서버(nginx 등)는 `/api/internal/*`을 밖으로 넘기지 않는다. MediaMTX만 서버에 직접 부르는 경로다(유튜브 동시 송출, ADR-0007).
 
