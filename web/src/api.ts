@@ -287,6 +287,11 @@ export function fetchBroadcastComments(broadcastId: string): Promise<Comment[]> 
   return getJson(commentsUrl({ kind: 'broadcast', id: broadcastId }))
 }
 
+/** 운영자가 숨긴 동영상 댓글의 ID들. 열어 둔 화면이 주기적으로 받아 화면에서 뺀다 */
+export function fetchHiddenVideoComments(videoId: string): Promise<string[]> {
+  return getJson(`/api/videos/${encodeURIComponent(videoId)}/comments/hidden`)
+}
+
 export function writeComment(target: CommentTarget, body: string): Promise<Comment> {
   return sendJson('POST', commentsUrl(target), { body })
 }

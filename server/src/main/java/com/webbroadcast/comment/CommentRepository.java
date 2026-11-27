@@ -27,6 +27,10 @@ interface CommentRepository extends JpaRepository<Comment, UUID> {
 
 	long countByVideoIdAndHiddenAtIsNull(UUID videoId);
 
+	/** 운영자가 숨긴 Video의 Comment ID들 */
+	@Query("select c.id from Comment c where c.videoId = :videoId and c.hiddenAt is not null")
+	List<UUID> findHiddenIdsOnVideo(UUID videoId);
+
 	@EntityGraph(attributePaths = "author")
 	@Query("select c from Comment c where c.broadcastId = :broadcastId and c.hiddenAt is null order by c.createdAt desc, c.id desc")
 	List<Comment> findLatestOnBroadcast(UUID broadcastId, Limit limit);

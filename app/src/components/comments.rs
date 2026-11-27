@@ -1,6 +1,7 @@
 //! 댓글 입력과 댓글 한 개, 동영상 댓글 목록. web/src/components/VideoComments.tsx, CommentItem.tsx, CommentForm.tsx와 같다.
 
 use std::collections::HashSet;
+use std::time::Duration;
 
 use dioxus::prelude::*;
 
@@ -8,9 +9,13 @@ use super::{ConfirmButton, ReportButton};
 use crate::api::{self, COMMENT_MAX_LENGTH, Comment, CommentTarget, ReportTargetType};
 use crate::auth::use_auth;
 use crate::route::Route;
-use crate::time::format_relative;
+use crate::time::{format_relative, sleep};
+
+/// 운영자가 내린 댓글을 이 간격으로 확인해 화면에서 뺀다. 라이브 댓글 갱신과 같다
+const HIDDEN_POLL_INTERVAL: Duration = Duration::from_secs(3);
 
 /// 최신순으로 20개씩 "더 보기". 다른 동영상으로 바뀌면 부모가 key로 새로 만든다.
+/// 댓글은 처음에 한 번만 불러오므로, 운영자가 내린 댓글은 주기적으로 ID만 받아 뺀다.
 #[component]
 pub fn VideoComments(video_id: String) -> Element {
     let mut items = use_signal(|| None::<Vec<Comment>>);
@@ -30,6 +35,27 @@ pub fn VideoComments(video_id: String) -> Element {
                     total.set(page.total_count);
                 }
                 Err(e) => error.set(Some(e.to_string())),
+            }
+        }
+    });
+
+    let poll_id = video_id.clone();
+    use_future(move || {
+        let video_id = poll_id.clone();
+        async move {
+            loop {
+                sleep(HIDDEN_POLL_INTERVAL).await;
+                // 실패하면 다음 주기에 다시 확인한다
+                let Ok(hidden) = api::fetch_hidden_video_comments(&video_id).await else { continue };
+                let hidden: HashSet<String> = hidden.into_iter().collect();
+                let Some(current) = items() else { continue };
+                let before = current.len();
+                let kept: Vec<Comment> = current.into_iter().filter(|c| !hidden.contains(&c.id)).collect();
+                let removed = before - kept.len();
+                if removed > 0 {
+                    items.set(Some(kept));
+                    total.set(total().saturating_sub(removed as u64));
+                }
             }
         }
     });

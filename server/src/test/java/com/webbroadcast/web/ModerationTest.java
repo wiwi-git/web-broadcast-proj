@@ -6,14 +6,19 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +27,7 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -50,6 +56,17 @@ class ModerationTest {
 
 	@TempDir
 	static Path storage;
+
+	static Path sampleVideo;
+
+	@BeforeAll
+	static void makeSampleVideo() throws IOException, InterruptedException {
+		sampleVideo = storage.resolve("sample.mp4");
+		Process ffmpeg = new ProcessBuilder("ffmpeg", "-v", "error", "-f", "lavfi", "-i",
+				"testsrc=size=320x240:rate=15", "-t", "1", "-pix_fmt", "yuv420p", sampleVideo.toString())
+			.inheritIO().start();
+		assertThat(ffmpeg.waitFor()).isZero();
+	}
 
 	@DynamicPropertySource
 	static void properties(DynamicPropertyRegistry registry) {
@@ -149,6 +166,41 @@ class ModerationTest {
 		mvc.perform(json(post("/api/reports"),
 				"{\"targetType\":\"COMMENT\",\"targetId\":\"%s\",\"reason\":\"SPAM\"}".formatted(hidden))
 				.cookie(signUp("늦은신고자").session()))
+			.andExpect(status().isNotFound());
+	}
+
+	@Test
+	void hiddenVideoCommentIdsAreListedSoOpenScreensCanDropThem() throws Exception {
+		Account uploader = signUp("댓글영상주인");
+		Account author = signUp("영상댓글작성자");
+		MvcResult uploaded = mvc.perform(multipart("/api/videos")
+				.file(new MockMultipartFile("file", "sample.mp4", "video/mp4", Files.readAllBytes(sampleVideo)))
+				.param("title", "댓글 숨김 영상")
+				.cookie(uploader.session())
+				.with(csrf()))
+			.andExpect(status().isCreated())
+			.andReturn();
+		String videoId = read(uploaded, "$.id");
+		String hidden = writeVideoComment(author, videoId, "숨길 영상 댓글");
+		String kept = writeVideoComment(author, videoId, "남을 영상 댓글");
+
+		// 숨긴 것이 없으면 빈 목록. 로그인 없이도 본다
+		mvc.perform(get("/api/videos/" + videoId + "/comments/hidden"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.length()").value(0));
+
+		report(signUp("영상댓글신고자"), "COMMENT", hidden, "SPAM", "");
+		mvc.perform(post("/api/admin/reports/COMMENT/" + hidden + "/hide").with(csrf())
+				.cookie(admin("운영자9").session()))
+			.andExpect(status().isNoContent());
+
+		mvc.perform(get("/api/videos/" + videoId + "/comments/hidden"))
+			.andExpect(jsonPath("$.length()").value(1))
+			.andExpect(jsonPath("$[0]").value(hidden));
+		mvc.perform(get("/api/videos/" + videoId + "/comments"))
+			.andExpect(jsonPath("$.totalCount").value(1))
+			.andExpect(jsonPath("$.items[0].id").value(kept));
+		mvc.perform(get("/api/videos/" + UUID.randomUUID() + "/comments/hidden"))
 			.andExpect(status().isNotFound());
 	}
 
@@ -283,6 +335,14 @@ class ModerationTest {
 
 	private String writeComment(Account author, String broadcastId, String body) throws Exception {
 		MvcResult result = mvc.perform(json(post("/api/broadcasts/" + broadcastId + "/comments"),
+				"{\"body\":\"%s\"}".formatted(body)).cookie(author.session()))
+			.andExpect(status().isCreated())
+			.andReturn();
+		return read(result, "$.id");
+	}
+
+	private String writeVideoComment(Account author, String videoId, String body) throws Exception {
+		MvcResult result = mvc.perform(json(post("/api/videos/" + videoId + "/comments"),
 				"{\"body\":\"%s\"}".formatted(body)).cookie(author.session()))
 			.andExpect(status().isCreated())
 			.andReturn();

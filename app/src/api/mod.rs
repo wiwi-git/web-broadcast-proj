@@ -208,6 +208,11 @@ pub async fn fetch_broadcast_comments(broadcast_id: &str) -> ApiResult<Vec<Comme
     get_json(&CommentTarget::Broadcast(broadcast_id.to_owned()).url()).await
 }
 
+/// 운영자가 숨긴 동영상 댓글의 ID들. 열어 둔 화면이 주기적으로 받아 화면에서 뺀다
+pub async fn fetch_hidden_video_comments(video_id: &str) -> ApiResult<Vec<String>> {
+    get_json(&format!("/api/videos/{}/comments/hidden", encode(video_id))).await
+}
+
 pub async fn write_comment(target: &CommentTarget, body: &str) -> ApiResult<Comment> {
     send_json(Method::POST, &target.url(), &CommentBody { body }).await
 }

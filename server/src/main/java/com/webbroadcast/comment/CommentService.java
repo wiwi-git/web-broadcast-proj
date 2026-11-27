@@ -58,6 +58,15 @@ public class CommentService {
 		return new VideoComments(items, hasMore ? items.getLast().getId() : null, repository.countByVideoIdAndHiddenAtIsNull(videoId));
 	}
 
+	/**
+	 * Video에서 운영자가 숨긴 Comment의 ID들. 동영상 화면은 댓글을 한 번만 불러오므로,
+	 * 이미 열어 둔 화면이 주기적으로 이 목록을 받아 숨긴 Comment를 뺀다. 본문은 주지 않는다.
+	 */
+	public List<UUID> hiddenIdsOnVideo(UUID videoId) {
+		videoService.get(videoId);
+		return repository.findHiddenIdsOnVideo(videoId);
+	}
+
 	/** 최근 Comment들을 오래된 순으로. 화면 아래에 새 Comment가 쌓인다. */
 	public List<Comment> listOnBroadcast(UUID broadcastId) {
 		broadcastService.get(broadcastId);

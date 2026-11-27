@@ -50,6 +50,12 @@ class CommentController {
 		return CommentResponse.from(commentService.writeOnVideo(videoId, user.id(), request.body()));
 	}
 
+	/** 운영자가 숨긴 Comment의 ID들. 열어 둔 동영상 화면이 주기적으로 받아 화면에서 뺀다 */
+	@GetMapping("/api/videos/{videoId}/comments/hidden")
+	List<UUID> hiddenOnVideo(@PathVariable UUID videoId) {
+		return commentService.hiddenIdsOnVideo(videoId);
+	}
+
 	/** 최근 Comment들을 오래된 순으로 */
 	@GetMapping("/api/broadcasts/{broadcastId}/comments")
 	List<CommentResponse> listOnBroadcast(@PathVariable UUID broadcastId) {
