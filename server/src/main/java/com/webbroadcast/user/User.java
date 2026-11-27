@@ -60,6 +60,11 @@ public class User {
 		return suspendedAt != null;
 	}
 
+	/** 정지되지 않았으면 null */
+	public Instant getSuspendedAt() {
+		return suspendedAt;
+	}
+
 	void suspend(Instant now) {
 		if (suspendedAt == null) {
 			suspendedAt = now;

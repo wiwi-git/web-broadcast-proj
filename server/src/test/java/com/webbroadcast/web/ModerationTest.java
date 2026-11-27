@@ -1,6 +1,9 @@
 package com.webbroadcast.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.everyItem;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.is;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -184,6 +187,44 @@ class ModerationTest {
 		mvc.perform(post("/api/admin/users/" + suspect.id() + "/unsuspend").with(csrf()).cookie(admin.session()))
 			.andExpect(status().isNoContent());
 		mvc.perform(json(post("/api/auth/login"), login(suspect))).andExpect(status().isOk());
+	}
+
+	@Test
+	void adminsListAndSearchUsersWithTheirStatus() throws Exception {
+		Account member = signUp("목록회원");
+		Account admin = admin("운영자8");
+
+		mvc.perform(get("/api/admin/users").cookie(member.session()))
+			.andExpect(status().isForbidden());
+
+		// 닉네임이나 아이디 일부로 찾는다
+		mvc.perform(get("/api/admin/users").param("q", "목록회").cookie(admin.session()))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.totalItems").value(1))
+			.andExpect(jsonPath("$.items[0].id").value(member.id()))
+			.andExpect(jsonPath("$.items[0].username").value(member.username()))
+			.andExpect(jsonPath("$.items[0].nickname").value("목록회원"))
+			.andExpect(jsonPath("$.items[0].admin").value(false))
+			.andExpect(jsonPath("$.items[0].suspended").value(false))
+			.andExpect(jsonPath("$.items[0].createdAt").isNotEmpty());
+		mvc.perform(get("/api/admin/users").param("q", member.username().toUpperCase()).cookie(admin.session()))
+			.andExpect(jsonPath("$.totalItems").value(1));
+
+		mvc.perform(post("/api/admin/users/" + member.id() + "/suspend").with(csrf()).cookie(admin.session()))
+			.andExpect(status().isNoContent());
+		mvc.perform(get("/api/admin/users").param("q", "목록회원").cookie(admin.session()))
+			.andExpect(jsonPath("$.items[0].suspended").value(true))
+			.andExpect(jsonPath("$.items[0].suspendedAt").isNotEmpty());
+
+		// 정지된 회원만 걸러 본다
+		mvc.perform(get("/api/admin/users").param("suspended", "true").cookie(admin.session()))
+			.andExpect(jsonPath("$.items[*].suspended").value(everyItem(is(true))))
+			.andExpect(jsonPath("$.items[*].id").value(hasItem(member.id())));
+
+		// 검색어 없이 보면 최근 가입한 순이고, 운영자도 나온다
+		mvc.perform(get("/api/admin/users").cookie(admin.session()))
+			.andExpect(jsonPath("$.items[0].id").value(admin.id()))
+			.andExpect(jsonPath("$.items[0].admin").value(true));
 	}
 
 	@Test

@@ -10,6 +10,7 @@ import {
   type ReportGroup,
   type ReportTargetType,
 } from '../api.ts'
+import AdminTabs from '../components/AdminTabs.tsx'
 import ConfirmButton from '../components/ConfirmButton.tsx'
 import { formatRelative } from '../format.ts'
 
@@ -52,7 +53,7 @@ export default function AdminReportsPage() {
 
   return (
     <div className="admin-page">
-      <h1 className="page-title">신고 관리</h1>
+      <AdminTabs />
       {groups.length === 0 ? (
         <p className="notice">처리할 신고가 없습니다.</p>
       ) : (

@@ -1216,6 +1216,77 @@ button.danger:hover:not(:disabled) {
   overflow-wrap: anywhere;
 }
 
+/* 운영자 회원 관리 (AdminUsersPage) */
+
+.admin-search {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.admin-search .text-input {
+  flex: 1;
+}
+
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.admin-filters .meta {
+  margin-left: auto;
+}
+
+.admin-users {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.admin-user {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+}
+
+.admin-user + .admin-user {
+  border-top: 1px solid var(--border);
+}
+
+.admin-user-info {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.admin-user-info .badge {
+  background: var(--surface-hover);
+}
+
+.admin-user-info .badge.danger {
+  color: #fff;
+  background: var(--danger);
+}
+
+.admin-user-dates {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+
 .report-group-actions {
   display: flex;
   flex-wrap: wrap;

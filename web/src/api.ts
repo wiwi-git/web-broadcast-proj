@@ -495,3 +495,29 @@ export function suspendUser(userId: string): Promise<void> {
 export function unsuspendUser(userId: string): Promise<void> {
   return request(`/api/admin/users/${encodeURIComponent(userId)}/unsuspend`, { method: 'POST' })
 }
+
+/** 운영자 회원 목록의 한 사람. 아이디는 운영자에게만 보인다 */
+export interface AdminUser {
+  id: string
+  username: string
+  nickname: string
+  admin: boolean
+  suspended: boolean
+  suspendedAt: string | null
+  createdAt: string
+}
+
+export interface AdminUserPage {
+  items: AdminUser[]
+  page: number
+  totalPages: number
+  totalItems: number
+}
+
+/** query는 아이디나 닉네임 일부. suspended가 undefined면 상태와 상관없이. 최근 가입한 순 20명씩 */
+export function fetchAdminUsers(input: { query: string; suspended?: boolean; page: number }): Promise<AdminUserPage> {
+  const params = new URLSearchParams({ page: String(input.page) })
+  if (input.query.trim()) params.set('q', input.query.trim())
+  if (input.suspended !== undefined) params.set('suspended', String(input.suspended))
+  return getJson(`/api/admin/users?${params}`)
+}

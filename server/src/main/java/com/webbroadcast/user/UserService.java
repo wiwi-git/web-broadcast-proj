@@ -6,6 +6,9 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -21,6 +24,8 @@ public class UserService implements UserDetailsService {
 	public static final int PASSWORD_MAX_LENGTH = 64;
 	public static final int NICKNAME_MIN_LENGTH = 2;
 	public static final int NICKNAME_MAX_LENGTH = 20;
+	/** 운영자 회원 목록 한 쪽 */
+	public static final int ADMIN_PAGE_SIZE = 20;
 
 	private final UserRepository repository;
 	private final PasswordEncoder passwordEncoder;
@@ -65,6 +70,13 @@ public class UserService implements UserDetailsService {
 
 	public Optional<User> find(UUID id) {
 		return repository.findById(id);
+	}
+
+	/** 운영자 회원 목록, 최근 가입한 순 */
+	public Page<User> search(String rawQuery, Boolean suspended, int page) {
+		String query = rawQuery == null || rawQuery.isBlank() ? null : rawQuery.strip();
+		return repository.search(query, suspended,
+				PageRequest.of(Math.max(page, 0), ADMIN_PAGE_SIZE, Sort.by(Sort.Direction.DESC, "createdAt", "id")));
 	}
 
 	/** 운영자가 정지한다. 운영자인지 확인하고 세션을 끊는 일은 ModerationService가 한다 */

@@ -14,6 +14,7 @@ import { DonationFailPage, DonationSuccessPage } from './pages/DonationResultPag
 import DonationsPage from './pages/DonationsPage.tsx'
 import CheckoutPage, { CheckoutFailPage, CheckoutSuccessPage } from './pages/CheckoutPage.tsx'
 import AdminReportsPage from './pages/AdminReportsPage.tsx'
+import AdminUsersPage from './pages/AdminUsersPage.tsx'
 import RequireLogin from './auth/RequireLogin.tsx'
 import { loginPath, useAuth } from './auth/useAuth.ts'
 import {
@@ -117,6 +118,14 @@ export default function App() {
             element={
               <RequireLogin>
                 <AdminReportsPage />
+              </RequireLogin>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <RequireLogin>
+                <AdminUsersPage />
               </RequireLogin>
             }
           />
@@ -231,7 +240,7 @@ function AccountMenu({ nickname, admin }: { nickname: string; admin: boolean }) 
               {admin && (
                 <Link to="/admin/reports" className="drawer-item">
                   <ShieldIcon />
-                  신고 관리
+                  운영자
                 </Link>
               )}
               <button
